@@ -1,80 +1,37 @@
 import React from "react";
-import {View,Text,StyleSheet,TouchableOpacity} from "react-native";
+import { View, Text } from "react-native";
+import { Star, HeartPulse, Clock3 } from "lucide-react-native";
 
+import styles from "./HeroCard.styles";
 
-export default function HeroCard(){
+export default function HeroCard() {
+  return (
+    <View style={styles.card}>
+      <Text style={styles.title}>
+        How can we{"\n"}
+        help you today?
+      </Text>
 
-return(
+      <Text style={styles.subtitle}>
+        World-class Ethiopian healthcare — wherever you are.
+      </Text>
 
-<View style={styles.card}>
+      <View style={styles.badgeContainer}>
+        <View style={styles.badge}>
+          <Star size={14} color="#FACC15" fill="#FACC15" />
+          <Text style={styles.badgeText}>4.9 rated</Text>
+        </View>
 
+        <View style={styles.badge}>
+          <HeartPulse size={14} color="#86EFAC" />
+          <Text style={styles.badgeText}>24/7 care</Text>
+        </View>
 
-<Text style={styles.title}>
-  Stay Healthy,
-  Stay Safe ❤️
-</Text>
-
-
-<Text style={styles.description}>
- Monitor your health daily
- and get emergency support.
-</Text>
-
-
-<TouchableOpacity style={styles.button}>
-
-<Text style={styles.buttonText}>
- Emergency SOS
-</Text>
-
-</TouchableOpacity>
-
-
-</View>
-
-)
-
+        <View style={styles.badge}>
+          <Clock3 size={14} color="#93C5FD" />
+          <Text style={styles.badgeText}>Same-day</Text>
+        </View>
+      </View>
+    </View>
+  );
 }
-
-
-
-const styles=StyleSheet.create({
-
-card:{
-backgroundColor:"#2563EB",
-padding:25,
-borderRadius:25,
-marginTop:20,
-},
-
-
-title:{
-fontSize:24,
-fontWeight:"700",
-color:"#fff",
-},
-
-
-description:{
-color:"#E5E7EB",
-marginTop:10,
-lineHeight:22,
-},
-
-
-button:{
-backgroundColor:"#fff",
-paddingVertical:12,
-paddingHorizontal:20,
-borderRadius:20,
-marginTop:20,
-alignSelf:"flex-start",
-},
-
-
-buttonText:{
-color:"#2563EB",
-fontWeight:"700",
-}
-
-})

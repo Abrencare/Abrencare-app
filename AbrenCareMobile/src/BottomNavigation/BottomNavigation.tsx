@@ -1,115 +1,67 @@
 import React from "react";
-import {
-View,
-Text,
-StyleSheet,
-TouchableOpacity
-} from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
+import styles from "./BottomNavigation.styles";
 
-export default function BottomNavigation(){
+export default function BottomNavigation() {
+  const tabs = [
+    {
+      name: "Home",
+      icon: "home-outline",
+      activeIcon: "home",
+      active: true,
+    },
+    {
+      name: "Family",
+      icon: "people-outline",
+      activeIcon: "people",
+      active: false,
+    },
+    {
+      name: "Executive",
+      icon: "medkit-outline",
+      activeIcon: "medkit",
+      active: false,
+    },
+    {
+      name: "Consultation",
+      icon: "chatbubble-outline",
+      activeIcon: "chatbubble",
+      active: false,
+    },
+    {
+      name: "Profile",
+      icon: "person-outline",
+      activeIcon: "person",
+      active: false,
+    },
+  ];
 
+  return (
+    <View style={styles.container}>
+      {tabs.map((tab) => (
+        <TouchableOpacity
+          key={tab.name}
+          style={styles.tab}
+          activeOpacity={0.8}
+        >
+          <Ionicons
+            name={(tab.active ? tab.activeIcon : tab.icon) as any}
+            size={24}
+            color={tab.active ? "#7DA46B" : "#A8A8A8"}
+          />
 
-const items=[
-{
-icon:"🏠",
-name:"Home"
-},
-{
-icon:"❤️",
-name:"Health"
-},
-{
-icon:"🔔",
-name:"Alerts"
-},
-{
-icon:"👤",
-name:"Profile"
-},
-{
-icon:"⚙️",
-name:"Settings"
+          <Text
+            style={[
+              styles.label,
+              tab.active && styles.activeLabel,
+            ]}
+          >
+            {tab.name}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
 }
-];
-
-
-return(
-
-<View style={styles.container}>
-
-
-{
-items.map((item,index)=>(
-
-<TouchableOpacity 
-key={index}
-style={styles.item}
->
-
-
-<Text style={styles.icon}>
-{item.icon}
-</Text>
-
-
-<Text style={styles.text}>
-{item.name}
-</Text>
-
-
-</TouchableOpacity>
-
-))
-}
-
-
-</View>
-
-)
-
-}
-
-
-
-const styles=StyleSheet.create({
-
-container:{
-position:"absolute",
-bottom:20,
-left:20,
-right:20,
-height:75,
-backgroundColor:"#fff",
-borderRadius:30,
-flexDirection:"row",
-justifyContent:"space-around",
-alignItems:"center",
-
-// shadow ios
-shadowColor:"#000",
-shadowOpacity:0.1,
-shadowRadius:10,
-
-// android
-elevation:10,
-},
-
-
-item:{
-alignItems:"center",
-},
-
-
-icon:{
-fontSize:22,
-},
-
-
-text:{
-fontSize:11,
-marginTop:4,
-color:"#6B7280",
-}
-
-});

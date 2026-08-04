@@ -1,73 +1,49 @@
 import { StyleSheet } from "react-native";
 
-export default StyleSheet.create({
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: "#2F3640",
+    marginHorizontal: 20,
+    marginTop: 20,
+    padding: 24,
+    borderRadius: 28,
+  },
 
-container:{
+  title: {
+    fontSize: 34,
+    fontWeight: "800",
+    color: "#FFFFFF",
+    lineHeight: 40,
+  },
 
-marginHorizontal:20,
+  subtitle: {
+    color: "#BFC6CF",
+    fontSize: 14,
+    marginTop: 12,
+    lineHeight: 20,
+  },
 
-marginTop:20,
+  badgeContainer: {
+    flexDirection: "row",
+    marginTop: 24,
+  },
 
-padding:24,
+  badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#434B57",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 18,
+    marginRight: 10,
+  },
 
-borderRadius:30,
-
-},
-
-title:{
-
-fontSize:34,
-
-fontWeight:"700",
-
-lineHeight:40,
-
-color:"#fff",
-
-},
-
-subtitle:{
-
-marginTop:12,
-
-fontSize:15,
-
-lineHeight:22,
-
-color:"#D9D9D9",
-
-},
-
-chips:{
-
-flexDirection:"row",
-
-marginTop:22,
-
-},
-
-chip:{
-
-paddingHorizontal:16,
-
-paddingVertical:8,
-
-borderRadius:30,
-
-backgroundColor:"rgba(255,255,255,.12)",
-
-marginRight:10,
-
-},
-
-chipText:{
-
-fontSize:13,
-
-fontWeight:"600",
-
-color:"#fff",
-
-}
-
+  badgeText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "600",
+    marginLeft: 6,
+  },
 });
+
+export default styles;

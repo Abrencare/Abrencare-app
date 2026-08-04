@@ -1,29 +1,50 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet } from "react-native";
 
-import { Colors } from '@/theme/colors';
-import { Spacing } from '@/theme/spacing';
-import typography from '@/theme/typography';
-
-export const styles = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.card,
-    borderTopColor: Colors.border,
-    borderTopWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    position: "absolute",
+    left: 20,
+    right: 20,
+    bottom: 20,
+
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+
+    backgroundColor: "#FFFFFF",
+
+    height: 82,
+
+    borderRadius: 40,
+
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    shadowOffset: {
+      width: 0,
+      height: -4,
+    },
+
+    elevation: 15,
   },
-  item: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
+
+  tab: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
+
   label: {
-    ...typography.body,
-    color: Colors.subtitle,
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#A8A8A8",
   },
+
   activeLabel: {
-    color: Colors.primary,
-    fontWeight: '700',
+    color: "#7DA46B",
+    fontWeight: "700",
   },
 });
+
+export default styles;
