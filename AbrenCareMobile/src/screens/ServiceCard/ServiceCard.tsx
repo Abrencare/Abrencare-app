@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { useRouter } from "expo-router";
 import styles from "./ServiceCard.styles";
 
 type ServiceItem = {
@@ -14,7 +14,7 @@ type ServiceItem = {
   accentColor: string;
   iconBackground: string;
   tags?: string[];
-  route: string; // Expo Router route path
+  route: string;
 };
 
 type Props = {
@@ -32,7 +32,7 @@ const defaultServices: ServiceItem[] = [
     accentColor: '#2F80ED',
     iconBackground: '#EAF6FF',
     tags: ['Home visits', 'Vital monitoring'],
-    route: '/family-care' // Expo Router route
+    route: '/family',
   },
   {
     id: 'executive',
@@ -44,7 +44,7 @@ const defaultServices: ServiceItem[] = [
     accentColor: '#8B5CF6',
     iconBackground: '#F3E8FF',
     tags: ['Confidential', 'Dedicated MD'],
-    route: '/executive-health' // Expo Router route
+    route: '/executive',
   },
   {
     id: 'consultation',
@@ -56,11 +56,10 @@ const defaultServices: ServiceItem[] = [
     accentColor: '#10B981',
     iconBackground: '#D1FAE5',
     tags: ['Video call', 'Licensed MDs'],
-    route: '/consultation' // Expo Router route
-  }
+    route: '/consultation',
+  },
 ];
 
-// Stats Section Component
 const StatsSection = () => (
   <View style={styles.statsContainer}>
     <View style={styles.statItem}>
@@ -83,18 +82,20 @@ const StatsSection = () => (
 export default function ServiceCard({
   services = defaultServices,
 }: Props) {
+  const router = useRouter();
+
   const handlePress = (route: string) => {
-    router.push(route); // Expo Router navigation
+    router.push(route);
   };
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
+      
       <View style={styles.header}>
         <Text style={styles.headerTitle}>OUR SERVICES</Text>
       </View>
 
-      {/* Service Cards */}
+      
       {services.map((service) => (
         <TouchableOpacity
           key={service.id}
@@ -153,10 +154,10 @@ export default function ServiceCard({
         </TouchableOpacity>
       ))}
 
-      {/* Stats Section */}
+      
       <StatsSection />
 
-      {/* Footer */}
+      
       <View style={styles.footer}>
         <Text style={styles.footerText}>
           Serving Ethiopian families across 3 continents

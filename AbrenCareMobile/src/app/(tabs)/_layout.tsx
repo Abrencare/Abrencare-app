@@ -15,7 +15,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="home-outline" size={size} color={color} />
           ),
         }}
@@ -24,7 +24,7 @@ export default function TabsLayout() {
         name="reports"
         options={{
           title: 'Reports',
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="stats-chart-outline" size={size} color={color} />
           ),
         }}
@@ -33,7 +33,7 @@ export default function TabsLayout() {
         name="chat"
         options={{
           title: 'Chat',
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="chatbubble-ellipses-outline" size={size} color={color} />
           ),
         }}
@@ -42,7 +42,7 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="person-outline" size={size} color={color} />
           ),
         }}
@@ -51,7 +51,7 @@ export default function TabsLayout() {
         name="emergency"
         options={{
           title: 'Emergency',
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="warning-outline" size={size} color={color} />
           ),
         }}

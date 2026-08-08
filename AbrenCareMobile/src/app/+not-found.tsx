@@ -9,10 +9,12 @@ import {
   Platform, 
   Dimensions 
 } from 'react-native';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function NotFoundScreen() {
+  const router = useRouter();
+
   const handleGoBack = () => {
     if (router.canGoBack()) {
       router.back();
