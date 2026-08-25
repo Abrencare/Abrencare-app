@@ -8,8 +8,11 @@ import {
   SafeAreaView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 export default function ConsultationOverview() {
+  const { t } = useLanguage();
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -17,11 +20,11 @@ export default function ConsultationOverview() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerLabel}>
-            DIGITAL CONSULTATION
+            {t.consultation.headerLabel}
           </Text>
 
           <Text style={styles.headerTitle}>
-            Book a consultation
+            {t.consultation.title}
           </Text>
         </View>
 
@@ -34,7 +37,7 @@ export default function ConsultationOverview() {
           <View style={styles.languageRow}>
             <TouchableOpacity style={styles.languageButton}>
               <Text style={styles.languageText}>
-                English
+                {t.common.english}
               </Text>
             </TouchableOpacity>
 
@@ -50,42 +53,31 @@ export default function ConsultationOverview() {
                   styles.selectedLanguageText,
                 ]}
               >
-                አማርኛ
+                {t.common.amharic}
               </Text>
             </TouchableOpacity>
           </View>
 
           {/* Specialty */}
           <Text style={styles.sectionLabel}>
-            CHOOSE A SPECIALTY
+            {t.consultation.chooseSpecialty}
           </Text>
 
           <View style={styles.specialtyGrid}>
-
-            <SpecialtyButton title="General" />
-
-            <SpecialtyButton
-              title="Cardiology"
-              selected
-            />
-
-            <SpecialtyButton title="Paediatrics" />
-
-            <SpecialtyButton title="Neurology" />
-
-            <SpecialtyButton title="Diabetes" />
-
-            <SpecialtyButton title="Respiratory" />
-
+            <SpecialtyButton title={t.consultation.general} />
+            <SpecialtyButton title={t.consultation.cardiology} selected />
+            <SpecialtyButton title={t.consultation.paediatrics} />
+            <SpecialtyButton title={t.consultation.neurology} />
+            <SpecialtyButton title={t.consultation.diabetes} />
+            <SpecialtyButton title={t.consultation.respiratory} />
           </View>
 
-          
+          {/* Available Doctor */}
           <Text style={styles.sectionLabel}>
-            AVAILABLE DOCTOR
+            {t.consultation.availableDoctor}
           </Text>
 
           <TouchableOpacity style={styles.doctorCard}>
-
             <View style={styles.doctorAvatar}>
               <Text style={styles.avatarText}>
                 DH
@@ -98,61 +90,46 @@ export default function ConsultationOverview() {
               </Text>
 
               <Text style={styles.doctorDetails}>
-                Cardiology · 12 yrs
+                {t.consultation.doctorDetails}
               </Text>
             </View>
 
             <View style={styles.availablePill}>
               <Text style={styles.availableText}>
-                Available
+                {t.consultation.available}
               </Text>
             </View>
-
           </TouchableOpacity>
 
           {/* Time */}
           <Text style={styles.sectionLabel}>
-            SELECT A TIME
+            {t.consultation.selectTime}
           </Text>
 
           <View style={styles.timeGrid}>
-
             <TimeButton title="9:00" />
-
-            <TimeButton
-              title="10:00"
-              selected
-            />
-
+            <TimeButton title="10:00" selected />
             <TimeButton title="11:00" />
-
             <TimeButton title="1:00" />
-
             <TimeButton title="2:00" />
-
             <TimeButton title="3:00" />
-
           </View>
 
           {/* Confirm */}
           <TouchableOpacity style={styles.confirmButton}>
             <Text style={styles.confirmText}>
-              Confirm · 450 ETB
+              {t.consultation.confirm}
             </Text>
           </TouchableOpacity>
 
           {/* Consultation Info */}
           <Text style={styles.infoText}>
-            Video consultation · 30 min · 10:00 today
+            {t.consultation.info}
           </Text>
 
           <View style={{ height: 25 }} />
 
         </ScrollView>
-
-        
-        
-
       </View>
     </SafeAreaView>
   );
@@ -217,43 +194,6 @@ function TimeButton({
     </TouchableOpacity>
   );
 }
-
-/* ================================= */
-/* Bottom Navigation                 */
-/* ================================= */
-
-function NavItem({
-  icon,
-  label,
-  active = false,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  active?: boolean;
-}) {
-  return (
-    <TouchableOpacity style={styles.navItem}>
-      <Ionicons
-        name={icon}
-        size={17}
-        color={active ? "#6E88B8" : "#A5A5A5"}
-      />
-
-      <Text
-        style={[
-          styles.navLabel,
-          active && styles.activeNavLabel,
-        ]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-/* ================================= */
-/* Styles                            */
-/* ================================= */
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -371,6 +311,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 10,
     marginBottom: 11,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
 
   doctorAvatar: {
@@ -468,34 +413,5 @@ const styles = StyleSheet.create({
     color: "#A4A4A4",
     fontSize: 6,
     marginTop: 7,
-  },
-
-  /* Bottom Navigation */
-  bottomNav: {
-    height: 54,
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 1,
-    borderTopColor: "#E8E8E8",
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    paddingBottom: 3,
-  },
-
-  navItem: {
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 55,
-  },
-
-  navLabel: {
-    fontSize: 6,
-    color: "#A5A5A5",
-    marginTop: 3,
-  },
-
-  activeNavLabel: {
-    color: "#6F89B9",
-    fontWeight: "600",
   },
 });

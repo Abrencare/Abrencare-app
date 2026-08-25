@@ -1,40 +1,50 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
 import styles from "./BottomNavigation.styles";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 export default function BottomNavigation() {
+  const router = useRouter();
+  const { t } = useLanguage();
+
   const tabs = [
     {
-      name: "Home",
+      name: t.tabs.home,
       icon: "home-outline",
       activeIcon: "home",
       active: true,
+      route: "/(tabs)",
     },
     {
-      name: "Family",
+      name: t.tabs.family,
       icon: "people-outline",
       activeIcon: "people",
       active: false,
+      route: "/family",
     },
     {
-      name: "Executive",
+      name: t.tabs.executive,
       icon: "medkit-outline",
       activeIcon: "medkit",
       active: false,
+      route: "/executive",
     },
     {
-      name: "Consultation",
+      name: t.tabs.consultation,
       icon: "chatbubble-outline",
       activeIcon: "chatbubble",
       active: false,
+      route: "/consultation",
     },
     {
-      name: "Profile",
+      name: t.tabs.profile,
       icon: "person-outline",
       activeIcon: "person",
       active: false,
+      route: "/family/profile",
     },
   ];
 
@@ -45,6 +55,7 @@ export default function BottomNavigation() {
           key={tab.name}
           style={styles.tab}
           activeOpacity={0.8}
+          onPress={() => router.push(tab.route)}
         >
           <Ionicons
             name={(tab.active ? tab.activeIcon : tab.icon) as any}

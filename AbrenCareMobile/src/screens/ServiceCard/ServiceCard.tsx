@@ -1,7 +1,13 @@
-import React from "react";
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import {
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
 import styles from "./ServiceCard.styles";
 
 type ServiceItem = {
@@ -21,146 +27,243 @@ type Props = {
   services?: ServiceItem[];
 };
 
-const defaultServices: ServiceItem[] = [
-  {
-    id: 'family',
-    icon: 'people',
-    title: 'Family care',
-    category: 'FOR DIASPORA FAMILIES',
-    description: 'Care visits, health monitoring and doctor consultations for your parent in Ethiopia.',
-    features: ['Home visits', 'Vital monitoring', 'Lab tests', 'Dr. coordination'],
-    accentColor: '#2F80ED',
-    iconBackground: '#EAF6FF',
-    tags: ['Home visits', 'Vital monitoring'],
-    route: '/family',
-  },
-  {
-    id: 'executive',
-    icon: 'medal',
-    title: 'Executive health',
-    category: 'FOR ETHIOPIAN LEADERS',
-    description: 'Continuous monitoring, blood panels, cardiac screening and a dedicated personal physician.',
-    features: ['Confidential', 'Blood panels', 'Cardiac ECG', 'Dedicated MD'],
-    accentColor: '#8B5CF6',
-    iconBackground: '#F3E8FF',
-    tags: ['Confidential', 'Dedicated MD'],
-    route: '/executive',
-  },
-  {
-    id: 'consultation',
-    icon: 'videocam',
-    title: 'See a doctor now',
-    category: 'FOR ETHIOPIANS IN ETHIOPIA',
-    description: 'Licensed doctor on video, in Amharic, within hours. No travel. Pay in ETB.',
-    features: ['In Amharic', 'Video call', 'Pay in ETB', 'Licensed MDs'],
-    accentColor: '#10B981',
-    iconBackground: '#D1FAE5',
-    tags: ['Video call', 'Licensed MDs'],
-    route: '/consultation',
-  },
-];
-
-const StatsSection = () => (
-  <View style={styles.statsContainer}>
-    <View style={styles.statItem}>
-      <Text style={styles.statNumber}>+500</Text>
-      <Text style={styles.statLabel}>Families served</Text>
-    </View>
-    <View style={styles.statDivider} />
-    <View style={styles.statItem}>
-      <Text style={styles.statNumber}>24/7</Text>
-      <Text style={styles.statLabel}>Support available</Text>
-    </View>
-    <View style={styles.statDivider} />
-    <View style={styles.statItem}>
-      <Text style={styles.statNumber}>16yr</Text>
-      <Text style={styles.statLabel}>Gap closing</Text>
-    </View>
-  </View>
-);
-
-export default function ServiceCard({
-  services = defaultServices,
-}: Props) {
+export default function ServiceCard({ services }: Props) {
   const router = useRouter();
 
+  // Gets the currently selected language
+  const { t } = useLanguage();
+
+  const defaultServices: ServiceItem[] = [
+    {
+      id: "family",
+      icon: "people-outline",
+
+      title: t.home.familyTitle,
+      category: t.home.familyCategory,
+      description: t.home.familyDescription,
+
+      features: [...t.home.familyFeatures],
+
+      accentColor: "#2F80ED",
+      iconBackground: "#EAF6FF",
+
+      tags: [...t.home.familyTags],
+
+      route: "/family",
+    },
+
+    {
+      id: "executive",
+      icon: "medal-outline",
+
+      title: t.home.executiveTitle,
+      category: t.home.executiveCategory,
+      description: t.home.executiveDescription,
+
+      features: [...t.home.executiveFeatures],
+
+      accentColor: "#8B5CF6",
+      iconBackground: "#F3E8FF",
+
+      tags: [...t.home.executiveTags],
+
+      route: "/executive",
+    },
+
+    {
+      id: "consultation",
+      icon: "videocam-outline",
+
+      title: t.home.consultationTitle,
+      category: t.home.consultationCategory,
+      description: t.home.consultationDescription,
+
+      features: [...t.home.consultationFeatures],
+
+      accentColor: "#10B981",
+      iconBackground: "#D1FAE5",
+
+      tags: [...t.home.consultationTags],
+
+      route: "/consultation",
+    },
+  ];
+
+  const items = services ?? defaultServices;
+
   const handlePress = (route: string) => {
-    router.push(route);
+    router.push(route as any);
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Section Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>OUR SERVICES</Text>
+        <Text style={styles.headerTitle}>
+          {t.home.ourServices}
+        </Text>
       </View>
 
-      
-      {services.map((service) => (
+      {/* Service Cards */}
+      {items.map((service) => (
         <TouchableOpacity
           key={service.id}
           activeOpacity={0.9}
-          style={[styles.card, { borderLeftColor: service.accentColor }]}
+          style={styles.card}
           onPress={() => handlePress(service.route)}
         >
+          {/* Top Row */}
           <View style={styles.topRow}>
-            <View style={[styles.iconBox, { backgroundColor: service.iconBackground }]}>
-              <Ionicons name={service.icon} size={28} color={service.accentColor} />
+            {/* Icon */}
+            <View
+              style={[
+                styles.iconBox,
+                {
+                  backgroundColor: service.iconBackground,
+                },
+              ]}
+            >
+              <Ionicons
+                name={service.icon}
+                size={27}
+                color={service.accentColor}
+              />
             </View>
 
+            {/* Content */}
             <View style={styles.content}>
-              <Text style={[styles.category, { color: service.accentColor }]}>
+              <Text
+                style={[
+                  styles.category,
+                  {
+                    color: service.accentColor,
+                  },
+                ]}
+              >
                 {service.category}
               </Text>
 
-              <Text style={styles.title}>{service.title}</Text>
+              <Text style={styles.title}>
+                {service.title}
+              </Text>
 
-              <Text style={styles.description}>{service.description}</Text>
+              <Text style={styles.description}>
+                {service.description}
+              </Text>
 
+              {/* Features */}
               <View style={styles.features}>
-                {service.features.map((feature) => (
-                  <View key={feature} style={styles.featureItem}>
-                    <Ionicons 
-                      name="checkmark-circle" 
-                      size={16} 
-                      color={service.accentColor} 
-                    />
-                    <Text style={styles.featureText}>{feature}</Text>
-                  </View>
-                ))}
-              </View>
-
-              <View style={styles.tags}>
-                {service.tags?.map((tag) => (
-                  <View 
-                    key={tag} 
-                    style={[styles.tag, { borderColor: service.accentColor + '40' }]}
+                {service.features.map((feature, index) => (
+                  <View
+                    key={`${service.id}-feature-${index}`}
+                    style={styles.featureItem}
                   >
-                    <Text style={[styles.tagText, { color: service.accentColor }]}>
-                      {tag}
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={16}
+                      color={service.accentColor}
+                    />
+
+                    <Text style={styles.featureText}>
+                      {feature}
                     </Text>
                   </View>
                 ))}
               </View>
+
+              {/* Tags */}
+              {service.tags && service.tags.length > 0 && (
+                <View style={styles.tags}>
+                  {service.tags.map((tag, index) => (
+                    <View
+                      key={`${service.id}-tag-${index}`}
+                      style={[
+                        styles.tag,
+                        {
+                          backgroundColor:
+                            service.iconBackground,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.tagText,
+                          {
+                            color: service.accentColor,
+                          },
+                        ]}
+                      >
+                        {tag}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
 
-            <Ionicons
-              name="chevron-forward"
-              size={18}
-              color="#B7BDC7"
-              style={styles.chevron}
-            />
+            {/* Arrow */}
+            <View style={styles.chevronContainer}>
+              <Ionicons
+                name="chevron-forward"
+                size={17}
+                color="#8E8E93"
+              />
+            </View>
           </View>
         </TouchableOpacity>
       ))}
 
-      
-      <StatsSection />
+      {/* Stats */}
+      <View style={styles.statsContainer}>
+        <View style={styles.statItem}>
+          <Text style={styles.statNumber}>
+            +500
+          </Text>
 
-      
+          <Text style={styles.statLabel}>
+            {t.home.familiesServed}
+          </Text>
+        </View>
+
+        <View style={styles.statDivider} />
+
+        <View style={styles.statItem}>
+          <Text style={styles.statNumber}>
+            24/7
+          </Text>
+
+          <Text style={styles.statLabel}>
+            {t.home.supportAvailable}
+          </Text>
+        </View>
+
+        <View style={styles.statDivider} />
+
+        <View style={styles.statItem}>
+          <Text style={styles.statNumber}>
+            16yr
+          </Text>
+
+          <Text style={styles.statLabel}>
+            {t.home.gapClosing}
+          </Text>
+        </View>
+      </View>
+
+      {/* Footer */}
       <View style={styles.footer}>
+        <Ionicons
+          name="shield-checkmark-outline"
+          size={17}
+          color="#8E8E93"
+        />
+
         <Text style={styles.footerText}>
-          Serving Ethiopian families across 3 continents
+          {t.home.footer}
         </Text>
       </View>
     </ScrollView>

@@ -8,7 +8,11 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
+import { useLanguage } from "@/i18n/LanguageContext";
+
 export default function FamilyOverview() {
+  const { t } = useLanguage();
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header */}
@@ -16,17 +20,17 @@ export default function FamilyOverview() {
         <Ionicons name="chevron-back" size={22} color="#4A5568" />
       </TouchableOpacity>
 
-      <Text style={styles.active}>ACTIVE SERVICE</Text>
-      <Text style={styles.title}>Family care</Text>
+      <Text style={styles.active}>{t.family.activeService}</Text>
+      <Text style={styles.title}>{t.family.title}</Text>
 
       {/* Visit Card */}
       <View style={styles.visitCard}>
         <View style={styles.row}>
           <Ionicons name="location" size={18} color="#2F855A" />
           <View style={{ marginLeft: 10 }}>
-            <Text style={styles.visitTitle}>Visit in progress</Text>
+            <Text style={styles.visitTitle}>{t.family.visitInProgress}</Text>
             <Text style={styles.visitSubtitle}>
-              Nurse Meron Girma · GPS verified · arrived 10:02
+              {t.family.visitSubtitle}
             </Text>
           </View>
         </View>
@@ -45,23 +49,23 @@ export default function FamilyOverview() {
           <View style={{ flex: 1 }}>
             <Text style={styles.name}>Ato Tadesse</Text>
             <Text style={styles.info}>
-              74 · Addis Ababa · active plan
+              {t.family.patientInfo}
             </Text>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>LIVE READINGS</Text>
+        <Text style={styles.sectionTitle}>{t.family.liveReadings}</Text>
 
         {/* Blood Pressure */}
         <View style={styles.item}>
           <View>
-            <Text style={styles.label}>BLOOD PRESSURE</Text>
+            <Text style={styles.label}>{t.family.bloodPressure}</Text>
             <Text style={styles.value}>128/82 mmHg</Text>
           </View>
 
           <View style={[styles.badge, { backgroundColor: "#E6F4EA" }]}>
             <Text style={[styles.badgeText, { color: "#2F855A" }]}>
-              Good
+              {t.family.good}
             </Text>
           </View>
         </View>
@@ -69,8 +73,8 @@ export default function FamilyOverview() {
         {/* Medication */}
         <View style={styles.item}>
           <View>
-            <Text style={styles.label}>MEDICATION</Text>
-            <Text style={styles.value}>Morning dose</Text>
+            <Text style={styles.label}>{t.family.medication}</Text>
+            <Text style={styles.value}>{t.family.morningDose}</Text>
           </View>
 
           <View style={[styles.badge, { backgroundColor: "#E6F4EA" }]}>
