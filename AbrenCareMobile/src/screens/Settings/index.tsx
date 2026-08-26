@@ -1,14 +1,17 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useLanguage } from '@/i18n/LanguageContext';
 import colors from '@/theme/colors';
 import spacing from '@/theme/spacing';
 
 export function SettingsScreen() {
+  const { t } = useLanguage();
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Settings</Text>
-      <Text style={styles.subtitle}>Customize notifications, privacy, and account options.</Text>
+      <Text style={styles.title}>{t.settings.title}</Text>
+      <Text style={styles.subtitle}>{t.settings.subtitle}</Text>
     </View>
   );
 }

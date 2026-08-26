@@ -1,14 +1,17 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useLanguage } from '@/i18n/LanguageContext';
 import colors from '@/theme/colors';
 import spacing from '@/theme/spacing';
 
 export function HealthScreen() {
+  const { t } = useLanguage();
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Health</Text>
-      <Text style={styles.subtitle}>Track your wellness journey here.</Text>
+      <Text style={styles.title}>{t.health.title}</Text>
+      <Text style={styles.subtitle}>{t.health.subtitle}</Text>
     </View>
   );
 }

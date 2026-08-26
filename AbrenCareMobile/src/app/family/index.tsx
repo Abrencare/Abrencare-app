@@ -79,7 +79,7 @@ export default function FamilyOverview() {
 
           <View style={[styles.badge, { backgroundColor: "#E6F4EA" }]}>
             <Text style={[styles.badgeText, { color: "#2F855A" }]}>
-              Confirmed ✓
+              {t.family.confirmed}
             </Text>
           </View>
         </View>
@@ -87,13 +87,13 @@ export default function FamilyOverview() {
         {/* Blood Sample */}
         <View style={styles.item}>
           <View>
-            <Text style={styles.label}>BLOOD SAMPLE</Text>
-            <Text style={styles.value}>Taken</Text>
+            <Text style={styles.label}>{t.family.bloodSample}</Text>
+            <Text style={styles.value}>{t.family.taken}</Text>
           </View>
 
           <View style={[styles.badge, { backgroundColor: "#E8EEFF" }]}>
             <Text style={[styles.badgeText, { color: "#556CD6" }]}>
-              Sent to lab
+              {t.family.sentToLab}
             </Text>
           </View>
         </View>
@@ -101,13 +101,13 @@ export default function FamilyOverview() {
         {/* Swelling */}
         <View style={styles.item}>
           <View>
-            <Text style={styles.label}>ANKLE SWELLING</Text>
-            <Text style={styles.value}>Left foot</Text>
+            <Text style={styles.label}>{t.family.ankleSwelling}</Text>
+            <Text style={styles.value}>{t.family.leftFoot}</Text>
           </View>
 
           <View style={[styles.badge, { backgroundColor: "#FFE8E8" }]}>
             <Text style={[styles.badgeText, { color: "#D64545" }]}>
-              Flagged
+              {t.family.flagged}
             </Text>
           </View>
         </View>
@@ -115,10 +115,10 @@ export default function FamilyOverview() {
 
       {/* Next Visit */}
       <View style={styles.nextCard}>
-        <Text style={styles.label}>NEXT VISIT</Text>
+        <Text style={styles.label}>{t.family.nextVisit}</Text>
 
         <Text style={styles.visitTime}>
-          Thursday · 10:00 AM
+          {t.family.visitTime}
         </Text>
 
         <View style={styles.row}>
@@ -126,7 +126,7 @@ export default function FamilyOverview() {
 
           <View style={[styles.badge, { backgroundColor: "#EEF7E9" }]}>
             <Text style={[styles.badgeText, { color: "#6B8E55" }]}>
-              Booked
+              {t.family.booked}
             </Text>
           </View>
         </View>
@@ -134,7 +134,7 @@ export default function FamilyOverview() {
 
       {/* Button */}
       <TouchableOpacity style={styles.button}>
-        <Text style={styles.buttonText}>View full report</Text>
+        <Text style={styles.buttonText}>{t.family.viewFullReport}</Text>
       </TouchableOpacity>
     </ScrollView>
   );

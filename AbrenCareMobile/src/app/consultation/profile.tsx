@@ -7,8 +7,11 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 export default function ConsultationProfile() {
+  const { t } = useLanguage();
+
   return (
     <ScrollView
       style={styles.container}
@@ -19,8 +22,8 @@ export default function ConsultationProfile() {
         <Ionicons name="chevron-back" size={22} color="#4A5568" />
       </TouchableOpacity>
 
-      <Text style={styles.smallTitle}>ACCOUNT</Text>
-      <Text style={styles.title}>Profile</Text>
+      <Text style={styles.smallTitle}>{t.profile.account}</Text>
+      <Text style={styles.title}>{t.profile.title}</Text>
 
       {/* User Card */}
       <View style={styles.profileCard}>
@@ -31,22 +34,22 @@ export default function ConsultationProfile() {
         <Text style={styles.name}>Ato Tadesse</Text>
 
         <Text style={styles.subtitle}>
-          Family Care Member
+          {t.profile.member}
         </Text>
 
         <View style={styles.statusBadge}>
-          <Text style={styles.statusText}>Active Plan</Text>
+          <Text style={styles.statusText}>{t.profile.activePlan}</Text>
         </View>
       </View>
 
       {/* Personal Information */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>PERSONAL INFORMATION</Text>
+        <Text style={styles.sectionTitle}>{t.profile.personalInformation}</Text>
 
         <View style={styles.row}>
           <Ionicons name="person-outline" size={20} color="#8AA07D" />
           <View style={styles.info}>
-            <Text style={styles.label}>Full Name</Text>
+            <Text style={styles.label}>{t.profile.fullName}</Text>
             <Text style={styles.value}>Ato Tadesse</Text>
           </View>
         </View>
@@ -56,8 +59,8 @@ export default function ConsultationProfile() {
         <View style={styles.row}>
           <Ionicons name="calendar-outline" size={20} color="#8AA07D" />
           <View style={styles.info}>
-            <Text style={styles.label}>Age</Text>
-            <Text style={styles.value}>74 Years</Text>
+            <Text style={styles.label}>{t.profile.age}</Text>
+            <Text style={styles.value}>{t.profile.ageValue}</Text>
           </View>
         </View>
 
@@ -66,8 +69,8 @@ export default function ConsultationProfile() {
         <View style={styles.row}>
           <Ionicons name="location-outline" size={20} color="#8AA07D" />
           <View style={styles.info}>
-            <Text style={styles.label}>Address</Text>
-            <Text style={styles.value}>Addis Ababa</Text>
+            <Text style={styles.label}>{t.profile.address}</Text>
+            <Text style={styles.value}>{t.profile.addressValue}</Text>
           </View>
         </View>
 
@@ -76,7 +79,7 @@ export default function ConsultationProfile() {
         <View style={styles.row}>
           <Ionicons name="call-outline" size={20} color="#8AA07D" />
           <View style={styles.info}>
-            <Text style={styles.label}>Phone</Text>
+            <Text style={styles.label}>{t.profile.phone}</Text>
             <Text style={styles.value}>+251 91 234 5678</Text>
           </View>
         </View>
@@ -84,12 +87,12 @@ export default function ConsultationProfile() {
 
       {/* Emergency Contact */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>EMERGENCY CONTACT</Text>
+        <Text style={styles.sectionTitle}>{t.profile.emergencyContact}</Text>
 
         <View style={styles.row}>
           <Ionicons name="people-outline" size={20} color="#8AA07D" />
           <View style={styles.info}>
-            <Text style={styles.label}>Coordinator</Text>
+            <Text style={styles.label}>{t.profile.coordinator}</Text>
             <Text style={styles.value}>Marta Tesfaye</Text>
           </View>
         </View>
@@ -99,7 +102,7 @@ export default function ConsultationProfile() {
         <View style={styles.row}>
           <Ionicons name="medkit-outline" size={20} color="#8AA07D" />
           <View style={styles.info}>
-            <Text style={styles.label}>Assigned Nurse</Text>
+            <Text style={styles.label}>{t.profile.assignedNurse}</Text>
             <Text style={styles.value}>Meron Girma</Text>
           </View>
         </View>
@@ -107,11 +110,11 @@ export default function ConsultationProfile() {
 
       {/* Buttons */}
       <TouchableOpacity style={styles.primaryButton}>
-        <Text style={styles.primaryText}>Edit Profile</Text>
+        <Text style={styles.primaryText}>{t.profile.editProfile}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.secondaryButton}>
-        <Text style={styles.secondaryText}>Manage Account</Text>
+        <Text style={styles.secondaryText}>{t.profile.manageAccount}</Text>
       </TouchableOpacity>
     </ScrollView>
   );

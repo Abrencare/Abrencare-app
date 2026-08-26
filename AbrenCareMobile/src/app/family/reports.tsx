@@ -7,68 +7,39 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useLanguage } from "@/i18n/LanguageContext";
 
-const reports = [
-  {
-    day: "14",
-    date: "14 June",
-    badge: "NEW",
-    description: "AI good · ankle flag",
-    status: "Flagged",
-    statusColor: "#E66A6A",
-    statusBg: "#FDECEC",
-  },
-  {
-    day: "12",
-    date: "12 June",
-    description: "All vitals good",
-    status: "Done",
-    statusColor: "#5D9C59",
-    statusBg: "#EEF8EC",
-  },
-  {
-    day: "10",
-    date: "10 June",
-    description: "BP slightly elevated",
-    status: "Note",
-    statusColor: "#F2994A",
-    statusBg: "#FFF3E8",
-  },
-  {
-    day: "7",
-    date: "7 June",
-    description: "Blood results received",
-    status: "Done",
-    statusColor: "#5D9C59",
-    statusBg: "#EEF8EC",
-  },
-  {
-    day: "5",
-    date: "5 June",
-    description: "All vitals good",
-    status: "Done",
-    statusColor: "#5D9C59",
-    statusBg: "#EEF8EC",
-  },
-  {
-    day: "2",
-    date: "2 June",
-    description: "BP improving trend",
-    status: "Done",
-    statusColor: "#5D9C59",
-    statusBg: "#EEF8EC",
-  },
-  {
-    day: "28",
-    date: "28 May",
-    description: "Medication adjusted",
-    status: "Note",
-    statusColor: "#F2994A",
-    statusBg: "#FFF3E8",
-  },
+const reportMeta = [
+  { day: "14", status: "flagged" as const, badge: true },
+  { day: "12", status: "done" as const, badge: false },
+  { day: "10", status: "note" as const, badge: false },
+  { day: "7", status: "done" as const, badge: false },
+  { day: "5", status: "done" as const, badge: false },
+  { day: "2", status: "done" as const, badge: false },
+  { day: "28", status: "note" as const, badge: false },
 ];
 
 export default function FamilyReports() {
+  const { t } = useLanguage();
+
+  const statusStyles = {
+    flagged: {
+      color: "#E66A6A",
+      bg: "#FDECEC",
+      label: t.familyReports.flagged,
+    },
+    done: {
+      color: "#5D9C59",
+      bg: "#EEF8EC",
+      label: t.familyReports.done,
+    },
+    note: {
+      color: "#F2994A",
+      bg: "#FFF3E8",
+      label: t.familyReports.note,
+    },
+  };
+
   return (
     <View style={styles.container}>
       
@@ -77,17 +48,24 @@ export default function FamilyReports() {
       </TouchableOpacity>
 
       <Text style={styles.patient}>ATO TADESSE</Text>
-      <Text style={styles.title}>Report history</Text>
+      <Text style={styles.title}>{t.familyReports.title}</Text>
 
      
       <View style={styles.card}>
         <ScrollView showsVerticalScrollIndicator={false}>
-          {reports.map((item, index) => (
+          {reportMeta.map((item, index) => {
+            const copy = t.familyReports.items[index];
+            if (!copy) {
+              return null;
+            }
+            const status = statusStyles[item.status];
+
+            return (
             <View
               key={index}
               style={[
                 styles.row,
-                index !== reports.length - 1 && styles.separator,
+                index !== reportMeta.length - 1 && styles.separator,
               ]}
             >
               <View style={styles.dateBox}>
@@ -96,41 +74,42 @@ export default function FamilyReports() {
 
               <View style={styles.reportInfo}>
                 <View style={styles.dateRow}>
-                  <Text style={styles.date}>{item.date}</Text>
+                  <Text style={styles.date}>{copy.date}</Text>
 
                   {item.badge && (
                     <View style={styles.newBadge}>
-                      <Text style={styles.newText}>{item.badge}</Text>
+                      <Text style={styles.newText}>{t.familyReports.badgeNew}</Text>
                     </View>
                   )}
                 </View>
 
-                <Text style={styles.description}>{item.description}</Text>
+                <Text style={styles.description}>{copy.description}</Text>
               </View>
 
               <View
                 style={[
                   styles.statusBadge,
-                  { backgroundColor: item.statusBg },
+                  { backgroundColor: status.bg },
                 ]}
               >
                 <Text
                   style={[
                     styles.statusText,
-                    { color: item.statusColor },
+                    { color: status.color },
                   ]}
                 >
-                  {item.status}
+                  {status.label}
                 </Text>
               </View>
             </View>
-          ))}
+            );
+          })}
         </ScrollView>
       </View>
 
       {/* Button */}
       <TouchableOpacity style={styles.button}>
-        <Text style={styles.buttonText}>Request new report</Text>
+        <Text style={styles.buttonText}>{t.familyReports.requestNew}</Text>
       </TouchableOpacity>
     </View>
   );

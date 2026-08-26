@@ -8,8 +8,11 @@ import {
   SafeAreaView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 export default function ExecutiveReports() {
+  const { t } = useLanguage();
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -20,8 +23,8 @@ export default function ExecutiveReports() {
           </TouchableOpacity>
 
           <View>
-            <Text style={styles.month}>JUNE 2026</Text>
-            <Text style={styles.title}>Monthly report</Text>
+            <Text style={styles.month}>{t.executiveReports.month}</Text>
+            <Text style={styles.title}>{t.executiveReports.title}</Text>
           </View>
         </View>
 
@@ -32,55 +35,55 @@ export default function ExecutiveReports() {
           
           <View style={styles.reportHeader}>
             <View>
-              <Text style={styles.reportMonth}>June 2026</Text>
+              <Text style={styles.reportMonth}>{t.executiveReports.reportMonth}</Text>
               <Text style={styles.doctor}>Dr. Haile Bekele</Text>
             </View>
 
             <TouchableOpacity>
-              <Text style={styles.download}>Download PDF</Text>
+              <Text style={styles.download}>{t.executiveReports.downloadPdf}</Text>
             </TouchableOpacity>
           </View>
 
           
-          <Text style={styles.sectionLabel}>BLOOD PANEL</Text>
+          <Text style={styles.sectionLabel}>{t.executiveReports.bloodPanel}</Text>
 
           <View style={styles.bloodCard}>
             <LabResult
-              label="KIDNEY FUNCTION"
+              label={t.executiveReports.kidney}
               name="Creatinine"
               value="88 μmol/L"
-              status="Normal"
+              status={t.executiveReports.normal}
               statusType="normal"
             />
 
             <LabResult
-              label="LIVER ENZYMES"
+              label={t.executiveReports.liver}
               name="ALT"
               value="28 U/L"
-              status="Normal"
+              status={t.executiveReports.normal}
               statusType="normal"
             />
 
             <LabResult
-              label="LDL CHOLESTEROL"
-              name="LDL cholesterol"
+              label={t.executiveReports.ldl}
+              name={t.executiveReports.ldlName}
               value="3.8 mmol/L"
-              status="Borderline"
+              status={t.executiveReports.borderline}
               statusType="borderline"
             />
 
             <LabResult
-              label="HBA1C"
+              label={t.executiveReports.hba1c}
               name="HbA1c"
               value="6.8%"
-              status="Elevated"
+              status={t.executiveReports.elevated}
               statusType="elevated"
               last
             />
           </View>
 
           
-          <Text style={styles.sectionLabel}>VITAL TREND - 30 DAYS</Text>
+          <Text style={styles.sectionLabel}>{t.executiveReports.vitalTrend}</Text>
 
           <View style={styles.trendCard}>
             <View style={styles.bars}>
@@ -99,27 +102,29 @@ export default function ExecutiveReports() {
             </View>
 
             <Text style={styles.trendText}>
-              BP improving since medication adjustment. HR within target.
-              {"\n"}
-              Glucose monitoring ongoing.
+              {t.executiveReports.trendText}
             </Text>
           </View>
 
           
-          <Text style={styles.sectionLabel}>NEXT STEPS</Text>
+          <Text style={styles.sectionLabel}>{t.executiveReports.nextSteps}</Text>
 
           <View style={styles.nextStepsCard}>
             <NextStep
-              title="Blood panel due"
-              date="1 July"
+              title={t.executiveReports.bloodDue}
+              date={t.executiveReports.july1}
               color="#E58B39"
             />
 
-            <NextStep title="Cardiac ECG" date="8 July" color="#668BC1" />
+            <NextStep
+              title={t.executiveReports.cardiacEcg}
+              date={t.executiveReports.july8}
+              color="#668BC1"
+            />
 
             <NextStep
-              title="Executive review"
-              date="15 July"
+              title={t.executiveReports.executiveReview}
+              date={t.executiveReports.july15}
               color="#668BC1"
             />
           </View>

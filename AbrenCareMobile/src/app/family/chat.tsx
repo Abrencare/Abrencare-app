@@ -8,8 +8,11 @@ import {
   TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 export default function FamilyChat() {
+  const { t } = useLanguage();
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -25,13 +28,13 @@ export default function FamilyChat() {
         <View style={styles.headerInfo}>
           <Text style={styles.name}>Marta Tesfaye</Text>
           <Text style={styles.subtitle}>
-            Your coordinator · replies in 1hr
+            {t.familyChat.coordinatorSubtitle}
           </Text>
         </View>
 
         <View style={styles.onlineContainer}>
           <View style={styles.onlineDot} />
-          <Text style={styles.online}>Online</Text>
+          <Text style={styles.online}>{t.familyChat.online}</Text>
         </View>
       </View>
 
@@ -50,8 +53,7 @@ export default function FamilyChat() {
           <View>
             <View style={styles.receiverBubble}>
               <Text style={styles.receiverText}>
-                Good morning! Nurse Meron completed today's visit. I flagged
-                the ankle swelling to Dr. Bekele.
+                {t.familyChat.message1}
               </Text>
             </View>
 
@@ -63,7 +65,7 @@ export default function FamilyChat() {
         <View style={styles.myRow}>
           <View style={styles.myBubble}>
             <Text style={styles.myText}>
-              Thank you Marta. When will we hear back?
+              {t.familyChat.message2}
             </Text>
           </View>
 
@@ -79,7 +81,7 @@ export default function FamilyChat() {
           <View>
             <View style={styles.receiverBubble}>
               <Text style={styles.receiverText}>
-                Dr. Bekele will review and update you before 3pm today.
+                {t.familyChat.message3}
               </Text>
             </View>
 
@@ -91,7 +93,7 @@ export default function FamilyChat() {
       {/* Message Box */}
       <View style={styles.inputContainer}>
         <TextInput
-          placeholder="Type a message..."
+          placeholder={t.familyChat.placeholder}
           placeholderTextColor="#999"
           style={styles.input}
         />

@@ -8,16 +8,19 @@ import {
   SafeAreaView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 export default function ExecutiveProgramme() {
+  const { t } = useLanguage();
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerLabel}>EXECUTIVE HEALTH</Text>
-          <Text style={styles.headerTitle}>My programme</Text>
+          <Text style={styles.headerLabel}>{t.executiveProgramme.headerLabel}</Text>
+          <Text style={styles.headerTitle}>{t.executiveProgramme.title}</Text>
         </View>
 
         <ScrollView
@@ -29,66 +32,66 @@ export default function ExecutiveProgramme() {
           <View style={styles.summaryRow}>
             <SummaryCard
               number="6"
-              label="Active items"
+              label={t.executiveProgramme.activeItems}
             />
 
             <SummaryCard
               number="2"
-              label="Due soon"
+              label={t.executiveProgramme.dueSoon}
             />
 
             <SummaryCard
               number="1"
-              label="Booked"
+              label={t.executiveProgramme.booked}
             />
           </View>
 
           {/* Health Programme */}
           <Text style={styles.sectionLabel}>
-            HEALTH PROGRAMME
+            {t.executiveProgramme.healthProgramme}
           </Text>
 
           <View style={styles.programmeCard}>
 
             <ProgrammeItem
-              title="Vital monitoring"
-              subtitle="Daily · wearable active"
-              status="On"
+              title={t.executiveProgramme.vitalMonitoring}
+              subtitle={t.executiveProgramme.vitalSubtitle}
+              status={t.executiveProgramme.on}
               statusType="active"
             />
 
             <ProgrammeItem
-              title="Blood panel"
-              subtitle="Next: 1 July 2026"
-              status="Soon"
+              title={t.executiveProgramme.bloodPanel}
+              subtitle={t.executiveProgramme.bloodSubtitle}
+              status={t.executiveProgramme.soon}
               statusType="soon"
             />
 
             <ProgrammeItem
-              title="Cardiac ECG"
-              subtitle="Booked: 8 July"
-              status="Booked"
+              title={t.executiveProgramme.cardiac}
+              subtitle={t.executiveProgramme.cardiacSubtitle}
+              status={t.executiveProgramme.booked}
               statusType="booked"
             />
 
             <ProgrammeItem
-              title="Full body scan"
-              subtitle="Annual · Oct 2026"
-              status="On track"
+              title={t.executiveProgramme.fullBody}
+              subtitle={t.executiveProgramme.fullBodySubtitle}
+              status={t.executiveProgramme.onTrack}
               statusType="track"
             />
 
             <ProgrammeItem
-              title="Dental review"
-              subtitle="Semi-annual · Sep 2026"
-              status="On track"
+              title={t.executiveProgramme.dental}
+              subtitle={t.executiveProgramme.dentalSubtitle}
+              status={t.executiveProgramme.onTrack}
               statusType="track"
             />
 
             <ProgrammeItem
-              title="Eye screening"
-              subtitle="Annual · Nov 2026"
-              status="Scheduled"
+              title={t.executiveProgramme.eye}
+              subtitle={t.executiveProgramme.eyeSubtitle}
+              status={t.executiveProgramme.scheduled}
               statusType="scheduled"
               last
             />
@@ -97,7 +100,7 @@ export default function ExecutiveProgramme() {
 
           {/* Dedicated Physician */}
           <Text style={styles.sectionLabel}>
-            DEDICATED PHYSICIAN
+            {t.executiveProgramme.dedicatedPhysician}
           </Text>
 
           <TouchableOpacity style={styles.doctorCard}>
@@ -114,14 +117,14 @@ export default function ExecutiveProgramme() {
               </Text>
 
               <Text style={styles.doctorSubtitle}>
-                Your physician · always available
+                {t.executiveProgramme.physicianSubtitle}
               </Text>
             </View>
 
             {/* Ready Status */}
             <View style={styles.readyPill}>
               <Text style={styles.readyText}>
-                Ready
+                {t.executiveProgramme.ready}
               </Text>
             </View>
 

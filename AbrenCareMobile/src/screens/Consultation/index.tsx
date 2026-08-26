@@ -1,14 +1,17 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useLanguage } from '@/i18n/LanguageContext';
 import colors from '@/theme/colors';
 import spacing from '@/theme/spacing';
 
 export function ConsultationScreen() {
+  const { t } = useLanguage();
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Consultation</Text>
-      <Text style={styles.subtitle}>Book and manage appointments here.</Text>
+      <Text style={styles.title}>{t.consultationPlaceholder.title}</Text>
+      <Text style={styles.subtitle}>{t.consultationPlaceholder.subtitle}</Text>
     </View>
   );
 }

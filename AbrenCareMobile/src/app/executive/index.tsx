@@ -7,16 +7,19 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 export default function ExecutiveOverview() {
+  const { t } = useLanguage();
+
   return (
     <ScrollView
       style={styles.container}
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
-      <Text style={styles.smallTitle}>CONFIDENTIAL</Text>
-      <Text style={styles.title}>Executive health</Text>
+      <Text style={styles.smallTitle}>{t.executive.confidential}</Text>
+      <Text style={styles.title}>{t.executive.title}</Text>
 
       {/* Alert */}
       <View style={styles.alertCard}>
@@ -25,11 +28,11 @@ export default function ExecutiveOverview() {
 
           <View style={{ flex: 1 }}>
             <Text style={styles.alertTitle}>
-              BP elevated · 3 days — action needed
+              {t.executive.alertTitle}
             </Text>
 
             <Text style={styles.alertSubtitle}>
-              Dr. Bekele notified · call scheduled today
+              {t.executive.alertSubtitle}
             </Text>
           </View>
         </View>
@@ -39,51 +42,51 @@ export default function ExecutiveOverview() {
       <View style={styles.card}>
         <View style={styles.item}>
           <View>
-            <Text style={styles.label}>BLOOD PRESSURE</Text>
+            <Text style={styles.label}>{t.executive.bloodPressure}</Text>
             <Text style={styles.value}>158/96 mmHg</Text>
           </View>
 
           <View style={[styles.badge, styles.red]}>
-            <Text style={styles.redText}>High</Text>
+            <Text style={styles.redText}>{t.executive.high}</Text>
           </View>
         </View>
 
         <View style={styles.item}>
           <View>
-            <Text style={styles.label}>HEART RATE</Text>
+            <Text style={styles.label}>{t.executive.heartRate}</Text>
             <Text style={styles.value}>91 bpm</Text>
           </View>
 
           <View style={[styles.badge, styles.orange]}>
-            <Text style={styles.orangeText}>Elevated</Text>
+            <Text style={styles.orangeText}>{t.executive.elevated}</Text>
           </View>
         </View>
 
         <View style={styles.item}>
           <View>
-            <Text style={styles.label}>O₂ SATURATION</Text>
+            <Text style={styles.label}>{t.executive.oxygen}</Text>
             <Text style={styles.value}>97%</Text>
           </View>
 
           <View style={[styles.badge, styles.green]}>
-            <Text style={styles.greenText}>Normal</Text>
+            <Text style={styles.greenText}>{t.executive.normal}</Text>
           </View>
         </View>
 
         <View style={styles.itemLast}>
           <View>
-            <Text style={styles.label}>GLUCOSE</Text>
+            <Text style={styles.label}>{t.executive.glucose}</Text>
             <Text style={styles.value}>7.4 mmol/L</Text>
           </View>
 
           <View style={[styles.badge, styles.orange]}>
-            <Text style={styles.orangeText}>Watch</Text>
+            <Text style={styles.orangeText}>{t.executive.watch}</Text>
           </View>
         </View>
       </View>
 
       {/* Physician */}
-      <Text style={styles.sectionTitle}>YOUR PHYSICIAN</Text>
+      <Text style={styles.sectionTitle}>{t.executive.yourPhysician}</Text>
 
       <View style={styles.doctorCard}>
         <View style={styles.avatar}>
@@ -96,12 +99,12 @@ export default function ExecutiveOverview() {
           </Text>
 
           <Text style={styles.specialty}>
-            Internal medicine · 18 yrs
+            {t.executive.specialty}
           </Text>
         </View>
 
         <View style={styles.readyBadge}>
-          <Text style={styles.readyText}>Ready</Text>
+          <Text style={styles.readyText}>{t.executive.ready}</Text>
         </View>
       </View>
 
@@ -115,13 +118,13 @@ export default function ExecutiveOverview() {
           />
 
           <Text style={styles.primaryText}>
-            Call Dr. Bekele
+            {t.executive.callDoctor}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.secondaryButton}>
           <Text style={styles.secondaryText}>
-            Monthly report
+            {t.executive.monthlyReport}
           </Text>
         </TouchableOpacity>
       </View>
@@ -134,7 +137,7 @@ export default function ExecutiveOverview() {
         />
 
         <Text style={styles.emergencyText}>
-          Emergency protocol
+          {t.executive.emergencyProtocol}
         </Text>
       </TouchableOpacity>
     </ScrollView>

@@ -8,8 +8,11 @@ import {
   SafeAreaView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 export default function ExecutiveEmergency() {
+  const { t } = useLanguage();
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -18,22 +21,22 @@ export default function ExecutiveEmergency() {
         <View style={styles.emergencyHeader}>
           <TouchableOpacity style={styles.backButton}>
             <Ionicons name="chevron-back" size={14} color="#FFFFFF" />
-            <Text style={styles.backText}>Back</Text>
+            <Text style={styles.backText}>{t.emergency.back}</Text>
           </TouchableOpacity>
 
           <View style={styles.activeRow}>
             <View style={styles.activeDot} />
             <Text style={styles.activeText}>
-              EMERGENCY RESPONSE ACTIVE
+              {t.emergency.active}
             </Text>
           </View>
 
           <Text style={styles.headerTitle}>
-            Coordinator notified
+            {t.emergency.coordinatorNotified}
           </Text>
 
           <Text style={styles.eta}>
-            ETA 12 min
+            {t.emergency.eta}
           </Text>
         </View>
 
@@ -44,38 +47,38 @@ export default function ExecutiveEmergency() {
 
           {/* Response Timeline */}
           <Text style={styles.sectionLabel}>
-            RESPONSE TIMELINE
+            {t.emergency.timeline}
           </Text>
 
           <View style={styles.timelineCard}>
 
             <TimelineItem
-              text="Alert detected"
+              text={t.emergency.alertDetected}
               time="14:03"
               status="completed"
             />
 
             <TimelineItem
-              text="Dr. Bekele notified"
+              text={t.emergency.doctorNotified}
               time="14:03"
               status="completed"
             />
 
             <TimelineItem
-              text="Coordinator dispatched"
+              text={t.emergency.coordinatorDispatched}
               time="14:04"
               status="completed"
             />
 
             <TimelineItem
-              text="Family notified"
+              text={t.emergency.familyNotified}
               time=""
               status="progress"
-              subText="In progress..."
+              subText={t.emergency.inProgress}
             />
 
             <TimelineItem
-              text="Hospital coordination"
+              text={t.emergency.hospital}
               time="—"
               status="pending"
               last
@@ -92,7 +95,7 @@ export default function ExecutiveEmergency() {
             />
 
             <Text style={styles.primaryButtonText}>
-              Call coordinator now
+              {t.emergency.callCoordinator}
             </Text>
           </TouchableOpacity>
 
@@ -105,13 +108,13 @@ export default function ExecutiveEmergency() {
             />
 
             <Text style={styles.secondaryButtonText}>
-              Call Dr. Bekele
+              {t.emergency.callDoctor}
             </Text>
           </TouchableOpacity>
 
           {/* Protocol Status */}
           <Text style={styles.protocolText}>
-            Emergency protocol activated · 14 June 2026, 14:03
+            {t.emergency.protocol}
           </Text>
 
         </ScrollView>

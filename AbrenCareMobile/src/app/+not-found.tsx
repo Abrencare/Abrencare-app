@@ -11,9 +11,11 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 export default function NotFoundScreen() {
   const router = useRouter();
+  const { t } = useLanguage();
 
   const handleGoBack = () => {
     if (router.canGoBack()) {
@@ -40,9 +42,9 @@ export default function NotFoundScreen() {
 
         <View style={styles.contentContainer}>
           <Text style={styles.errorCode}>404</Text>
-          <Text style={styles.title}>Page Not Found</Text>
+          <Text style={styles.title}>{t.notFound.title}</Text>
           <Text style={styles.description}>
-            Oops! The page you are looking for doesn't exist or has been moved.
+            {t.notFound.description}
           </Text>
         </View>
 
@@ -53,7 +55,7 @@ export default function NotFoundScreen() {
             activeOpacity={0.8}
           >
             <Ionicons name="home-outline" size={22} color="#FFFFFF" style={styles.buttonIcon} />
-            <Text style={styles.primaryButtonText}>Go to Home</Text>
+            <Text style={styles.primaryButtonText}>{t.notFound.goHome}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -62,13 +64,13 @@ export default function NotFoundScreen() {
             activeOpacity={0.8}
           >
             <Ionicons name="arrow-back-outline" size={22} color="#6C63FF" style={styles.buttonIcon} />
-            <Text style={styles.secondaryButtonText}>Go Back</Text>
+            <Text style={styles.secondaryButtonText}>{t.notFound.goBack}</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            If you think this is a mistake, please contact support.
+            {t.notFound.footer}
           </Text>
         </View>
       </View>

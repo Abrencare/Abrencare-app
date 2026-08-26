@@ -8,8 +8,12 @@ import {
   SafeAreaView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 export default function ConsultationMyCare() {
+  const { t } = useLanguage();
+  const items = t.myCare.items;
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -17,11 +21,11 @@ export default function ConsultationMyCare() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerLabel}>
-            DIGITAL CONSULTATION
+            {t.myCare.headerLabel}
           </Text>
 
           <Text style={styles.headerTitle}>
-            My consultations
+            {t.myCare.title}
           </Text>
         </View>
 
@@ -36,36 +40,36 @@ export default function ConsultationMyCare() {
             <ConsultationItem
               initials="HA"
               doctor="Dr. Haile"
-              date="14 June"
-              specialty="Cardiology · hypertension"
-              status="Report"
+              date={items[0].date}
+              specialty={items[0].specialty}
+              status={t.myCare.report}
               statusType="report"
             />
 
             <ConsultationItem
               initials="SA"
               doctor="Dr. Sara"
-              date="2 June"
-              specialty="Paediatrics · child fever"
-              status="Done"
+              date={items[1].date}
+              specialty={items[1].specialty}
+              status={t.myCare.done}
               statusType="done"
             />
 
             <ConsultationItem
               initials="ME"
               doctor="Dr. Mekdes"
-              date="20 May"
-              specialty="General · prescription renewal"
-              status="Done"
+              date={items[2].date}
+              specialty={items[2].specialty}
+              status={t.myCare.done}
               statusType="done"
             />
 
             <ConsultationItem
               initials="HA"
               doctor="Dr. Haile"
-              date="5 May"
-              specialty="Cardiology · initial assessment"
-              status="Done"
+              date={items[3].date}
+              specialty={items[3].specialty}
+              status={t.myCare.done}
               statusType="done"
               last
             />
@@ -75,7 +79,7 @@ export default function ConsultationMyCare() {
           
           <TouchableOpacity style={styles.newConsultationButton}>
             <Text style={styles.newConsultationText}>
-              Book new consultation
+              {t.myCare.bookNew}
             </Text>
           </TouchableOpacity>
 

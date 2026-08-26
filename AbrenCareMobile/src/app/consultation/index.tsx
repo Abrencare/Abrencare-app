@@ -7,7 +7,6 @@ import {
   StyleSheet,
   SafeAreaView,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "@/i18n/LanguageContext";
 
 export default function ConsultationOverview() {
@@ -32,31 +31,6 @@ export default function ConsultationOverview() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-
-          {/* Language */}
-          <View style={styles.languageRow}>
-            <TouchableOpacity style={styles.languageButton}>
-              <Text style={styles.languageText}>
-                {t.common.english}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.languageButton,
-                styles.selectedLanguage,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.languageText,
-                  styles.selectedLanguageText,
-                ]}
-              >
-                {t.common.amharic}
-              </Text>
-            </TouchableOpacity>
-          </View>
 
           {/* Specialty */}
           <Text style={styles.sectionLabel}>
@@ -231,35 +205,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 14,
     paddingBottom: 80,
-  },
-
-  /* Language */
-  languageRow: {
-    flexDirection: "row",
-    gap: 6,
-    marginBottom: 11,
-  },
-
-  languageButton: {
-    flex: 1,
-    height: 24,
-    backgroundColor: "#EAF0F7",
-    borderRadius: 7,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  selectedLanguage: {
-    backgroundColor: "#6F89B9",
-  },
-
-  languageText: {
-    fontSize: 7,
-    color: "#33465C",
-  },
-
-  selectedLanguageText: {
-    color: "#FFFFFF",
   },
 
   /* Section labels */

@@ -1,14 +1,17 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useLanguage } from '@/i18n/LanguageContext';
 import colors from '@/theme/colors';
 import spacing from '@/theme/spacing';
 
 export function ProfileScreen() {
+  const { t } = useLanguage();
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Profile</Text>
-      <Text style={styles.subtitle}>Manage your personal details and preferences.</Text>
+      <Text style={styles.title}>{t.profile.title}</Text>
+      <Text style={styles.subtitle}>{t.profile.subtitle}</Text>
     </View>
   );
 }

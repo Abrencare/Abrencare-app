@@ -1,8 +1,11 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 export default function ExecutiveLayout() {
+  const { t } = useLanguage();
+
   return (
     <Tabs
       screenOptions={{
@@ -31,7 +34,7 @@ export default function ExecutiveLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Dashboard',
+          title: t.tabs.dashboard,
           tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
             <Ionicons name={focused ? 'medkit' : 'medkit-outline'} size={size} color={color} />
           ),
@@ -40,7 +43,7 @@ export default function ExecutiveLayout() {
       <Tabs.Screen
         name="programme"
         options={{
-          title: 'Programme',
+          title: t.tabs.programme,
           tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
             <Ionicons name={focused ? 'layers' : 'layers-outline'} size={size} color={color} />
           ),
@@ -49,7 +52,7 @@ export default function ExecutiveLayout() {
       <Tabs.Screen
         name="reports"
         options={{
-          title: 'Reports',
+          title: t.tabs.reports,
           tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
             <Ionicons name={focused ? 'stats-chart' : 'stats-chart-outline'} size={size} color={color} />
           ),
@@ -58,7 +61,7 @@ export default function ExecutiveLayout() {
       <Tabs.Screen
         name="emergency"
         options={{
-          title: 'Emergency',
+          title: t.tabs.emergency,
           tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
             <Ionicons name={focused ? 'warning' : 'warning-outline'} size={size} color={color} />
           ),

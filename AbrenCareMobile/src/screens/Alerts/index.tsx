@@ -1,14 +1,17 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useLanguage } from '@/i18n/LanguageContext';
 import colors from '@/theme/colors';
 import spacing from '@/theme/spacing';
 
 export function AlertsScreen() {
+  const { t } = useLanguage();
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Alerts</Text>
-      <Text style={styles.subtitle}>Important reminders and updates will appear here.</Text>
+      <Text style={styles.title}>{t.alerts.title}</Text>
+      <Text style={styles.subtitle}>{t.alerts.subtitle}</Text>
     </View>
   );
 }
