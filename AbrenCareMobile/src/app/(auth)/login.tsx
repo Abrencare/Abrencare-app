@@ -1,259 +1,302 @@
 import { useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
-import { Link, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
-import { Input } from "@/components/Input";
 import { useLanguage } from "@/i18n/LanguageContext";
 
 import colors from "@/theme/colors";
 import spacing from "@/theme/spacing";
-import typography from "@/theme/typography";
 
 export default function LoginScreen() {
   const router = useRouter();
-
-  // This reads whatever language was selected
-  // on the Welcome screen.
   const { t } = useLanguage();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   function handleLogin() {
     router.replace("/(tabs)");
   }
 
   return (
-    <View style={styles.container}>
-
-      {/* =========================
-          HEADER
-      ========================= */}
-
-      <View style={styles.header}>
-        <Text style={styles.title}>
-          {t.auth.loginTitle}
-        </Text>
-
-        <Text style={styles.subtitle}>
-          {t.auth.loginSubtitle}
-        </Text>
-      </View>
-
-      {/* =========================
-          LOGIN FORM
-      ========================= */}
-
-      <View style={styles.form}>
-
-        {/* Email */}
-
-        <Text style={styles.label}>
-          {t.auth.email}
-        </Text>
-
-        <Input
-          placeholder={t.auth.emailPlaceholder}
-          value={email}
-          onChangeText={setEmail}
-          style={styles.input}
-        />
-
-        {/* Password */}
-
-        <Text style={styles.label}>
-          {t.auth.password}
-        </Text>
-
-        <Input
-          placeholder={t.auth.passwordPlaceholder}
-          value={password}
-          onChangeText={setPassword}
-          style={styles.input}
-        />
-
-      </View>
-
-      {/* =========================
-          LOGIN BUTTON
-      ========================= */}
-
-      <Pressable
-        style={({ pressed }) => [
-          styles.button,
-          pressed && styles.buttonPressed,
-        ]}
-        onPress={handleLogin}
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <Text style={styles.buttonText}>
-          {t.auth.signIn}
-        </Text>
-      </Pressable>
-
-      {/* =========================
-          SIGN UP LINK
-      ========================= */}
-
-      <View style={styles.footer}>
-
-        <Text style={styles.footerText}>
-          {t.auth.noAccount}
-        </Text>
-
-        <Link
-          href="/signup"
-          style={styles.link}
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.linkText}>
-            {t.auth.createOne}
-          </Text>
-        </Link>
+          <Pressable
+            onPress={() => router.back()}
+            hitSlop={12}
+            style={styles.backButton}
+          >
+            <Ionicons name="chevron-back" size={20} color={colors.textSecondary} />
+          </Pressable>
 
-      </View>
+          <View style={styles.brand}>
+            <View style={styles.logoMark}>
+              <Text style={styles.logoMarkText}>AC</Text>
+            </View>
 
-    </View>
+            <Text style={styles.brandName}>{t.header.brand}</Text>
+            <Text style={styles.brandLocation}>{t.header.location}</Text>
+          </View>
+
+          <View style={styles.card}>
+            <Text style={styles.title}>{t.auth.loginTitle}</Text>
+            <Text style={styles.subtitle}>{t.auth.loginSubtitle}</Text>
+
+            <Text style={styles.label}>{t.auth.email}</Text>
+            <View style={styles.field}>
+              <Ionicons
+                name="mail-outline"
+                size={18}
+                color={colors.primaryDark}
+                style={styles.fieldIcon}
+              />
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder={t.auth.emailPlaceholder}
+                placeholderTextColor={colors.subtext}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                textContentType="emailAddress"
+                style={styles.input}
+              />
+            </View>
+
+            <Text style={styles.label}>{t.auth.password}</Text>
+            <View style={styles.field}>
+              <Ionicons
+                name="lock-closed-outline"
+                size={18}
+                color={colors.primaryDark}
+                style={styles.fieldIcon}
+              />
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder={t.auth.passwordPlaceholder}
+                placeholderTextColor={colors.subtext}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="password"
+                style={styles.input}
+              />
+              <Pressable
+                onPress={() => setShowPassword((current) => !current)}
+                hitSlop={10}
+                style={styles.eyeButton}
+              >
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={18}
+                  color={colors.subtext}
+                />
+              </Pressable>
+            </View>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.button,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={handleLogin}
+            >
+              <Text style={styles.buttonText}>{t.auth.signIn}</Text>
+            </Pressable>
+
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>{t.auth.noAccount}</Text>
+              <Pressable onPress={() => router.push("/signup")} hitSlop={8}>
+                <Text style={styles.linkText}>{t.auth.createOne}</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={styles.trustRow}>
+            <Ionicons
+              name="shield-checkmark-outline"
+              size={14}
+              color={colors.primaryDark}
+            />
+            <Text style={styles.trustText}>{t.auth.trustFooter}</Text>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
-/* =====================================================
-   STYLES
-===================================================== */
-
 const styles = StyleSheet.create({
-
-  /* =========================
-     CONTAINER
-  ========================= */
-
-  container: {
+  safeArea: {
     flex: 1,
-
-    padding: spacing.lg,
-
-    justifyContent: "center",
-
     backgroundColor: colors.background,
   },
-
-  /* =========================
-     HEADER
-  ========================= */
-
-  header: {
+  flex: {
+    flex: 1,
+  },
+  content: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 28,
+    justifyContent: "center",
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.card,
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: spacing.lg,
   },
-
-  title: {
-    ...typography.header,
-
-    fontSize: 32,
-
-    marginBottom: spacing.sm,
-
-    color: colors.text,
+  brand: {
+    alignItems: "center",
+    marginBottom: 28,
   },
-
-  subtitle: {
-    ...typography.body,
-
+  logoMark: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  logoMarkText: {
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+  },
+  brandName: {
+    color: colors.primary,
+    fontSize: 22,
+    fontWeight: "700",
+    letterSpacing: 0.2,
+    marginBottom: 4,
+  },
+  brandLocation: {
     color: colors.subtext,
-
-    lineHeight: 22,
+    fontSize: 13,
+    fontWeight: "500",
   },
-
-  /* =========================
-     FORM
-  ========================= */
-
-  form: {
-    marginBottom: spacing.xl,
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: 24,
+    paddingHorizontal: 22,
+    paddingTop: 26,
+    paddingBottom: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-
-  label: {
-    ...typography.body,
-
+  title: {
+    fontSize: 26,
+    fontWeight: "700",
     color: colors.text,
-
-    marginBottom: spacing.xs,
-
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: colors.subtext,
+    lineHeight: 21,
+    marginBottom: 24,
+  },
+  label: {
+    fontSize: 13,
     fontWeight: "600",
+    color: colors.text,
+    marginBottom: 8,
   },
-
+  field: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.backgroundElement,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 16,
+    minHeight: 54,
+    paddingHorizontal: 12,
+  },
+  fieldIcon: {
+    marginRight: 8,
+  },
   input: {
-    marginBottom: spacing.md,
+    flex: 1,
+    color: colors.text,
+    fontSize: 15,
+    paddingVertical: 14,
   },
-
-  /* =========================
-     LOGIN BUTTON
-  ========================= */
-
+  eyeButton: {
+    paddingLeft: 8,
+    paddingVertical: 8,
+  },
   button: {
     backgroundColor: colors.primary,
-
-    borderRadius: 14,
-
-    paddingVertical: 16,
-
+    borderRadius: 16,
+    height: 54,
     alignItems: "center",
-
     justifyContent: "center",
-
-    marginBottom: spacing.md,
+    marginTop: 8,
+    marginBottom: 18,
   },
-
   buttonPressed: {
-    opacity: 0.85,
-
-    transform: [
-      {
-        scale: 0.985,
-      },
-    ],
+    opacity: 0.88,
   },
-
   buttonText: {
-    color: colors.surface,
-
+    color: colors.white,
     fontWeight: "700",
-
     fontSize: 16,
   },
-
-  /* =========================
-     FOOTER
-  ========================= */
-
   footer: {
     flexDirection: "row",
-
     justifyContent: "center",
-
     alignItems: "center",
+    flexWrap: "wrap",
+    gap: 6,
   },
-
   footerText: {
-    ...typography.body,
-
-    color: colors.text,
-
-    marginRight: spacing.xs,
+    fontSize: 14,
+    color: colors.textSecondary,
   },
-
-  link: {
-    justifyContent: "center",
-  },
-
   linkText: {
-    ...typography.body,
-
+    fontSize: 14,
     color: colors.primary,
-
     fontWeight: "700",
+  },
+  trustRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 22,
+    gap: 6,
+  },
+  trustText: {
+    fontSize: 12,
+    color: colors.subtext,
+    fontWeight: "500",
   },
 });

@@ -24,7 +24,8 @@ export const en = {
   },
   auth: {
     loginTitle: 'Welcome back',
-    loginSubtitle: 'Please sign in to continue',
+    loginSubtitle: 'Sign in to your AbrenCare account',
+    trustFooter: 'Confidential healthcare · Ethiopia',
     email: 'Email',
     emailPlaceholder: 'Enter your email',
     password: 'Password',
@@ -321,7 +322,8 @@ export const am: typeof en = {
   },
   auth: {
     loginTitle: 'እንኳን ደህና መጡ',
-    loginSubtitle: 'ለመቀጠል እባክዎ ይግቡ',
+    loginSubtitle: 'ወደ አብረንኬር መለያዎ ይግቡ',
+    trustFooter: 'ሚስጥራዊ ጤና እንክብካቤ · ኢትዮጵያ',
     email: 'ኢሜይል',
     emailPlaceholder: 'ኢሜይልዎን ያስገቡ',
     password: 'የይለፍ ቃል',
