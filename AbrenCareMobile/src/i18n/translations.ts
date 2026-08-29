@@ -56,6 +56,8 @@ export const en = {
     supportAvailable: 'Support available',
     gapClosing: 'Gap closing',
     footer: 'Serving Ethiopian families across 3 continents',
+    swipeHint: 'Swipe to choose a service',
+    chooseService: 'Choose this service',
     familyTitle: 'Family care',
     familyCategory: 'FOR DIASPORA FAMILIES',
     familyDescription:
@@ -354,6 +356,8 @@ export const am: typeof en = {
     supportAvailable: 'ድጋፍ ይገኛል',
     gapClosing: 'ክፍተት እየተዘጋ',
     footer: 'የኢትዮጵያ ቤተሰቦችን በ3 አህጉራት እናገለግላለን',
+    swipeHint: 'አገልግሎት ለመምረጥ ይጥረጉ',
+    chooseService: 'ይህን አገልግሎት ይምረጡ',
     familyTitle: 'የቤተሰብ እንክብካቤ',
     familyCategory: 'ለውጭ የሚኖሩ ቤተሰቦች',
     familyDescription: 'በኢትዮጵያ ለወላጅዎ የቤት ጉብኝት፣ የጤና ክትትል እና የሐኪም ምክክር።',

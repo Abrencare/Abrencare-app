@@ -2,14 +2,15 @@ import { StyleSheet } from "react-native";
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "transparent",
   },
 
   header: {
-    paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
     paddingTop: 20,
-    paddingBottom: 10,
+    paddingBottom: 14,
   },
 
   headerTitle: {
@@ -19,80 +20,96 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
 
-  card: {
-    backgroundColor: "#FFFFFF",
-    marginHorizontal: 20,
-    marginBottom: 16,
-    borderRadius: 16,
-    padding: 16,
-    borderLeftWidth: 4,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    elevation: 3,
+  headerHint: {
+    marginTop: 4,
+    fontSize: 13,
+    color: "#9CA3AF",
+    fontWeight: "500",
   },
 
-  topRow: {
+  swipeCue: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  slide: {
+    paddingVertical: 10,
+  },
+
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 20,
+    paddingTop: 18,
+    minHeight: 390,
+    borderWidth: 1.5,
+    overflow: "hidden",
+  },
+
+  cardAccent: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 6,
+    opacity: 0.85,
+  },
+
+  cardHeader: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
+    marginBottom: 14,
+    marginTop: 8,
   },
 
   iconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-  },
-
-  content: {
-    flex: 1,
-    marginLeft: 12,
-  },
-
-  chevron: {
-    marginTop: 4,
+    marginRight: 12,
   },
 
   category: {
-    fontSize: 10,
+    flex: 1,
+    fontSize: 11,
     fontWeight: "700",
-    letterSpacing: 1.2,
-    marginBottom: 2,
+    letterSpacing: 1.1,
   },
 
   title: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 24,
+    fontWeight: "800",
     color: "#1B2230",
-    marginTop: 0,
   },
 
   description: {
-    marginTop: 6,
+    marginTop: 8,
     color: "#6B7280",
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 21,
   },
 
   features: {
-    marginTop: 10,
+    marginTop: 14,
   },
 
   featureItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 4,
+    marginBottom: 6,
   },
 
   featureText: {
-    marginLeft: 6,
+    marginLeft: 8,
     fontSize: 13,
     color: "#374151",
+    fontWeight: "500",
   },
 
   tags: {
@@ -102,37 +119,61 @@ const styles = StyleSheet.create({
   },
 
   tag: {
-    backgroundColor: "#F9FAFB",
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
     marginRight: 6,
     marginBottom: 6,
-    borderWidth: 1,
   },
 
   tagText: {
     fontSize: 10,
-    fontWeight: "500",
+    fontWeight: "600",
+  },
+
+  chooseButton: {
+    marginTop: 18,
+    height: 48,
+    borderRadius: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+
+  chooseButtonPressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.98 }],
+  },
+
+  chooseButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+
+  dotsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+
+  dot: {
+    height: 8,
+    borderRadius: 4,
   },
 
   statsContainer: {
     flexDirection: "row",
     backgroundColor: "#FFFFFF",
-    marginHorizontal: 20,
     marginVertical: 16,
     paddingVertical: 16,
     borderRadius: 16,
     justifyContent: "space-around",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    elevation: 2,
   },
 
   statItem: {
@@ -159,9 +200,11 @@ const styles = StyleSheet.create({
   },
 
   footer: {
-    paddingHorizontal: 20,
     paddingVertical: 16,
     alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
   },
 
   footerText: {
