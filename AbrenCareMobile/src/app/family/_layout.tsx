@@ -1,10 +1,20 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
+
+import { useAuth } from '@/auth/AuthContext';
+import ServiceAuthGate from '@/components/ServiceAuthGate';
 import { useLanguage } from '@/i18n/LanguageContext';
+
+type TabIconProps = { color: string; size: number; focused: boolean };
 
 export default function FamilyLayout() {
   const { t } = useLanguage();
+  const { isSignedIn } = useAuth();
+
+  if (!isSignedIn) {
+    return <ServiceAuthGate redirectTo="/family" />;
+  }
 
   return (
     <Tabs
@@ -35,8 +45,17 @@ export default function FamilyLayout() {
         name="index"
         options={{
           title: t.tabs.home,
-          tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
+          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
             <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="appointments"
+        options={{
+          title: t.tabs.appointments,
+          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
+            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={size} color={color} />
           ),
         }}
       />
@@ -44,7 +63,7 @@ export default function FamilyLayout() {
         name="reports"
         options={{
           title: t.tabs.reports,
-          tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
+          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
             <Ionicons name={focused ? 'stats-chart' : 'stats-chart-outline'} size={size} color={color} />
           ),
         }}
@@ -53,7 +72,7 @@ export default function FamilyLayout() {
         name="chat"
         options={{
           title: t.tabs.chat,
-          tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
+          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
             <Ionicons name={focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'} size={size} color={color} />
           ),
         }}
@@ -62,11 +81,12 @@ export default function FamilyLayout() {
         name="profile"
         options={{
           title: t.tabs.profile,
-          tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
+          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
             <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
           ),
         }}
       />
+      <Tabs.Screen name="call" options={{ href: null }} />
     </Tabs>
   );
 }

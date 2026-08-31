@@ -7,16 +7,25 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
+import { useAppointments } from "@/family/AppointmentsContext";
+import { formatDateKey, reminderLabel } from "@/family/format";
 import { useLanguage } from "@/i18n/LanguageContext";
 
 export default function FamilyOverview() {
   const { t } = useLanguage();
+  const router = useRouter();
+  const { nextAppointment } = useAppointments();
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header */}
-      <TouchableOpacity style={styles.backButton}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => router.replace("/(tabs)")}
+        hitSlop={10}
+      >
         <Ionicons name="chevron-back" size={22} color="#4A5568" />
       </TouchableOpacity>
 
@@ -113,27 +122,75 @@ export default function FamilyOverview() {
         </View>
       </View>
 
-      {/* Next Visit */}
+      {/* Next Appointment */}
       <View style={styles.nextCard}>
-        <Text style={styles.label}>{t.family.nextVisit}</Text>
+        <Text style={styles.label}>{t.family.nextAppointment}</Text>
 
-        <Text style={styles.visitTime}>
-          {t.family.visitTime}
-        </Text>
-
-        <View style={styles.row}>
-          <Text style={styles.nurse}>Nurse Meron Girma</Text>
-
-          <View style={[styles.badge, { backgroundColor: "#EEF7E9" }]}>
-            <Text style={[styles.badgeText, { color: "#6B8E55" }]}>
-              {t.family.booked}
+        {nextAppointment ? (
+          <>
+            <Text style={styles.visitTime}>
+              {formatDateKey(nextAppointment.date, t)} · {nextAppointment.time}
             </Text>
-          </View>
-        </View>
+
+            <View style={styles.row}>
+              <Text style={styles.nurse}>
+                {t.familyAppointments.types[nextAppointment.type]} ·{" "}
+                {nextAppointment.withName}
+              </Text>
+
+              <View style={[styles.badge, { backgroundColor: "#EEF7E9" }]}>
+                <Text style={[styles.badgeText, { color: "#6B8E55" }]}>
+                  {t.family.booked}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.reminderRow}>
+              <Ionicons
+                name={
+                  nextAppointment.reminderMinutes !== null
+                    ? "notifications"
+                    : "notifications-off-outline"
+                }
+                size={13}
+                color={
+                  nextAppointment.reminderMinutes !== null
+                    ? "#2F855A"
+                    : "#9AA3AF"
+                }
+              />
+              <Text style={styles.reminderText}>
+                {nextAppointment.reminderMinutes !== null
+                  ? `${t.family.reminderOn} · ${reminderLabel(
+                      nextAppointment.reminderMinutes,
+                      t,
+                    )}`
+                  : t.family.reminderOff}
+              </Text>
+            </View>
+          </>
+        ) : (
+          <Text style={styles.emptyNext}>{t.family.noUpcoming}</Text>
+        )}
+
+        <TouchableOpacity
+          style={styles.manageButton}
+          onPress={() => router.push("/family/appointments")}
+        >
+          <Ionicons name="calendar-outline" size={15} color="#4A5D45" />
+          <Text style={styles.manageText}>
+            {nextAppointment
+              ? t.family.manageAppointments
+              : t.family.bookAppointment}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Button */}
-      <TouchableOpacity style={styles.button}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => router.push("/family/reports")}
+      >
         <Text style={styles.buttonText}>{t.family.viewFullReport}</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -292,6 +349,42 @@ const styles = StyleSheet.create({
     flex: 1,
     color: "#666",
     fontSize: 13,
+  },
+
+  reminderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 12,
+  },
+
+  reminderText: {
+    fontSize: 12,
+    color: "#6F7F73",
+    fontWeight: "500",
+  },
+
+  emptyNext: {
+    fontSize: 14,
+    color: "#9AA3AF",
+    marginTop: 6,
+  },
+
+  manageButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 14,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "#F4F6F2",
+  },
+
+  manageText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#4A5D45",
   },
 
   button: {

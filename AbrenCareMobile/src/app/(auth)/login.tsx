@@ -12,8 +12,9 @@ import {
 } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
+import { useAuth } from "@/auth/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 
 import colors from "@/theme/colors";
@@ -22,13 +23,22 @@ import spacing from "@/theme/spacing";
 export default function LoginScreen() {
   const router = useRouter();
   const { t } = useLanguage();
+  const { signIn } = useAuth();
+  const { redirect } = useLocalSearchParams() as { redirect?: string };
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  const canSubmit = email.trim().length > 0 && password.length > 0;
+
   function handleLogin() {
-    router.replace("/(tabs)");
+    if (!canSubmit) {
+      return;
+    }
+
+    signIn(email);
+    router.replace(redirect ?? "/(tabs)");
   }
 
   return (
@@ -120,15 +130,24 @@ export default function LoginScreen() {
               style={({ pressed }) => [
                 styles.button,
                 pressed && styles.buttonPressed,
+                !canSubmit && styles.buttonDisabled,
               ]}
               onPress={handleLogin}
+              disabled={!canSubmit}
             >
-              <Text style={styles.buttonText}>{t.auth.signIn}</Text>
+              <Text style={styles.buttonText}>
+                {redirect ? t.auth.continueToFamily : t.auth.signIn}
+              </Text>
             </Pressable>
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>{t.auth.noAccount}</Text>
-              <Pressable onPress={() => router.push("/signup")} hitSlop={8}>
+              <Pressable
+                onPress={() =>
+                  router.push({ pathname: "/signup", params: { redirect } })
+                }
+                hitSlop={8}
+              >
                 <Text style={styles.linkText}>{t.auth.createOne}</Text>
               </Pressable>
             </View>
@@ -265,6 +284,9 @@ const styles = StyleSheet.create({
   },
   buttonPressed: {
     opacity: 0.88,
+  },
+  buttonDisabled: {
+    opacity: 0.45,
   },
   buttonText: {
     color: colors.white,

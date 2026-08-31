@@ -7,10 +7,15 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+
+import { initialsFor, useAuth } from "@/auth/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 
 export default function ConsultationProfile() {
   const { t } = useLanguage();
+  const router = useRouter();
+  const { user, signOut } = useAuth();
 
   return (
     <ScrollView
@@ -18,7 +23,11 @@ export default function ConsultationProfile() {
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
-      <TouchableOpacity style={styles.backButton}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => router.back()}
+        hitSlop={10}
+      >
         <Ionicons name="chevron-back" size={22} color="#4A5568" />
       </TouchableOpacity>
 
@@ -108,6 +117,22 @@ export default function ConsultationProfile() {
         </View>
       </View>
 
+      {/* Account */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t.profile.signedInAs}</Text>
+
+        <View style={styles.row}>
+          <View style={styles.accountAvatar}>
+            <Text style={styles.accountAvatarText}>{initialsFor(user)}</Text>
+          </View>
+          <View style={styles.info}>
+            <Text style={styles.label}>{t.profile.accountEmail}</Text>
+            <Text style={styles.value}>{user?.name}</Text>
+            <Text style={styles.accountEmail}>{user?.email}</Text>
+          </View>
+        </View>
+      </View>
+
       {/* Buttons */}
       <TouchableOpacity style={styles.primaryButton}>
         <Text style={styles.primaryText}>{t.profile.editProfile}</Text>
@@ -115,6 +140,17 @@ export default function ConsultationProfile() {
 
       <TouchableOpacity style={styles.secondaryButton}>
         <Text style={styles.secondaryText}>{t.profile.manageAccount}</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.signOutButton}
+        onPress={() => {
+          signOut();
+          router.replace("/(tabs)");
+        }}
+      >
+        <Ionicons name="log-out-outline" size={16} color="#B5544B" />
+        <Text style={styles.signOutText}>{t.profile.signOut}</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -259,12 +295,48 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#D8D8D8",
-    marginBottom: 30,
+    marginBottom: 4,
   },
 
   secondaryText: {
     color: "#27352A",
     fontWeight: "600",
     fontSize: 15,
+  },
+
+  accountAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#EAF2EB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  accountAvatarText: {
+    color: "#2F855A",
+    fontWeight: "700",
+    fontSize: 13,
+  },
+
+  accountEmail: {
+    fontSize: 12,
+    color: "#9AA3AF",
+    marginTop: 2,
+  },
+
+  signOutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    height: 48,
+    marginBottom: 30,
+  },
+
+  signOutText: {
+    color: "#B5544B",
+    fontWeight: "600",
+    fontSize: 14,
   },
 });
