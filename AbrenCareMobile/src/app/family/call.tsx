@@ -4,7 +4,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-import { useLanguage } from '@/i18n/LanguageContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 function formatDuration(seconds: number) {
   const minutes = `${Math.floor(seconds / 60)}`.padStart(2, '0');

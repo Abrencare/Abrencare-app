@@ -19,7 +19,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import { useLanguage } from "@/i18n/LanguageContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 const COORDINATOR_PHONE = "+251912345678";
 const EMERGENCY_PHONE = "907";

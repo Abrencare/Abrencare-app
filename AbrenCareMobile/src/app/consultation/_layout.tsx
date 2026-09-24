@@ -2,9 +2,9 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 
-import { ConsultationProvider } from '@/consultation/ConsultationContext';
-import ServiceAccessGate from '@/components/ServiceAccessGate';
-import { useLanguage } from '@/i18n/LanguageContext';
+import { ConsultationProvider } from '@/context/ConsultationContext';
+import ServiceAccessGate from '@/components/gates/ServiceAccessGate';
+import { useLanguage } from '@/context/LanguageContext';
 
 type TabIconProps = { color: string; size: number; focused: boolean };
 

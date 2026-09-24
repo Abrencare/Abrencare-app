@@ -18,11 +18,11 @@ import {
   isJoinable,
   useConsultations,
   type Consultation,
-} from "@/consultation/ConsultationContext";
-import { doctorById, specialtyLabel } from "@/consultation/doctors";
-import { longDate, shortDate } from "@/consultation/format";
-import { formatDateKey } from "@/family/format";
-import { useLanguage } from "@/i18n/LanguageContext";
+} from "@/context/ConsultationContext";
+import { doctorById, specialtyLabel } from "@/data/doctors";
+import { longDate, shortDate } from "@/utilities/consultationFormat";
+import { formatDateKey } from "@/utilities/familyFormat";
+import { useLanguage } from "@/context/LanguageContext";
 
 const BLUE = "#7E93A8";
 

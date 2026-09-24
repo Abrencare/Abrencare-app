@@ -10,7 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-import { useLanguage } from '@/i18n/LanguageContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 type Tab = 'reports' | 'prescriptions' | 'labs' | 'history';
 type Tone = 'good' | 'warn' | 'bad';

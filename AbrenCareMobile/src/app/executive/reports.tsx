@@ -22,8 +22,8 @@ import {
   weeklyReportHtml,
   type ReportPeriod,
   type TrendSeries,
-} from "@/executive/weeklyReport";
-import { useLanguage } from "@/i18n/LanguageContext";
+} from "@/data/weeklyReport";
+import { useLanguage } from "@/context/LanguageContext";
 
 const CHART_HEIGHT = 104;
 const CHART_INSET = 10;

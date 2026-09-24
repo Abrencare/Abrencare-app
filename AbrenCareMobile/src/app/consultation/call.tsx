@@ -4,10 +4,10 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { initialsFor, useAuth } from "@/auth/AuthContext";
-import { useConsultations } from "@/consultation/ConsultationContext";
-import { doctorById, specialtyLabel } from "@/consultation/doctors";
-import { useLanguage } from "@/i18n/LanguageContext";
+import { initialsFor, useAuth } from "@/context/AuthContext";
+import { useConsultations } from "@/context/ConsultationContext";
+import { doctorById, specialtyLabel } from "@/data/doctors";
+import { useLanguage } from "@/context/LanguageContext";
 
 function formatDuration(seconds: number) {
   const minutes = `${Math.floor(seconds / 60)}`.padStart(2, "0");

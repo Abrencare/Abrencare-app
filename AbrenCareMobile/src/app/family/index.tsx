@@ -18,10 +18,10 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import { useAuth } from "@/auth/AuthContext";
-import { useAppointments } from "@/family/AppointmentsContext";
-import { formatDateKey, reminderLabel } from "@/family/format";
-import { useLanguage } from "@/i18n/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
+import { useAppointments } from "@/context/AppointmentsContext";
+import { formatDateKey, reminderLabel } from "@/utilities/familyFormat";
+import { useLanguage } from "@/context/LanguageContext";
 
 const GREEN = "#8B9A7C";
 const CARE_PHONE = "+251912345678";

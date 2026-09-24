@@ -9,8 +9,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
-import { initialsFor, useAuth } from "@/auth/AuthContext";
-import { useLanguage } from "@/i18n/LanguageContext";
+import { initialsFor, useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function ConsultationProfile() {
   const { t } = useLanguage();

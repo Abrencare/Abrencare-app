@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useLanguage } from '@/i18n/LanguageContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function NotFoundScreen() {
   const router = useRouter();

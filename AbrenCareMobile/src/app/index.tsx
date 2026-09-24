@@ -15,7 +15,7 @@ import {
 
 import { useRouter } from "expo-router";
 
-import { useLanguage } from "@/i18n/LanguageContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 import colors from "@/theme/colors";
 

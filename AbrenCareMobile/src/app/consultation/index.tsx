@@ -12,7 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
-import { useConsultations } from "@/consultation/ConsultationContext";
+import { useConsultations } from "@/context/ConsultationContext";
 import {
   SPECIALTIES,
   doctorById,
@@ -21,10 +21,10 @@ import {
   monthGridMondayFirst,
   specialtyLabel,
   type SpecialtyId,
-} from "@/consultation/doctors";
-import { monthTitle } from "@/consultation/format";
-import { fromDateKey, toDateKey } from "@/family/AppointmentsContext";
-import { useLanguage } from "@/i18n/LanguageContext";
+} from "@/data/doctors";
+import { monthTitle } from "@/utilities/consultationFormat";
+import { fromDateKey, toDateKey } from "@/context/AppointmentsContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 const BLUE = "#7E93A8";
 

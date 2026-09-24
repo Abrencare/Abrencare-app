@@ -15,9 +15,9 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { useConsultations } from "@/consultation/ConsultationContext";
-import { doctorById, specialtyLabel } from "@/consultation/doctors";
-import { useLanguage } from "@/i18n/LanguageContext";
+import { useConsultations } from "@/context/ConsultationContext";
+import { doctorById, specialtyLabel } from "@/data/doctors";
+import { useLanguage } from "@/context/LanguageContext";
 
 const BLUE = "#7E93A8";
 

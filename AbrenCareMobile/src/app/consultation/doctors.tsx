@@ -12,7 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
-import { useConsultations } from "@/consultation/ConsultationContext";
+import { useConsultations } from "@/context/ConsultationContext";
 import {
   SPECIALTIES,
   doctorsInSpecialty,
@@ -21,8 +21,8 @@ import {
   to12Hour,
   type Doctor,
   type SpecialtyId,
-} from "@/consultation/doctors";
-import { useLanguage } from "@/i18n/LanguageContext";
+} from "@/data/doctors";
+import { useLanguage } from "@/context/LanguageContext";
 
 const BLUE = "#7E93A8";
 

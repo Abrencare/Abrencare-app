@@ -10,7 +10,7 @@ import {
 
 import { Ionicons } from "@expo/vector-icons";
 
-import { useLanguage } from "@/i18n/LanguageContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 type MedicationTone = "taken" | "due" | "upcoming";
 type AlertTone = "high" | "reminder";

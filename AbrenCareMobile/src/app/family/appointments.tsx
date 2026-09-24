@@ -16,7 +16,7 @@ import {
   toDateKey,
   useAppointments,
   type AppointmentType,
-} from '@/family/AppointmentsContext';
+} from '@/context/AppointmentsContext';
 import {
   APPOINTMENT_TYPES,
   REMINDER_OPTIONS,
@@ -25,8 +25,8 @@ import {
   monthGrid,
   reminderLabel,
   typeIcons,
-} from '@/family/format';
-import { useLanguage } from '@/i18n/LanguageContext';
+} from '@/utilities/familyFormat';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function FamilyAppointments() {
   const { t } = useLanguage();

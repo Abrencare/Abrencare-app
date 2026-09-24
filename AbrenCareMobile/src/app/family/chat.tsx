@@ -15,7 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-import { useLanguage } from '@/i18n/LanguageContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 type FileKind = 'photo' | 'document' | 'lab';
 
