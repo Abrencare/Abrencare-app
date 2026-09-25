@@ -11,8 +11,11 @@ import { useRouter } from "expo-router";
 
 import { initialsFor, useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useThemedStyles } from "@/theme/useThemedStyles";
 
 export default function ConsultationProfile() {
+
+  const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
   const router = useRouter();
   const { user, signOut } = useAuth();
@@ -156,7 +159,7 @@ export default function ConsultationProfile() {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F6F2EA",

@@ -7,7 +7,6 @@ import {
   NativeSyntheticEvent,
   Pressable,
   SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -17,10 +16,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
+import BrandLogo from '@/components/ui/BrandLogo';
 import Replace from '@/components/gates/Replace';
 import { useAuth } from '@/context/AuthContext';
-import { dashboardFor, onboardingPath, serviceThemes } from '@/service/serviceTheme';
+import { dashboardFor, onboardingPath } from '@/service/serviceTheme';
 import type { CareService } from '@/types/auth';
+import { useAppTheme } from '@/context/ThemeContext';
+import { useThemedStyles } from '@/theme/useThemedStyles';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -55,48 +57,47 @@ type Props = {
   service: CareService;
   copy: LandingCopy;
   heroPhoto: ImageSourcePropType;
-  midPhoto: ImageSourcePropType;
-  doctorPhoto: ImageSourcePropType;
-  kickerIcon: IconName;
-  ctaIcon: IconName;
   heroItems: Item[];
   included: Item[];
   steps: Item[];
   trust: Item[];
 };
 
+const THEME = {
+  page: '#F7F8F6',
+  ink: '#16332C',
+  muted: '#5C6B65',
+  soft: '#E7EEEA',
+  accent: '#1A4A42',
+  footer: '#1A3A32',
+  card: '#FFFFFF',
+  line: '#D5DDD8',
+};
+
 export default function ServiceLanding({
   service,
   copy,
   heroPhoto,
-  midPhoto,
-  doctorPhoto,
-  kickerIcon,
-  ctaIcon,
   heroItems,
   included,
   steps,
   trust,
 }: Props) {
+
+  const styles = useThemedStyles(baseStyles);
+  const { colors, isDark } = useAppTheme();
   const router = useRouter();
   const { user, hasService, needsOnboarding } = useAuth();
+  const ink = isDark ? colors.text : THEME.ink;
+  const accent = isDark ? colors.navActive : THEME.accent;
+  const line = isDark ? colors.border : THEME.line;
   const { width, height } = useWindowDimensions();
   const listRef = useRef<FlatList<number>>(null);
   const [page, setPage] = useState(0);
   const pages = [0, 1, 2];
-  const palette = serviceThemes[service];
-  const theme = {
-    ink: palette.text,
-    muted: palette.muted,
-    soft: palette.accentSoft,
-    icon: palette.accent,
-    page: palette.background,
-    footer: palette.accent,
-    accentLine: palette.accent,
-    card: palette.card,
-    field: palette.field,
-    border: palette.border,
-  };
+  const slideHeight = height - 92;
+  const photoSize = Math.min(168, width * 0.42);
+  const cardWidth = (width - 56) / 2;
 
   if (user && hasService(service) && !needsOnboarding(service)) {
     return <Replace href={dashboardFor(service)} />;
@@ -133,8 +134,6 @@ export default function ServiceLanding({
     setPage(Math.max(0, Math.min(next, pages.length - 1)));
   }
 
-  const styles = makeStyles(theme, width, height);
-
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.topBar}>
@@ -143,8 +142,9 @@ export default function ServiceLanding({
           style={styles.backButton}
           hitSlop={10}
         >
-          <Ionicons name="chevron-back" size={22} color={theme.ink} />
+          <Ionicons name="chevron-back" size={22} color={ink} />
         </Pressable>
+        <BrandLogo size={36} />
         <View style={styles.dots}>
           {pages.map((index) => (
             <View
@@ -153,13 +153,12 @@ export default function ServiceLanding({
                 styles.dot,
                 {
                   width: page === index ? 20 : 8,
-                  backgroundColor: page === index ? theme.icon : theme.soft,
+                  backgroundColor: page === index ? accent : line,
                 },
               ]}
             />
           ))}
         </View>
-        <View style={styles.topSpacer} />
       </View>
 
       <FlatList
@@ -177,113 +176,128 @@ export default function ServiceLanding({
           index,
         })}
         renderItem={({ item }) => (
-          <View style={{ width }}>
-            <ScrollView
-              style={styles.slide}
-              contentContainerStyle={styles.slideContent}
-              showsVerticalScrollIndicator={false}
-            >
-              {item === 0 && (
+          <View style={[styles.slide, { width, height: slideHeight }]}>
+            {item === 0 && (
+              <View style={styles.page}>
                 <View>
-                  <View style={styles.kickerRow}>
-                    <Ionicons name={kickerIcon} size={13} color={theme.icon} />
-                    <Text style={styles.kicker}>{copy.kicker}</Text>
-                  </View>
-                  <Text style={styles.headline}>{copy.headline}</Text>
-                  <Text style={styles.description}>{copy.description}</Text>
-                  <View style={styles.heroItems}>
-                    {heroItems.map((entry) => (
-                      <View key={entry.label} style={styles.heroItem}>
-                        <View style={styles.heroIcon}>
-                          <Ionicons name={entry.icon} size={16} color={theme.icon} />
-                        </View>
-                        <Text style={styles.heroItemLabel}>{entry.label}</Text>
-                      </View>
-                    ))}
-                  </View>
-                  <View style={styles.heroVisual}>
-                    <Image source={heroPhoto} style={styles.heroPhoto} resizeMode="cover" />
-                    <View style={styles.stayCard}>
-                      <Text style={styles.stayText}>{copy.stayHealthy}</Text>
-                      <Text style={styles.stayText}>{copy.stayAhead}</Text>
-                      <View style={styles.accentLine} />
+                  <Text style={styles.kicker}>{copy.kicker}</Text>
+                  <View style={styles.heroRow}>
+                    <View style={styles.heroCopy}>
+                      <Text style={styles.headline}>{copy.headline}</Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.heroPhotoWrap,
+                        { width: photoSize, height: photoSize, borderRadius: photoSize / 2 },
+                      ]}
+                    >
+                      <Image source={heroPhoto} style={styles.heroPhoto} resizeMode="cover" />
                     </View>
                   </View>
+                  <Text style={styles.description}>{copy.description}</Text>
+                  <Pressable onPress={goSignup} style={styles.heroButton}>
+                    <Text style={styles.heroButtonText}>{copy.createAccount}</Text>
+                    <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                  </Pressable>
                 </View>
-              )}
-
-              {item === 1 && (
-                <View>
-                  <Image source={midPhoto} style={styles.midPhoto} resizeMode="cover" />
-                  <Text style={styles.sectionTitle}>{copy.includedTitle}</Text>
-                  <Text style={styles.sectionSubtitle}>{copy.includedSubtitle}</Text>
-                  <View style={styles.includedGrid}>
-                    {included.map((entry) => (
-                      <View key={entry.title} style={styles.includeCard}>
-                        <View style={styles.filledIcon}>
-                          <Ionicons name={entry.icon} size={18} color="#FFFFFF" />
-                        </View>
-                        <Text style={styles.includeTitle}>{entry.title}</Text>
-                        <Text style={styles.includeBody}>{entry.body}</Text>
+                <View style={styles.cardGrid}>
+                  {heroItems.map((entry) => (
+                    <View
+                      key={entry.label ?? entry.title}
+                      style={[styles.serviceCard, { width: cardWidth }]}
+                    >
+                      <View style={styles.iconCircle}>
+                        <Ionicons name={entry.icon} size={18} color={accent} />
                       </View>
-                    ))}
-                  </View>
-                  <Text style={[styles.sectionTitle, styles.sectionFollow]}>{copy.howTitle}</Text>
+                      <Text style={styles.serviceTitle}>{entry.title ?? entry.label}</Text>
+                      {entry.body ? (
+                        <Text style={styles.serviceBody}>{entry.body}</Text>
+                      ) : null}
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {item === 1 && (
+              <View style={styles.page}>
+                <View>
+                  <Text style={styles.sectionTitle}>{copy.howTitle}</Text>
                   <Text style={styles.sectionSubtitle}>{copy.howSubtitle}</Text>
-                  <View style={styles.steps}>
+                  <View style={styles.stepRow}>
                     {steps.map((step, index) => (
-                      <View key={step.title} style={styles.step}>
-                        <View style={styles.stepTop}>
+                      <View key={step.title} style={styles.stepCol}>
+                        <View style={styles.stepTrack}>
+                          <View style={[styles.stepLine, index === 0 && styles.stepLineHidden]} />
                           <View style={styles.stepBadge}>
                             <Text style={styles.stepNumber}>{index + 1}</Text>
                           </View>
-                          <View style={styles.stepIcon}>
-                            <Ionicons name={step.icon} size={18} color={theme.icon} />
-                          </View>
+                          <View
+                            style={[
+                              styles.stepLine,
+                              index === steps.length - 1 && styles.stepLineHidden,
+                            ]}
+                          />
                         </View>
-                        <View style={styles.stepCopy}>
-                          <Text style={styles.stepTitle}>{step.title}</Text>
-                          <Text style={styles.stepBody}>{step.body}</Text>
+                        <View style={styles.iconCircle}>
+                          <Ionicons name={step.icon} size={16} color={accent} />
                         </View>
+                        <Text style={styles.stepTitle}>{step.title}</Text>
+                        <Text style={styles.stepBody}>{step.body}</Text>
                       </View>
                     ))}
                   </View>
                 </View>
-              )}
-
-              {item === 2 && (
                 <View>
-                  <Image source={doctorPhoto} style={styles.doctorPhoto} resizeMode="cover" />
-                  <Text style={styles.whyKicker}>{copy.whyKicker}</Text>
-                  <Text style={styles.whyTitle}>{copy.whyTitle}</Text>
-                  <Text style={styles.whyBody}>{copy.whyBody}</Text>
-                  <View style={styles.trustRow}>
-                    {trust.map((entry) => (
-                      <View key={entry.label} style={styles.trustItem}>
-                        <Ionicons name={entry.icon} size={16} color={theme.icon} />
-                        <Text style={styles.trustLabel}>{entry.label}</Text>
+                  <Text style={styles.sectionTitle}>{copy.includedTitle}</Text>
+                  <Text style={styles.sectionSubtitle}>{copy.includedSubtitle}</Text>
+                  <View style={styles.cardGrid}>
+                    {included.map((entry) => (
+                      <View key={entry.title} style={[styles.serviceCard, { width: cardWidth }]}>
+                        <View style={styles.iconCircle}>
+                          <Ionicons name={entry.icon} size={18} color={accent} />
+                        </View>
+                        <Text style={styles.serviceTitle}>{entry.title}</Text>
+                        <Text style={styles.serviceBody}>{entry.body}</Text>
                       </View>
                     ))}
                   </View>
-                  <View style={styles.ctaCard}>
-                    <View style={styles.ctaTitleRow}>
-                      <Ionicons name={ctaIcon} size={18} color="#FFFFFF" />
-                      <Text style={styles.ctaTitle}>{copy.ctaTitle}</Text>
-                    </View>
-                    <Text style={styles.ctaBody}>{copy.ctaBody}</Text>
-                    <Pressable onPress={goSignup} style={styles.ctaButton}>
-                      <Text style={styles.ctaButtonText}>{copy.createAccount}</Text>
-                      <Ionicons name="arrow-forward" size={16} color={theme.icon} />
-                    </Pressable>
-                    <Pressable onPress={goLogin} style={styles.loginRow}>
-                      <Text style={styles.loginText}>
-                        {copy.alreadyAccount} {copy.logIn} →
-                      </Text>
-                    </Pressable>
+                </View>
+              </View>
+            )}
+
+            {item === 2 && (
+              <View style={styles.page}>
+                <View>
+                  <Text style={styles.kicker}>{copy.whyKicker}</Text>
+                  <Text style={styles.sectionTitle}>{copy.whyTitle}</Text>
+                  <Text style={styles.description}>{copy.whyBody}</Text>
+                  <View style={styles.cardGrid}>
+                    {trust.map((entry) => (
+                      <View key={entry.label} style={[styles.whyCard, { width: cardWidth }]}>
+                        <View style={styles.iconCircle}>
+                          <Ionicons name={entry.icon} size={16} color={accent} />
+                        </View>
+                        <Text style={styles.whyLabel}>{entry.label}</Text>
+                      </View>
+                    ))}
                   </View>
                 </View>
-              )}
-            </ScrollView>
+                <View style={styles.ctaBar}>
+                  <Text style={styles.ctaTitle}>{copy.ctaTitle}</Text>
+                  <Text style={styles.ctaBody}>{copy.ctaBody}</Text>
+                  <Pressable onPress={goSignup} style={styles.ctaButton}>
+                    <Text style={styles.ctaButtonText}>{copy.createAccount}</Text>
+                    <Ionicons name="arrow-forward" size={16} color={THEME.footer} />
+                  </Pressable>
+                  <Pressable onPress={goLogin} style={styles.loginRow}>
+                    <Text style={styles.loginText}>
+                      {copy.alreadyAccount} {copy.logIn} →
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
           </View>
         )}
       />
@@ -291,346 +305,246 @@ export default function ServiceLanding({
   );
 }
 
-function makeStyles(
-  theme: {
-    ink: string;
-    muted: string;
-    soft: string;
-    icon: string;
-    page: string;
-    footer: string;
-    accentLine: string;
-    card: string;
-    field: string;
-    border: string;
+const baseStyles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: THEME.page,
   },
-  width: number,
-  height: number,
-) {
-  return StyleSheet.create({
-    safe: {
-      flex: 1,
-      backgroundColor: theme.page,
-    },
-    topBar: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingTop: 8,
-      paddingBottom: 6,
-    },
-    backButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 12,
-      backgroundColor: theme.field,
-      borderWidth: 1,
-      borderColor: theme.border,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    topSpacer: {
-      width: 40,
-    },
-    dots: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
-    dot: {
-      height: 8,
-      borderRadius: 4,
-    },
-    slide: {
-      flex: 1,
-    },
-    slideContent: {
-      paddingHorizontal: 22,
-      paddingTop: 8,
-      paddingBottom: 40,
-    },
-    kickerRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      marginBottom: 12,
-    },
-    kicker: {
-      color: theme.icon,
-      fontSize: 11,
-      fontWeight: '700',
-      letterSpacing: 1.4,
-    },
-    headline: {
-      color: theme.ink,
-      fontSize: 32,
-      fontWeight: '700',
-      lineHeight: 38,
-      marginBottom: 12,
-    },
-    description: {
-      color: theme.muted,
-      fontSize: 16,
-      lineHeight: 24,
-      marginBottom: 20,
-    },
-    heroItems: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: 20,
-    },
-    heroItem: {
-      alignItems: 'center',
-      width: (width - 44) / 3,
-    },
-    heroIcon: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: theme.soft,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 8,
-    },
-    heroItemLabel: {
-      color: theme.ink,
-      fontSize: 11,
-      fontWeight: '600',
-      textAlign: 'center',
-      lineHeight: 15,
-    },
-    heroVisual: {
-      borderRadius: 20,
-      overflow: 'hidden',
-      height: Math.min(280, height * 0.34),
-      backgroundColor: theme.card,
-      position: 'relative',
-    },
-    heroPhoto: {
-      width: '100%',
-      height: '100%',
-    },
-    stayCard: {
-      position: 'absolute',
-      top: 16,
-      right: 16,
-      alignItems: 'flex-end',
-      backgroundColor: 'rgba(255,255,255,0.88)',
-      borderRadius: 12,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-    },
-    stayText: {
-      color: theme.ink,
-      fontSize: 13,
-      fontWeight: '600',
-    },
-    accentLine: {
-      marginTop: 6,
-      width: 28,
-      height: 2,
-      backgroundColor: theme.accentLine,
-      borderRadius: 1,
-    },
-    sectionTitle: {
-      color: theme.ink,
-      fontSize: 26,
-      fontWeight: '700',
-      marginBottom: 6,
-    },
-    sectionFollow: {
-      marginTop: 28,
-    },
-    sectionSubtitle: {
-      color: theme.muted,
-      fontSize: 15,
-      lineHeight: 22,
-      marginBottom: 18,
-    },
-    includedGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 12,
-    },
-    includeCard: {
-      width: (width - 56) / 2,
-      alignItems: 'center',
-      paddingHorizontal: 10,
-      paddingVertical: 14,
-      backgroundColor: theme.card,
-      borderRadius: 16,
-      borderWidth: 1.5,
-      borderColor: `${theme.icon}99`,
-    },
-    filledIcon: {
-      width: 42,
-      height: 42,
-      borderRadius: 21,
-      backgroundColor: theme.icon,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 10,
-    },
-    includeTitle: {
-      color: theme.ink,
-      fontSize: 14,
-      fontWeight: '700',
-      textAlign: 'center',
-      marginBottom: 6,
-    },
-    includeBody: {
-      color: theme.muted,
-      fontSize: 12,
-      lineHeight: 18,
-      textAlign: 'center',
-    },
-    steps: {
-      gap: 16,
-    },
-    step: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 12,
-    },
-    stepTop: {
-      alignItems: 'center',
-      gap: 8,
-    },
-    stepBadge: {
-      width: 22,
-      height: 22,
-      borderRadius: 11,
-      borderWidth: 1,
-      borderColor: theme.icon,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.field,
-    },
-    stepNumber: {
-      color: theme.icon,
-      fontSize: 11,
-      fontWeight: '700',
-    },
-    stepIcon: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: theme.soft,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    stepCopy: {
-      flex: 1,
-      paddingTop: 2,
-    },
-    stepTitle: {
-      color: theme.ink,
-      fontSize: 16,
-      fontWeight: '700',
-      marginBottom: 4,
-    },
-    stepBody: {
-      color: theme.muted,
-      fontSize: 13,
-      lineHeight: 19,
-    },
-    midPhoto: {
-      width: '100%',
-      height: Math.min(210, height * 0.26),
-      borderRadius: 18,
-      marginBottom: 18,
-      backgroundColor: theme.card,
-    },
-    doctorPhoto: {
-      width: '100%',
-      height: Math.min(210, height * 0.26),
-      borderRadius: 18,
-      marginBottom: 18,
-      backgroundColor: theme.card,
-    },
-    whyKicker: {
-      color: theme.icon,
-      fontSize: 11,
-      fontWeight: '700',
-      letterSpacing: 1.3,
-      marginBottom: 8,
-    },
-    whyTitle: {
-      color: theme.ink,
-      fontSize: 26,
-      fontWeight: '700',
-      marginBottom: 10,
-    },
-    whyBody: {
-      color: theme.muted,
-      fontSize: 15,
-      lineHeight: 23,
-      marginBottom: 16,
-    },
-    trustRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 12,
-      marginBottom: 22,
-    },
-    trustItem: {
-      width: (width - 56) / 2,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-    },
-    trustLabel: {
-      color: theme.ink,
-      fontSize: 12,
-      fontWeight: '600',
-      flex: 1,
-    },
-    ctaCard: {
-      backgroundColor: theme.footer,
-      borderRadius: 22,
-      padding: 20,
-    },
-    ctaTitleRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      marginBottom: 8,
-    },
-    ctaTitle: {
-      color: '#FFFFFF',
-      fontSize: 20,
-      fontWeight: '700',
-      flex: 1,
-    },
-    ctaBody: {
-      color: 'rgba(255,255,255,0.86)',
-      fontSize: 14,
-      lineHeight: 21,
-      marginBottom: 16,
-    },
-    ctaButton: {
-      alignSelf: 'stretch',
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      backgroundColor: theme.field,
-      paddingVertical: 14,
-      borderRadius: 24,
-    },
-    ctaButtonText: {
-      color: theme.icon,
-      fontSize: 15,
-      fontWeight: '700',
-    },
-    loginRow: {
-      marginTop: 14,
-      alignItems: 'center',
-    },
-    loginText: {
-      color: 'rgba(255,255,255,0.86)',
-      fontSize: 13,
-    },
-  });
-}
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 6,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: THEME.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topSpacer: {
+    width: 40,
+  },
+  dots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dot: {
+    height: 8,
+    borderRadius: 4,
+  },
+  slide: {
+    backgroundColor: THEME.page,
+  },
+  page: {
+    flex: 1,
+    paddingHorizontal: 22,
+    paddingTop: 6,
+    paddingBottom: 20,
+    justifyContent: 'space-between',
+  },
+  kicker: {
+    color: THEME.accent,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.4,
+    marginBottom: 10,
+  },
+  heroRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 12,
+  },
+  heroCopy: {
+    flex: 1,
+    paddingTop: 4,
+  },
+  headline: {
+    color: THEME.ink,
+    fontSize: 28,
+    fontWeight: '700',
+    lineHeight: 34,
+  },
+  description: {
+    color: THEME.muted,
+    fontSize: 14,
+    lineHeight: 21,
+    marginBottom: 16,
+  },
+  heroButton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: THEME.footer,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  heroButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  heroPhotoWrap: {
+    overflow: 'hidden',
+    backgroundColor: THEME.soft,
+  },
+  heroPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  iconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: THEME.soft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionTitle: {
+    color: THEME.ink,
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  sectionSubtitle: {
+    color: THEME.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  stepCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  stepTrack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 10,
+  },
+  stepLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: THEME.line,
+  },
+  stepLineHidden: {
+    backgroundColor: 'transparent',
+  },
+  stepBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: THEME.accent,
+    backgroundColor: THEME.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepNumber: {
+    color: THEME.accent,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  stepTitle: {
+    color: THEME.ink,
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  stepBody: {
+    color: THEME.muted,
+    fontSize: 11,
+    lineHeight: 15,
+    textAlign: 'center',
+  },
+  cardGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  serviceCard: {
+    backgroundColor: THEME.card,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: THEME.line,
+  },
+  serviceTitle: {
+    color: THEME.ink,
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  serviceBody: {
+    color: THEME.muted,
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  whyCard: {
+    backgroundColor: THEME.soft,
+    borderRadius: 16,
+    padding: 12,
+    gap: 8,
+  },
+  whyLabel: {
+    color: THEME.ink,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  ctaBar: {
+    backgroundColor: THEME.footer,
+    borderRadius: 22,
+    padding: 18,
+  },
+  ctaTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  ctaBody: {
+    color: '#C9D4CE',
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 14,
+  },
+  ctaButton: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: THEME.card,
+    paddingVertical: 13,
+    borderRadius: 24,
+  },
+  ctaButtonText: {
+    color: THEME.footer,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  loginRow: {
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  loginText: {
+    color: '#C9D4CE',
+    fontSize: 13,
+  },
+});

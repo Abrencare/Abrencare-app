@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 import { useLanguage } from '@/context/LanguageContext';
+import { useThemedStyles } from '@/theme/useThemedStyles';
 
 type Tab = 'reports' | 'prescriptions' | 'labs' | 'history';
 type Tone = 'good' | 'warn' | 'bad';
@@ -54,6 +55,8 @@ const toneStyles: Record<Tone, { color: string; bg: string }> = {
 };
 
 export default function FamilyReports() {
+
+  const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('reports');
@@ -282,7 +285,7 @@ export default function FamilyReports() {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F6F2EA',

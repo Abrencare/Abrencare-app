@@ -3,10 +3,12 @@ import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 
 import ServiceAccessGate from '@/components/gates/ServiceAccessGate';
+import { useAppTheme } from '@/context/ThemeContext';
 import { useLanguage } from '@/context/LanguageContext';
 
 export default function ExecutiveLayout() {
   const { t } = useLanguage();
+  const { colors } = useAppTheme();
 
   return (
     <ServiceAccessGate service="executive">
@@ -14,13 +16,14 @@ export default function ExecutiveLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: '#C4A05A',
-        tabBarInactiveTintColor: '#A0AEC0',
+        tabBarInactiveTintColor: colors.navInactive,
         tabBarStyle: {
           height: 70,
           paddingTop: 8,
           paddingBottom: 8,
-          backgroundColor: '#FFFFFF',
-          borderTopWidth: 0,
+          backgroundColor: colors.nav,
+          borderTopWidth: 1,
+          borderTopColor: colors.navBorder,
           elevation: 8,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },

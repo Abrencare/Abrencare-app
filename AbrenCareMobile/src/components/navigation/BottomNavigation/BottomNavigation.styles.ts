@@ -13,13 +13,15 @@ const styles = StyleSheet.create({
 
     backgroundColor: "#FFFFFF",
 
-    height: 82,
+    height: 76,
 
-    borderRadius: 40,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: "#E7EEEA",
 
-    shadowColor: "#000",
+    shadowColor: "#16332C",
     shadowOpacity: 0.08,
-    shadowRadius: 20,
+    shadowRadius: 18,
     shadowOffset: {
       width: 0,
       height: -4,
@@ -42,7 +44,7 @@ const styles = StyleSheet.create({
   },
 
   activeLabel: {
-    color: "#7DA46B",
+    color: "#1A4A42",
     fontWeight: "700",
   },
 });

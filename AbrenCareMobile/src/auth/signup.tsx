@@ -15,10 +15,11 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { useAuth } from '@/context/AuthContext';
 import { parseService } from '@/service/parseService';
-import { dashboardFor, onboardingPath, serviceThemes } from '@/service/serviceTheme';
+import { dashboardFor, onboardingPath, useServiceTheme } from '@/service/serviceTheme';
 import AuthField from '@/auth/AuthField';
 import AuthNav from '@/auth/AuthNav';
 import MedicalDecor from '@/auth/MedicalDecor';
+import BrandLogo from '@/components/ui/BrandLogo';
 import Replace from '@/components/gates/Replace';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -28,7 +29,7 @@ export default function SignupScreen() {
   const { user, signUp, hasService, needsOnboarding } = useAuth();
   const params = useLocalSearchParams();
   const service = parseService(params.service);
-  const theme = serviceThemes[service];
+  const theme = useServiceTheme(service);
 
   const copy =
     service === 'family'
@@ -81,7 +82,13 @@ export default function SignupScreen() {
             card={theme.card}
           />
 
-          <View style={styles.card}>
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <BrandLogo size={64} style={styles.cardLogo} />
             <Text style={[styles.title, { color: theme.text }]}>{copy.title}</Text>
             {service === 'family' && (
               <Text style={[styles.subtitle, { color: theme.muted }]}>
@@ -214,6 +221,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'transparent',
     paddingHorizontal: 22,
     paddingTop: 26,
     paddingBottom: 22,
@@ -222,6 +231,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 24,
     elevation: 4,
+  },
+  cardLogo: {
+    alignSelf: 'center',
+    marginBottom: 14,
   },
   title: {
     fontSize: 26,

@@ -4,11 +4,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 import styles from "./BottomNavigation.styles";
+import { useAppTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageContext";
 
 export default function BottomNavigation() {
   const router = useRouter();
   const { t } = useLanguage();
+  const { colors } = useAppTheme();
 
   const tabs = [
     {
@@ -49,7 +51,12 @@ export default function BottomNavigation() {
   ];
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: colors.nav, borderColor: colors.navBorder },
+      ]}
+    >
       {tabs.map((tab) => (
         <TouchableOpacity
           key={tab.name}
@@ -60,13 +67,14 @@ export default function BottomNavigation() {
           <Ionicons
             name={(tab.active ? tab.activeIcon : tab.icon) as any}
             size={24}
-            color={tab.active ? "#7DA46B" : "#A8A8A8"}
+            color={tab.active ? colors.navActive : colors.navInactive}
           />
 
           <Text
             style={[
               styles.label,
-              tab.active && styles.activeLabel,
+              { color: colors.navInactive },
+              tab.active && { color: colors.navActive, fontWeight: "700" },
             ]}
           >
             {tab.name}

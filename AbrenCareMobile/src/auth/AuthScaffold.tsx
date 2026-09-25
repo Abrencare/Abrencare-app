@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
+import BrandLogo from '@/components/ui/BrandLogo';
 import type { ServiceTheme } from '@/service/serviceTheme';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -62,6 +63,7 @@ export default function AuthScaffold({
           </Pressable>
 
           <View style={styles.brand}>
+            <BrandLogo size={72} style={styles.brandLogo} />
             <Text style={[styles.brandName, { color: theme.accent }]}>
               {t.auth.brand}
             </Text>
@@ -108,6 +110,9 @@ const styles = StyleSheet.create({
   brand: {
     alignItems: 'center',
     marginBottom: 22,
+  },
+  brandLogo: {
+    marginBottom: 10,
   },
   brandName: {
     fontSize: 13,

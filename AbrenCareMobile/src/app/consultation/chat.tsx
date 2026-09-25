@@ -18,6 +18,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useConsultations } from "@/context/ConsultationContext";
 import { doctorById, specialtyLabel } from "@/data/doctors";
 import { useLanguage } from "@/context/LanguageContext";
+import { useThemedStyles } from "@/theme/useThemedStyles";
 
 const BLUE = "#7E93A8";
 
@@ -46,6 +47,8 @@ function nowTime() {
 }
 
 export default function ConsultationChat() {
+
+  const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
   const router = useRouter();
   const params = useLocalSearchParams() as { doctor?: string };
@@ -376,7 +379,7 @@ function FileCard({
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F4F6F8",

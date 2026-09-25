@@ -27,8 +27,11 @@ import {
   typeIcons,
 } from '@/utilities/familyFormat';
 import { useLanguage } from '@/context/LanguageContext';
+import { useThemedStyles } from '@/theme/useThemedStyles';
 
 export default function FamilyAppointments() {
+
+  const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
   const {
     appointments,
@@ -428,7 +431,7 @@ export default function FamilyAppointments() {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F6F2EA',

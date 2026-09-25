@@ -11,6 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 
 import { useLanguage } from "@/context/LanguageContext";
+import { useThemedStyles } from "@/theme/useThemedStyles";
 
 type MedicationTone = "taken" | "due" | "upcoming";
 type AlertTone = "high" | "reminder";
@@ -54,6 +55,8 @@ const programmeTones: Record<ProgrammeTone, { color: string; bg: string }> = {
 };
 
 export default function ExecutiveProgramme() {
+
+  const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
 
   const medications = t.executiveProgramme.medications;
@@ -397,7 +400,7 @@ function SummaryCard({ number, label }: { number: string; label: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: "#F8F4EC",

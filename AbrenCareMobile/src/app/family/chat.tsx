@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 import { useLanguage } from '@/context/LanguageContext';
+import { useThemedStyles } from '@/theme/useThemedStyles';
 
 type FileKind = 'photo' | 'document' | 'lab';
 
@@ -42,6 +43,8 @@ function nowTime() {
 }
 
 export default function FamilyChat() {
+
+  const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
@@ -314,7 +317,7 @@ function FileCard({
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F6F2EA',

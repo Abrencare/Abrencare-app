@@ -1,4 +1,5 @@
 import type { CareService } from '@/types/auth';
+import { useAppTheme } from '@/context/ThemeContext';
 
 export type ServiceTheme = {
   accent: string;
@@ -43,6 +44,35 @@ export const serviceThemes: Record<CareService, ServiceTheme> = {
     border: '#DDE3EA',
   },
 };
+
+const darkSurface: Omit<ServiceTheme, 'accent'> = {
+  accentSoft: '#243028',
+  text: '#F7F8F6',
+  muted: '#C5CDC9',
+  background: '#0E1412',
+  card: '#1C2522',
+  field: '#2A3531',
+  border: '#5A6B65',
+};
+
+export function getServiceTheme(service: CareService, isDark = false): ServiceTheme {
+  const light = serviceThemes[service];
+  if (!isDark) {
+    return light;
+  }
+
+  return {
+    accent: light.accent,
+    ...darkSurface,
+    accentSoft:
+      service === 'executive' ? '#2A2418' : service === 'consultation' ? '#1E2630' : '#243028',
+  };
+}
+
+export function useServiceTheme(service: CareService): ServiceTheme {
+  const { isDark } = useAppTheme();
+  return getServiceTheme(service, isDark);
+}
 
 export function dashboardFor(service: CareService) {
   if (service === 'family') {

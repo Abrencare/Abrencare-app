@@ -15,6 +15,7 @@ import {
 
 import { useRouter } from "expo-router";
 
+import BrandLogo from "@/components/ui/BrandLogo";
 import { useLanguage } from "@/context/LanguageContext";
 
 import colors from "@/theme/colors";
@@ -119,6 +120,7 @@ export default function WelcomeScreen() {
         ===================================== */}
 
         <View style={styles.topSection} pointerEvents="box-none">
+          <BrandLogo size={48} style={styles.welcomeLogo} />
           {activeIndex === 1 && (
             <View style={styles.languageContainer}>
 
@@ -255,11 +257,14 @@ const styles = StyleSheet.create({
   ===================================== */
 
   topSection: {
-    alignItems: "flex-end",
-
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 22,
-
     paddingTop: 12,
+  },
+  welcomeLogo: {
+    marginRight: 12,
   },
 
   /* =====================================

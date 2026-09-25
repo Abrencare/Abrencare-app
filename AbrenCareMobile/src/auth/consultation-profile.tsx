@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { useAuth } from '@/context/AuthContext';
-import { serviceThemes } from '@/service/serviceTheme';
+import { useServiceTheme } from '@/service/serviceTheme';
 import type { Gender } from '@/types/auth';
 import AuthField from '@/auth/AuthField';
 import AuthScaffold from '@/auth/AuthScaffold';
@@ -15,7 +15,7 @@ export default function ConsultationProfileScreen() {
   const router = useRouter();
   const { t } = useLanguage();
   const { user, hasService, completeConsultationOnboarding } = useAuth();
-  const theme = serviceThemes.consultation;
+  const theme = useServiceTheme('consultation');
 
   const [dateOfBirth, setDateOfBirth] = useState(user?.dateOfBirth ?? '');
   const [gender, setGender] = useState<Gender | null>(user?.gender ?? null);

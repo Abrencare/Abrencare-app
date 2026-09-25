@@ -59,7 +59,7 @@ export default function AuthField({
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor="#A8AEB4"
+          placeholderTextColor={theme.muted}
           secureTextEntry={Boolean(secure) && !visible}
           autoCapitalize={autoCapitalize}
           autoCorrect={false}
@@ -71,7 +71,7 @@ export default function AuthField({
             <Ionicons
               name={visible ? 'eye-off-outline' : 'eye-outline'}
               size={18}
-              color="#9AA3AF"
+              color={theme.muted}
             />
           </Pressable>
         )}

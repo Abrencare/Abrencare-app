@@ -1,18 +1,22 @@
 import { useAuth } from "@/context/AuthContext";
-import { dashboardFor, onboardingPath, serviceThemes } from "@/service/serviceTheme";
+import { dashboardFor, getServiceTheme, onboardingPath } from "@/service/serviceTheme";
 import type { CareService } from "@/types/auth";
+import { useAppTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Dimensions,
+  Image,
+  type ImageSourcePropType,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
   Text,
   View,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   Extrapolation,
   interpolate,
@@ -37,8 +41,16 @@ type ServiceItem = {
   accentColor: string;
   iconBackground: string;
   cardBackground: string;
+  backgroundPhoto?: ImageSourcePropType;
   tags?: string[];
 };
+
+function withAlpha(hex: string, alpha: number) {
+  const raw = hex.replace("#", "");
+  const full = raw.length === 3 ? raw.split("").map((part) => part + part).join("") : raw;
+  const value = Number.parseInt(full, 16);
+  return `rgba(${(value >> 16) & 255},${(value >> 8) & 255},${value & 255},${alpha})`;
+}
 
 type Props = {
   services?: ServiceItem[];
@@ -47,7 +59,11 @@ type Props = {
 export default function ServiceCard({ services }: Props) {
   const router = useRouter();
   const { t } = useLanguage();
+  const { colors, isDark } = useAppTheme();
   const { hasService, needsOnboarding } = useAuth();
+  const familyTheme = getServiceTheme("family", isDark);
+  const executiveTheme = getServiceTheme("executive", isDark);
+  const consultationTheme = getServiceTheme("consultation", isDark);
   const scrollX = useSharedValue(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [trackWidth, setTrackWidth] = useState(SCREEN_WIDTH - 64);
@@ -61,9 +77,10 @@ export default function ServiceCard({ services }: Props) {
       category: t.home.familyCategory,
       description: t.home.familyDescription,
       features: [...t.home.familyFeatures],
-      accentColor: serviceThemes.family.accent,
-      iconBackground: serviceThemes.family.accent,
-      cardBackground: serviceThemes.family.card,
+      accentColor: familyTheme.accent,
+      iconBackground: familyTheme.accent,
+      cardBackground: familyTheme.card,
+      backgroundPhoto: require("@/assets/images/service-family-bg.jpg"),
       tags: [...t.home.familyTags],
     },
     {
@@ -73,9 +90,10 @@ export default function ServiceCard({ services }: Props) {
       category: t.home.executiveCategory,
       description: t.home.executiveDescription,
       features: [...t.home.executiveFeatures],
-      accentColor: serviceThemes.executive.accent,
-      iconBackground: serviceThemes.executive.accent,
-      cardBackground: serviceThemes.executive.card,
+      accentColor: executiveTheme.accent,
+      iconBackground: executiveTheme.accent,
+      cardBackground: executiveTheme.card,
+      backgroundPhoto: require("@/assets/images/service-executive-bg.jpg"),
       tags: [...t.home.executiveTags],
     },
     {
@@ -85,9 +103,10 @@ export default function ServiceCard({ services }: Props) {
       category: t.home.consultationCategory,
       description: t.home.consultationDescription,
       features: [...t.home.consultationFeatures],
-      accentColor: serviceThemes.consultation.accent,
-      iconBackground: serviceThemes.consultation.accent,
-      cardBackground: serviceThemes.consultation.card,
+      accentColor: consultationTheme.accent,
+      iconBackground: consultationTheme.accent,
+      cardBackground: consultationTheme.card,
+      backgroundPhoto: require("@/assets/images/service-consultation-bg.jpg"),
       tags: [...t.home.consultationTags],
     },
   ];
@@ -131,11 +150,11 @@ export default function ServiceCard({ services }: Props) {
     >
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>{t.home.ourServices}</Text>
-          <Text style={styles.headerHint}>{t.home.swipeHint}</Text>
+          <Text style={[styles.headerTitle, { color: colors.muted }]}>{t.home.ourServices}</Text>
+          <Text style={[styles.headerHint, { color: colors.muted }]}>{t.home.swipeHint}</Text>
         </View>
-        <View style={styles.swipeCue}>
-          <Ionicons name="swap-horizontal" size={16} color="#9CA3AF" />
+        <View style={[styles.swipeCue, { backgroundColor: colors.card }]}>
+          <Ionicons name="swap-horizontal" size={16} color={colors.iconMuted} />
         </View>
       </View>
 
@@ -158,7 +177,7 @@ export default function ServiceCard({ services }: Props) {
         contentContainerStyle={{
           paddingHorizontal: sideInset,
         }}
-        extraData={cardWidth}
+        extraData={`${cardWidth}-${isDark}`}
         getItemLayout={(_, index) => ({
           length: step,
           offset: step * index,
@@ -171,6 +190,9 @@ export default function ServiceCard({ services }: Props) {
             cardWidth={cardWidth}
             scrollX={scrollX}
             chooseLabel={t.home.chooseService}
+            titleColor={colors.text}
+            bodyColor={colors.muted}
+            featureColor={colors.text}
             onChoose={() => handleChoose(item.id as CareService)}
           />
         )}
@@ -184,7 +206,7 @@ export default function ServiceCard({ services }: Props) {
               styles.dot,
               {
                 backgroundColor:
-                  index === activeIndex ? item.accentColor : "#D6D3D1",
+                  index === activeIndex ? item.accentColor : colors.border,
                 width: index === activeIndex ? 22 : 8,
               },
             ]}
@@ -192,30 +214,30 @@ export default function ServiceCard({ services }: Props) {
         ))}
       </View>
 
-      <View style={styles.statsContainer}>
+      <View style={[styles.statsContainer, { backgroundColor: colors.card }]}>
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>+500</Text>
-          <Text style={styles.statLabel}>{t.home.familiesServed}</Text>
+          <Text style={[styles.statNumber, { color: colors.text }]}>+500</Text>
+          <Text style={[styles.statLabel, { color: colors.muted }]}>{t.home.familiesServed}</Text>
         </View>
 
-        <View style={styles.statDivider} />
+        <View style={[styles.statDivider, { backgroundColor: colors.divider }]} />
 
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>24/7</Text>
-          <Text style={styles.statLabel}>{t.home.supportAvailable}</Text>
+          <Text style={[styles.statNumber, { color: colors.text }]}>24/7</Text>
+          <Text style={[styles.statLabel, { color: colors.muted }]}>{t.home.supportAvailable}</Text>
         </View>
 
-        <View style={styles.statDivider} />
+        <View style={[styles.statDivider, { backgroundColor: colors.divider }]} />
 
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>16yr</Text>
-          <Text style={styles.statLabel}>{t.home.gapClosing}</Text>
+          <Text style={[styles.statNumber, { color: colors.text }]}>16yr</Text>
+          <Text style={[styles.statLabel, { color: colors.muted }]}>{t.home.gapClosing}</Text>
         </View>
       </View>
 
       <View style={styles.footer}>
-        <Ionicons name="shield-checkmark-outline" size={17} color="#8E8E93" />
-        <Text style={styles.footerText}>{t.home.footer}</Text>
+        <Ionicons name="shield-checkmark-outline" size={17} color={colors.iconMuted} />
+        <Text style={[styles.footerText, { color: colors.muted }]}>{t.home.footer}</Text>
       </View>
     </View>
   );
@@ -227,6 +249,9 @@ function ServiceSlide({
   cardWidth,
   scrollX,
   chooseLabel,
+  titleColor,
+  bodyColor,
+  featureColor,
   onChoose,
 }: {
   item: ServiceItem;
@@ -234,6 +259,9 @@ function ServiceSlide({
   cardWidth: number;
   scrollX: SharedValue<number>;
   chooseLabel: string;
+  titleColor: string;
+  bodyColor: string;
+  featureColor: string;
   onChoose: () => void;
 }) {
   const step = cardWidth + CARD_GAP;
@@ -302,6 +330,29 @@ function ServiceSlide({
           },
         ]}
       >
+        {item.backgroundPhoto ? (
+          <>
+            <Image
+              source={item.backgroundPhoto}
+              style={styles.backgroundPhoto}
+              resizeMode="cover"
+            />
+            <LinearGradient
+              colors={[
+                item.cardBackground,
+                withAlpha(item.cardBackground, 0.96),
+                withAlpha(item.cardBackground, 0.55),
+                withAlpha(item.cardBackground, 0.08),
+              ]}
+              locations={[0, 0.36, 0.62, 1]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.backgroundFade}
+            />
+          </>
+        ) : null}
+
+        <View style={styles.cardContent}>
         <View style={styles.cardHeader}>
           <Animated.View
             style={[
@@ -318,8 +369,8 @@ function ServiceSlide({
           </Text>
         </View>
 
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.description}>{item.description}</Text>
+        <Text style={[styles.title, { color: titleColor }]}>{item.title}</Text>
+        <Text style={[styles.description, { color: bodyColor }]}>{item.description}</Text>
 
         <View style={styles.features}>
           {item.features.map((feature, featureIndex) => (
@@ -332,7 +383,7 @@ function ServiceSlide({
                 size={16}
                 color={item.accentColor}
               />
-              <Text style={styles.featureText}>{feature}</Text>
+              <Text style={[styles.featureText, { color: featureColor }]}>{feature}</Text>
             </View>
           ))}
         </View>
@@ -360,6 +411,7 @@ function ServiceSlide({
         >
           <Text style={styles.chooseButtonText}>{chooseLabel}</Text>
           <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+        </View>
         </View>
       </Pressable>
     </Animated.View>

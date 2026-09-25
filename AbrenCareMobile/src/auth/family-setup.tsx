@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 import { useAuth } from '@/context/AuthContext';
-import { serviceThemes } from '@/service/serviceTheme';
+import { useServiceTheme, type ServiceTheme } from '@/service/serviceTheme';
 import {
   kindFromRelationship,
   type FamilyCareNeed,
@@ -54,7 +54,7 @@ export default function FamilySetupScreen() {
   const { t } = useLanguage();
   const { user, hasService, setFamilyMembers, completeFamilyOnboarding } =
     useAuth();
-  const theme = serviceThemes.family;
+  const theme = useServiceTheme('family');
   const copy = t.familyAdd;
 
   const [members, setMembers] = useState<FamilyMember[]>(
@@ -199,7 +199,7 @@ function Overview({
 }: {
   members: FamilyMember[];
   copy: ReturnType<typeof useLanguage>['t']['familyAdd'];
-  theme: typeof serviceThemes.family;
+  theme: ServiceTheme;
   onAdd: () => void;
   onContinue: () => void;
 }) {
@@ -351,7 +351,7 @@ function Wizard({
   canStep1: boolean;
   canStep2: boolean;
   copy: ReturnType<typeof useLanguage>['t']['familyAdd'];
-  theme: typeof serviceThemes.family;
+  theme: ServiceTheme;
   onBack: () => void;
   onContinue: () => void;
 }) {

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
+import BrandLogo from '@/components/ui/BrandLogo';
 import type { CareService } from '@/types/auth';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -58,22 +59,26 @@ export default function AuthNav({ service, active, accent, muted, card }: Props)
         <Ionicons name="chevron-back" size={20} color={muted} />
       </Pressable>
 
-      <View style={styles.toggle}>
+      <BrandLogo size={36} />
+
+      <View style={[styles.toggle, { backgroundColor: card }]}>
         <Pressable onPress={() => go('signup')} hitSlop={10}>
           <Text
             style={[
               styles.toggleText,
+              { color: muted },
               active === 'signup' && { color: accent, fontWeight: '700' },
             ]}
           >
             {t.auth.signUp}
           </Text>
         </Pressable>
-        <Text style={styles.divider}>·</Text>
+        <Text style={[styles.divider, { color: muted }]}>·</Text>
         <Pressable onPress={() => go('signin')} hitSlop={10}>
           <Text
             style={[
               styles.toggleText,
+              { color: muted },
               active === 'signin' && { color: accent, fontWeight: '700' },
             ]}
           >

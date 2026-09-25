@@ -23,7 +23,7 @@ export function AnimatedSplashOverlay() {
 
   return (
     <View style={styles.splashOverlay}>
-      <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />
+      <Image style={styles.image} source={require('@/assets/images/abrencare-logo.png')} />
     </View>
   );
 }
@@ -37,7 +37,7 @@ export function AnimatedIcon() {
 
       <View style={[styles.background, { transform: [{ scale: INITIAL_SCALE_FACTOR }] }]} />
       <View style={styles.imageContainer}>
-        <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />
+        <Image style={styles.image} source={require('@/assets/images/abrencare-logo.png')} />
       </View>
     </View>
   );
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
   },
   splashOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: '#208AEF',
+    backgroundColor: '#F7F8F6',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,

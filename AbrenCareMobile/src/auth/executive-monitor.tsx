@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 import { useAuth } from '@/context/AuthContext';
-import { serviceThemes } from '@/service/serviceTheme';
+import { useServiceTheme } from '@/service/serviceTheme';
 import type { MonitorFrequency, MonitorMetric } from '@/types/auth';
 import AuthScaffold from '@/auth/AuthScaffold';
 import Replace from '@/components/gates/Replace';
@@ -24,7 +24,7 @@ export default function ExecutiveMonitorScreen() {
   const router = useRouter();
   const { t } = useLanguage();
   const { user, hasService, saveExecutiveCare } = useAuth();
-  const theme = serviceThemes.executive;
+  const theme = useServiceTheme('executive');
 
   const [metrics, setMetrics] = useState<MonitorMetric[]>(
     user?.monitoring ?? ['bp', 'heartRate', 'oxygen', 'weight', 'glucose', 'general'],

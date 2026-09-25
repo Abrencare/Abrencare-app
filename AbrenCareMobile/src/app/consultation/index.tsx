@@ -12,6 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
+import BrandLogo from "@/components/ui/BrandLogo";
 import { useConsultations } from "@/context/ConsultationContext";
 import {
   SPECIALTIES,
@@ -25,10 +26,13 @@ import {
 import { monthTitle } from "@/utilities/consultationFormat";
 import { fromDateKey, toDateKey } from "@/context/AppointmentsContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useThemedStyles } from "@/theme/useThemedStyles";
 
 const BLUE = "#7E93A8";
 
 export default function ConsultationBooking() {
+
+  const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
   const router = useRouter();
   const { draft, setDraft, book, isSlotTaken } = useConsultations();
@@ -122,7 +126,10 @@ export default function ConsultationBooking() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <Text style={styles.headerLabel}>{t.consultation.headerLabel}</Text>
+        <View style={styles.brandRow}>
+          <BrandLogo size={36} />
+          <Text style={styles.headerLabel}>{t.consultation.headerLabel}</Text>
+        </View>
         <Text style={styles.headerTitle}>{t.consultation.title}</Text>
       </View>
 
@@ -507,7 +514,7 @@ function FilterChip({
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: "#F4F6F8",
@@ -519,12 +526,19 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
 
+  brandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4,
+  },
+
   headerLabel: {
     fontSize: 10,
     letterSpacing: 1.3,
     color: BLUE,
     fontWeight: "700",
-    marginBottom: 3,
+    marginBottom: 0,
   },
 
   headerTitle: {

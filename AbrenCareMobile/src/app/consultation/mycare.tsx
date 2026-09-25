@@ -23,10 +23,13 @@ import { doctorById, specialtyLabel } from "@/data/doctors";
 import { longDate, shortDate } from "@/utilities/consultationFormat";
 import { formatDateKey } from "@/utilities/familyFormat";
 import { useLanguage } from "@/context/LanguageContext";
+import { useThemedStyles } from "@/theme/useThemedStyles";
 
 const BLUE = "#7E93A8";
 
 export default function ConsultationMyCare() {
+
+  const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
   const router = useRouter();
   const { upcoming, recent, followUpDate, cancel, setDraft } =
@@ -343,7 +346,7 @@ function SummaryBody({ consultation }: { consultation: Consultation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: "#F4F6F8",

@@ -5,13 +5,49 @@ import { Spacing } from '@/theme/spacing';
 
 export const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.background,
+    backgroundColor: '#F7F8F6',
     flex: 1,
   },
+  headerWrap: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
   content: {
-    paddingBottom: 100,
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.lg,
+    paddingBottom: 120,
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    gap: 16,
+  },
+  continueCard: {
+    backgroundColor: '#1A3A32',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  continueIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  continueCopy: {
+    flex: 1,
+  },
+  continueKicker: {
+    color: '#C9D4CE',
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  continueTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
   header: {
     alignItems: 'center',

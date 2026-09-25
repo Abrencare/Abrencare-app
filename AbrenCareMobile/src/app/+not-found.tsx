@@ -12,8 +12,11 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '@/context/LanguageContext';
+import { useThemedStyles } from '@/theme/useThemedStyles';
 
 export default function NotFoundScreen() {
+
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const { t } = useLanguage();
 
@@ -81,7 +84,7 @@ export default function NotFoundScreen() {
 const { width, height } = Dimensions.get('window');
 const isSmallDevice = width < 375 || height < 600;
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F8F9FA',

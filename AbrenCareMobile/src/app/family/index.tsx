@@ -18,23 +18,36 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+import BrandLogo from "@/components/ui/BrandLogo";
 import { useAuth } from "@/context/AuthContext";
 import { useAppointments } from "@/context/AppointmentsContext";
 import { formatDateKey, reminderLabel } from "@/utilities/familyFormat";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAppTheme } from "@/context/ThemeContext";
+import { useThemedStyles } from "@/theme/useThemedStyles";
 
 const GREEN = "#8B9A7C";
 const CARE_PHONE = "+251912345678";
 
 type Tone = "good" | "info" | "flag";
 
-const tones: Record<Tone, { text: string; bg: string }> = {
+const lightTones: Record<Tone, { text: string; bg: string }> = {
   good: { text: "#8B9A7C", bg: "#E8EDE4" },
   info: { text: "#556CD6", bg: "#E8EEFF" },
   flag: { text: "#D64545", bg: "#FFE8E8" },
 };
 
+const darkTones: Record<Tone, { text: string; bg: string }> = {
+  good: { text: "#8B9A7C", bg: "#243028" },
+  info: { text: "#8FA3FF", bg: "#1E2433" },
+  flag: { text: "#E07070", bg: "#2A1C1C" },
+};
+
 export default function FamilyOverview() {
+
+  const styles = useThemedStyles(baseStyles);
+  const { isDark } = useAppTheme();
+  const tones = isDark ? darkTones : lightTones;
   const { t } = useLanguage();
   const router = useRouter();
   const { user } = useAuth();
@@ -158,9 +171,10 @@ export default function FamilyOverview() {
           onPress={() => router.replace("/(tabs)")}
           hitSlop={10}
         >
-          <Ionicons name="chevron-back" size={22} color="#4A5568" />
+          <Ionicons name="chevron-back" size={22} color={isDark ? "#A3B0AA" : "#4A5568"} />
         </TouchableOpacity>
 
+        <BrandLogo size={34} />
         <Text style={styles.active}>{t.family.activeService}</Text>
 
         <View style={styles.planChip}>
@@ -473,7 +487,7 @@ export default function FamilyOverview() {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F6F2EA",

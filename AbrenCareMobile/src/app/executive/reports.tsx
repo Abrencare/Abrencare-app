@@ -24,11 +24,14 @@ import {
   type TrendSeries,
 } from "@/data/weeklyReport";
 import { useLanguage } from "@/context/LanguageContext";
+import { useThemedStyles } from "@/theme/useThemedStyles";
 
 const CHART_HEIGHT = 104;
 const CHART_INSET = 10;
 
 export default function ExecutiveReports() {
+
+  const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
   const router = useRouter();
 
@@ -461,7 +464,7 @@ function LineChart({ trend }: { trend: TrendSeries }) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: "#F8F4EC",

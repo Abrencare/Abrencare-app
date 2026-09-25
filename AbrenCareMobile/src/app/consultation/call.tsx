@@ -8,6 +8,7 @@ import { initialsFor, useAuth } from "@/context/AuthContext";
 import { useConsultations } from "@/context/ConsultationContext";
 import { doctorById, specialtyLabel } from "@/data/doctors";
 import { useLanguage } from "@/context/LanguageContext";
+import { useThemedStyles } from "@/theme/useThemedStyles";
 
 function formatDuration(seconds: number) {
   const minutes = `${Math.floor(seconds / 60)}`.padStart(2, "0");
@@ -16,6 +17,8 @@ function formatDuration(seconds: number) {
 }
 
 export default function ConsultationCall() {
+
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -173,7 +176,7 @@ function ControlButton({
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#16202B",

@@ -53,6 +53,23 @@ const styles = StyleSheet.create({
     minHeight: 390,
     borderWidth: 1.5,
     overflow: "hidden",
+    position: "relative",
+  },
+
+  backgroundPhoto: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: "62%",
+  },
+
+  backgroundFade: {
+    ...StyleSheet.absoluteFillObject,
+  },
+
+  cardContent: {
+    zIndex: 1,
   },
 
   cardAccent: {
@@ -69,6 +86,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 14,
     marginTop: 8,
+    zIndex: 1,
   },
 
   iconBox: {
@@ -91,6 +109,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "800",
     color: "#1B2230",
+    zIndex: 1,
   },
 
   description: {
@@ -98,10 +117,12 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     fontSize: 14,
     lineHeight: 21,
+    zIndex: 1,
   },
 
   features: {
     marginTop: 14,
+    zIndex: 1,
   },
 
   featureItem: {
@@ -121,6 +142,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     marginTop: 8,
+    zIndex: 1,
   },
 
   tag: {
@@ -144,6 +166,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
+    zIndex: 1,
   },
 
   chooseButtonPressed: {

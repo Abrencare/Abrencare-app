@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useAuth } from '@/context/AuthContext';
-import { serviceThemes } from '@/service/serviceTheme';
+import { useServiceTheme } from '@/service/serviceTheme';
 import AuthScaffold from '@/auth/AuthScaffold';
 import Replace from '@/components/gates/Replace';
 import { useLanguage } from '@/context/LanguageContext';
@@ -13,7 +13,7 @@ export default function ExecutiveReadyScreen() {
   const router = useRouter();
   const { t } = useLanguage();
   const { user, hasService, completeExecutiveOnboarding } = useAuth();
-  const theme = serviceThemes.executive;
+  const theme = useServiceTheme('executive');
 
   if (!user || !hasService('executive')) {
     return (

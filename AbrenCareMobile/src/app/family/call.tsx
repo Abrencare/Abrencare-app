@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 import { useLanguage } from '@/context/LanguageContext';
+import { useThemedStyles } from '@/theme/useThemedStyles';
 
 function formatDuration(seconds: number) {
   const minutes = `${Math.floor(seconds / 60)}`.padStart(2, '0');
@@ -13,6 +14,8 @@ function formatDuration(seconds: number) {
 }
 
 export default function FamilyCall() {
+
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const { t } = useLanguage();
 
@@ -139,7 +142,7 @@ function ControlButton({
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#16211B',

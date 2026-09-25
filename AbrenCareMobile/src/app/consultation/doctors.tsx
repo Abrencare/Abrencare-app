@@ -23,10 +23,13 @@ import {
   type SpecialtyId,
 } from "@/data/doctors";
 import { useLanguage } from "@/context/LanguageContext";
+import { useThemedStyles } from "@/theme/useThemedStyles";
 
 const BLUE = "#7E93A8";
 
 export default function ConsultationDoctors() {
+
+  const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
   const router = useRouter();
   const { setDraft } = useConsultations();
@@ -348,7 +351,7 @@ function FilterChip({
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: "#F4F6F8",

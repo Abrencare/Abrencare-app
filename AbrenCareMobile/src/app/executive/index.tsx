@@ -9,10 +9,16 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
+import BrandLogo from "@/components/ui/BrandLogo";
 import { initialsFor, useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAppTheme } from "@/context/ThemeContext";
+import { useThemedStyles } from "@/theme/useThemedStyles";
 
 export default function ExecutiveOverview() {
+
+  const styles = useThemedStyles(baseStyles);
+  const { isDark } = useAppTheme();
   const { t } = useLanguage();
   const router = useRouter();
   const { user, signOut } = useAuth();
@@ -40,7 +46,7 @@ export default function ExecutiveOverview() {
       value: "118/76",
       label: t.executive.bp,
       status: t.executive.normal,
-      tint: "#FFE7E7",
+      tint: isDark ? "#2A1C1C" : "#FFE7E7",
       iconColor: "#D9534F",
     },
     {
@@ -48,7 +54,7 @@ export default function ExecutiveOverview() {
       value: "72 BPM",
       label: t.executive.heartRateShort,
       status: t.executive.normal,
-      tint: "#F3E8D0",
+      tint: isDark ? "#2A2418" : "#F3E8D0",
       iconColor: "#C4A05A",
     },
     {
@@ -56,7 +62,7 @@ export default function ExecutiveOverview() {
       value: "98%",
       label: t.executive.oxygenShort,
       status: t.executive.normal,
-      tint: "#EEF2FF",
+      tint: isDark ? "#1E2433" : "#EEF2FF",
       iconColor: "#7C8CD6",
     },
     {
@@ -64,7 +70,7 @@ export default function ExecutiveOverview() {
       value: "74 kg",
       label: t.executive.weight,
       status: t.executive.stable,
-      tint: "#EAF6EA",
+      tint: isDark ? "#1C2A1F" : "#EAF6EA",
       iconColor: "#57A35A",
     },
   ];
@@ -75,7 +81,10 @@ export default function ExecutiveOverview() {
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
-      <Text style={styles.smallTitle}>{t.executive.confidential}</Text>
+      <View style={styles.brandRow}>
+        <BrandLogo size={36} />
+        <Text style={styles.smallTitle}>{t.executive.confidential}</Text>
+      </View>
       <Text style={styles.title}>{t.executive.title}</Text>
 
       {/* Greeting */}
@@ -364,13 +373,19 @@ export default function ExecutiveOverview() {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F8F4EC",
     padding: 16,
   },
 
+  brandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 6,
+  },
   smallTitle: {
     color: "#C4A05A",
     fontSize: 10,

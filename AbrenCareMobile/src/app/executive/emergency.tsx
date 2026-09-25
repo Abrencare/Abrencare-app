@@ -20,6 +20,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { useLanguage } from "@/context/LanguageContext";
+import { useThemedStyles } from "@/theme/useThemedStyles";
 
 const COORDINATOR_PHONE = "+251912345678";
 const EMERGENCY_PHONE = "907";
@@ -29,6 +30,8 @@ const RED = "#D94F52";
 type StepStatus = "completed" | "current" | "pending";
 
 export default function ExecutiveEmergency() {
+
+  const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
   const router = useRouter();
 
@@ -293,7 +296,7 @@ function TimelineItem({
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: RED,

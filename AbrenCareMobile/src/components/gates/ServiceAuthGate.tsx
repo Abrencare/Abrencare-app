@@ -11,6 +11,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 import { useLanguage } from '@/context/LanguageContext';
+import { useServiceTheme } from '@/service/serviceTheme';
+import { useThemedStyles } from '@/theme/useThemedStyles';
 
 type Variant = 'family' | 'executive';
 
@@ -66,10 +68,21 @@ type Props = {
 };
 
 export default function ServiceAuthGate({ variant, redirectTo }: Props) {
+
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const { t } = useLanguage();
+  const serviceTheme = useServiceTheme(variant);
 
-  const theme = themes[variant];
+  const theme = {
+    ...themes[variant],
+    background: serviceTheme.background,
+    accentSoft: serviceTheme.accentSoft,
+    titleColor: serviceTheme.text,
+    subtitleColor: serviceTheme.muted,
+    labelColor: serviceTheme.muted,
+    borderColor: serviceTheme.border,
+  };
   const copy = variant === 'family' ? t.authGate : t.executiveGate;
   const icons = benefitIcons[variant];
 
@@ -172,7 +185,7 @@ export default function ServiceAuthGate({ variant, redirectTo }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F6F2EA',

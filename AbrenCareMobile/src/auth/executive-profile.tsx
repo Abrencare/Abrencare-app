@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { useAuth } from '@/context/AuthContext';
-import { serviceThemes } from '@/service/serviceTheme';
+import { useServiceTheme } from '@/service/serviceTheme';
 import type { Gender } from '@/types/auth';
 import AuthField from '@/auth/AuthField';
 import AuthScaffold from '@/auth/AuthScaffold';
@@ -15,7 +15,7 @@ export default function ExecutiveProfileScreen() {
   const router = useRouter();
   const { t } = useLanguage();
   const { user, hasService, saveExecutiveProfile } = useAuth();
-  const theme = serviceThemes.executive;
+  const theme = useServiceTheme('executive');
 
   const [dateOfBirth, setDateOfBirth] = useState(user?.dateOfBirth ?? '');
   const [gender, setGender] = useState<Gender | null>(user?.gender ?? null);
