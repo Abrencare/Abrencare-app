@@ -1,22 +1,24 @@
+import logging
 from datetime import datetime, timedelta
 
-from django.shortcuts import get_object_or_404
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from appointments.models import Appointment
 from doctors.models import Doctor, Specialty
 
-from .models import Consultation
+from .models import Consultation, ConsultationProfile
 from .permissions import IsDoctorUser, IsPatientUser
 from .serializers import (
     ConsultationBookingSerializer,
     ConsultationCancelSerializer,
     ConsultationDoctorSerializer,
+    ConsultationOnboardingSerializer,
+    ConsultationProfileSerializer,
     ConsultationSerializer,
     ConsultationSlotSerializer,
     PrescriptionCreateSerializer,
@@ -31,6 +33,109 @@ from .services.services import (
     create_prescription,
     start_consultation,
 )
+from .services.consultation_notification_service import ConsultationNotificationService
+
+logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# HELPERS
+# ============================================================
+
+def get_user_patient(user):
+    return getattr(user, "patient_profile", None)
+
+
+def get_user_doctor(user):
+    # The two apps disagree on the reverse name; accept either.
+    return getattr(user, "doctor_profile", None) or getattr(user, "doctor", None)
+
+
+def get_consultation_profile(user):
+    """The caller's ConsultationProfile, or None if they lack the service."""
+    return (
+        ConsultationProfile.objects
+        .select_related("user_service")
+        .filter(
+            user_service__user=user,
+            user_service__service__code="consultation",
+        )
+        .first()
+    )
+
+
+def consultation_queryset():
+    return Consultation.objects.select_related(
+        "appointment",
+        "appointment__patient",
+        "appointment__patient__user",
+        "appointment__doctor",
+        "appointment__doctor__user",
+        "appointment__doctor__specialty",
+    )
+
+
+def notify(callback, *args, **kwargs):
+    """A failed email/SMS must never turn a committed action into a 500."""
+    try:
+        callback(*args, **kwargs)
+    except Exception:
+        logger.exception("Consultation notification failed")
+
+
+def patient_consultation(request, pk):
+    patient = get_user_patient(request.user)
+    if patient is None:
+        return None
+    return (
+        consultation_queryset()
+        .filter(pk=pk, appointment__patient=patient)
+        .first()
+    )
+
+
+def doctor_consultation(request, pk):
+    doctor = get_user_doctor(request.user)
+    if doctor is None:
+        return None
+    return (
+        consultation_queryset()
+        .filter(pk=pk, appointment__doctor=doctor)
+        .first()
+    )
+
+
+def cancel_for_patient(request, pk):
+    """Shared by POST .../cancel/ and DELETE .../<pk>/. Returns (consultation, error)."""
+    input_serializer = ConsultationCancelSerializer(data=request.data)
+    input_serializer.is_valid(raise_exception=True)
+
+    consultation = patient_consultation(request, pk)
+    if consultation is None:
+        return None, Response(
+            {"detail": "Consultation not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    try:
+        consultation = cancel_consultation(
+            consultation=consultation,
+            user=request.user,
+            reason=input_serializer.validated_data["reason"],
+        )
+    except ValueError as exc:
+        return None, Response(
+            {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Notification runs after the service commits.
+    notify(
+        ConsultationNotificationService.consultation_cancelled,
+        consultation,
+        cancelled_by=request.user,
+        reason=input_serializer.validated_data["reason"],
+    )
+    return consultation, None
 
 
 # ============================================================
@@ -38,14 +143,11 @@ from .services.services import (
 # ============================================================
 
 class SpecialtyListView(APIView):
-    """Return active specialties available for digital consultation."""
-
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         specialties = Specialty.objects.filter(is_active=True)
-        serializer = SpecialtySerializer(specialties, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(SpecialtySerializer(specialties, many=True).data)
 
 
 # ============================================================
@@ -53,119 +155,103 @@ class SpecialtyListView(APIView):
 # ============================================================
 
 class ConsultationDoctorListView(APIView):
-    """
-    Return approved doctors.
-    Optional: ?specialty=<specialty_id>
-    """
+    """Approved doctors. Optional: ?specialty=<id>"""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        queryset = Doctor.objects.filter(
+            approval_status=Doctor.ApprovalStatus.APPROVED,
+            specialty__is_active=True,
+        ).select_related("user", "specialty")
+
         specialty_id = request.query_params.get("specialty")
-
-        queryset = (
-            Doctor.objects
-            .filter(approval_status=Doctor.ApprovalStatus.APPROVED, specialty__is_active=True)
-            .select_related("user", "specialty")
-        )
-
         if specialty_id:
             queryset = queryset.filter(specialty_id=specialty_id)
 
-        serializer = ConsultationDoctorSerializer(queryset, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(ConsultationDoctorSerializer(queryset, many=True).data)
 
 
 # ============================================================
-# AVAILABILITY
+# AVAILABILITY   GET /api/consultations/availability/?doctor=12&date=2026-08-30
 # ============================================================
 
 class ConsultationAvailabilityView(APIView):
-    """
-    Return available consultation slots for a doctor/date.
-
-    Example:
-        GET /api/consultations/availability/?doctor=12&date=2026-08-30
-    """
-
-    permission_classes = [IsAuthenticated]
-    SLOT_INTERVAL_MINUTES = 30
+    permission_classes = [IsAuthenticated, IsPatientUser]
 
     def get(self, request):
         doctor_id = request.query_params.get("doctor")
         date_string = request.query_params.get("date")
 
         if not doctor_id:
-            return Response({"doctor": "This parameter is required."}, status=status.HTTP_400_BAD_REQUEST)
-
+            return Response({"doctor": "This parameter is required."}, status=400)
         if not date_string:
-            return Response({"date": "This parameter is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"date": "This parameter is required."}, status=400)
 
         try:
             doctor_id = int(doctor_id)
         except ValueError:
-            return Response({"doctor": "Must be a valid integer id."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"doctor": "Must be a valid integer id."}, status=400)
 
         try:
             appointment_date = datetime.strptime(date_string, "%Y-%m-%d").date()
         except ValueError:
-            return Response({"date": "Use YYYY-MM-DD format."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"date": "Use YYYY-MM-DD format."}, status=400)
 
         if appointment_date < timezone.localdate():
-            return Response({"date": "Date cannot be in the past."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"date": "Date cannot be in the past."}, status=400)
 
         try:
             doctor = (
-                Doctor.objects
-                .select_related("user", "specialty")
+                Doctor.objects.select_related("user", "specialty")
                 .get(pk=doctor_id, approval_status=Doctor.ApprovalStatus.APPROVED)
             )
         except Doctor.DoesNotExist:
-            return Response({"doctor": "Doctor not found or unavailable."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"doctor": "Doctor not found or unavailable."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         weekday = appointment_date.strftime("%A").lower()
+        windows = doctor.availability.filter(
+            day=weekday, is_available=True
+        ).order_by("start_time")
 
-        availability_windows = (
-            doctor.availability
-            .filter(day=weekday, is_available=True)
-            .order_by("start_time")
+        active = doctor.appointments.filter(
+            appointment_date=appointment_date,
+            status__in=ACTIVE_APPOINTMENT_STATUSES,
         )
-
-        active_appointments = (
-            doctor.appointments
-            .filter(appointment_date=appointment_date, status__in=ACTIVE_APPOINTMENT_STATUSES)
-            .order_by("appointment_time")
-        )
-
-        # Pre-compute booked intervals once instead of re-deriving them per slot.
-        booked_intervals = [
-            (
-                datetime.combine(appointment_date, a.appointment_time),
-                datetime.combine(appointment_date, a.appointment_time) + timedelta(minutes=a.duration_minutes),
+        booked = []
+        for a in active:
+            start = datetime.combine(appointment_date, a.appointment_time)
+            booked.append(
+                (start, start + timedelta(minutes=a.duration_minutes))
             )
-            for a in active_appointments
-        ]
 
         duration = doctor.consultation_duration
+        now_local = timezone.localtime().replace(tzinfo=None)
         slots = []
 
-        for window in availability_windows:
+        for window in windows:
             current = datetime.combine(appointment_date, window.start_time)
             window_end = datetime.combine(appointment_date, window.end_time)
 
+            # Step by the consultation duration, NOT a fixed interval.
+            # Otherwise a 45-min consultation produces overlapping slots.
             while current + timedelta(minutes=duration) <= window_end:
-                slot_start = current
                 slot_end = current + timedelta(minutes=duration)
 
-                available = not any(
-                    slot_start < booked_end and slot_end > booked_start
-                    for booked_start, booked_end in booked_intervals
-                )
+                # Never offer a time that has already passed today.
+                if current > now_local:
+                    available = not any(
+                        current < b_end and slot_end > b_start
+                        for b_start, b_end in booked
+                    )
+                    slots.append(
+                        {"time": current.time(), "available": available}
+                    )
 
-                slots.append({"time": current.time(), "available": available})
-                current += timedelta(minutes=self.SLOT_INTERVAL_MINUTES)
-
-        serializer = ConsultationSlotSerializer(slots, many=True)
+                current += timedelta(minutes=duration)
 
         return Response(
             {
@@ -176,208 +262,226 @@ class ConsultationAvailabilityView(APIView):
                 },
                 "date": appointment_date,
                 "duration_minutes": duration,
-                "slots": serializer.data,
-            },
-            status=status.HTTP_200_OK,
+                "slots": ConsultationSlotSerializer(slots, many=True).data,
+            }
         )
 
 
 # ============================================================
-# BOOK CONSULTATION
+# ONBOARDING   POST /api/consultations/onboarding/complete/
+#              GET  /api/consultations/profile/
 # ============================================================
 
-class ConsultationBookingView(APIView):
-    """Book a digital consultation for the authenticated patient."""
+class ConsultationOnboardingCompleteView(APIView):
+    """
+    Completes or edits the caller's consultation onboarding.
+
+    Writes to the caller's ConsultationProfile (per UserService). Returns
+    the full profile so the frontend can update its cache without a second
+    round trip.
+    """
 
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        serializer = ConsultationBookingSerializer(data=request.data)
+        serializer = ConsultationOnboardingSerializer(
+            data=request.data, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
-        doctor = get_object_or_404(Doctor, pk=request.data["doctor"])
 
         try:
-            consultation = book_consultation(
-                user=request.user,
-                doctor=doctor,
-                appointment_date=serializer.validated_data["appointment_date"],
-                appointment_time=serializer.validated_data["appointment_time"],
+            profile = serializer.save()
+        except serializers.ValidationError as exc:
+            # `save()` raises when the user lacks the consultation service.
+            return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            ConsultationProfileSerializer(profile).data,
+            status=status.HTTP_200_OK,
+        )
+
+
+class ConsultationProfileView(APIView):
+    """GET the caller's onboarding profile."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        profile = get_consultation_profile(request.user)
+        if profile is None:
+            return Response(
+                {"detail": "This account is not enrolled in the consultation service."},
+                status=status.HTTP_404_NOT_FOUND,
             )
-
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-
-        response_serializer = ConsultationSerializer(consultation)
-
-        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+        return Response(ConsultationProfileSerializer(profile).data)
 
 
 # ============================================================
-# MY CONSULTATIONS
+# BOOK   POST /api/consultations/
+# ============================================================
+
+class ConsultationBookingView(APIView):
+    permission_classes = [IsAuthenticated, IsPatientUser]
+
+    def post(self, request):
+        serializer = ConsultationBookingSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            with transaction.atomic():
+                consultation = book_consultation(
+                    user=request.user,
+                    doctor=data["doctor"],
+                    appointment_date=data["appointment_date"],
+                    appointment_time=data["appointment_time"],
+                    consultation_type=data["consultation_type"],
+                    language=data["language"],
+                    reason_for_visit=data["reason_for_visit"],
+                )
+        except ValueError as exc:
+            # `full_clean()` errors arrive as a dict; return them per-field
+            # so the frontend's `describeError` renders each cleanly.
+            if exc.args and isinstance(exc.args[0], dict):
+                return Response(exc.args[0], status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except IntegrityError:
+            return Response(
+                {"detail": "The selected slot is no longer available."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        # Notification runs AFTER the transaction has committed.
+        notify(ConsultationNotificationService.consultation_booked, consultation)
+
+        consultation = consultation_queryset().get(pk=consultation.pk)
+        return Response(
+            ConsultationSerializer(consultation).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+# ============================================================
+# MINE   GET /api/consultations/mine/
+# Cancelled consultations are hidden by default (the app removes them
+# locally on cancel). Use ?include=all for history including cancelled.
 # ============================================================
 
 class MyConsultationsView(APIView):
-    """Return consultations belonging to the authenticated patient."""
-
     permission_classes = [IsAuthenticated, IsPatientUser]
 
     def get(self, request):
-        consultations = (
-            Consultation.objects
-            .select_related(
-                "appointment",
-                "appointment__patient",
-                "appointment__doctor",
-                "appointment__doctor__user",
-                "appointment__doctor__specialty",
-            )
-            .filter(appointment__patient=request.user.patient_profile)
-            .order_by("-appointment__appointment_date", "-appointment__appointment_time")
-        )
+        patient = get_user_patient(request.user)
+        if patient is None:
+            return Response([])
 
-        serializer = ConsultationSerializer(consultations, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        queryset = consultation_queryset().filter(appointment__patient=patient)
+        if request.query_params.get("include") != "all":
+            queryset = queryset.exclude(status=Consultation.Status.CANCELLED)
+
+        return Response(ConsultationSerializer(queryset, many=True).data)
 
 
 # ============================================================
-# CONSULTATION DETAIL
+# DETAIL   GET / DELETE /api/consultations/<pk>/
+# DELETE is a soft cancel: the row and its prescriptions are kept.
 # ============================================================
 
 class ConsultationDetailView(APIView):
-    """Return one consultation belonging to the authenticated patient."""
-
     permission_classes = [IsAuthenticated, IsPatientUser]
 
     def get(self, request, pk):
-        consultation = (
-            Consultation.objects
-            .select_related(
-                "appointment",
-                "appointment__patient",
-                "appointment__doctor",
-                "appointment__doctor__user",
-                "appointment__doctor__specialty",
+        consultation = patient_consultation(request, pk)
+        if consultation is None:
+            return Response(
+                {"detail": "Consultation not found."},
+                status=status.HTTP_404_NOT_FOUND,
             )
-            .filter(pk=pk, appointment__patient=request.user.patient_profile)
-            .first()
-        )
+        return Response(ConsultationSerializer(consultation).data)
 
-        if not consultation:
-            return Response({"detail": "Consultation not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        serializer = ConsultationSerializer(consultation)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    def delete(self, request, pk):
+        _, error = cancel_for_patient(request, pk)
+        if error is not None:
+            return error
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 # ============================================================
-# CANCEL
+# CANCEL   POST /api/consultations/<pk>/cancel/
 # ============================================================
 
 class ConsultationCancelView(APIView):
-    """Cancel a consultation belonging to the authenticated patient."""
-
     permission_classes = [IsAuthenticated, IsPatientUser]
 
     def post(self, request, pk):
-        input_serializer = ConsultationCancelSerializer(data=request.data)
-        input_serializer.is_valid(raise_exception=True)
-
-        try:
-            consultation = (
-                Consultation.objects
-                .select_related("appointment", "appointment__patient")
-                .get(pk=pk, appointment__patient=request.user.patient_profile)
-            )
-        except Consultation.DoesNotExist:
-            return Response({"detail": "Consultation not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        try:
-            consultation = cancel_consultation(
-                consultation=consultation,
-                user=request.user,
-                reason=input_serializer.validated_data["reason"],
-            )
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-
-        serializer = ConsultationSerializer(consultation)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        consultation, error = cancel_for_patient(request, pk)
+        if error is not None:
+            return error
+        return Response(ConsultationSerializer(consultation).data)
 
 
 # ============================================================
-# START CONSULTATION
+# DOCTOR ACTIONS
 # ============================================================
 
 class ConsultationStartView(APIView):
-    """Start a consultation. Restricted to the assigned doctor."""
-
     permission_classes = [IsAuthenticated, IsDoctorUser]
 
     def post(self, request, pk):
-        try:
-            consultation = (
-                Consultation.objects
-                .select_related("appointment", "appointment__doctor")
-                .get(pk=pk, appointment__doctor=request.user.doctor)
+        consultation = doctor_consultation(request, pk)
+        if consultation is None:
+            return Response(
+                {"detail": "Consultation not found."},
+                status=status.HTTP_404_NOT_FOUND,
             )
-        except Consultation.DoesNotExist:
-            return Response({"detail": "Consultation not found."}, status=status.HTTP_404_NOT_FOUND)
 
         try:
-            consultation = start_consultation(consultation=consultation, user=request.user)
+            consultation = start_consultation(
+                consultation=consultation, user=request.user
+            )
         except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST
+            )
 
-        serializer = ConsultationSerializer(consultation)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        notify(ConsultationNotificationService.consultation_started, consultation)
+        return Response(ConsultationSerializer(consultation).data)
 
-
-# ============================================================
-# COMPLETE CONSULTATION
-# ============================================================
 
 class ConsultationCompleteView(APIView):
-    """Complete a consultation. Restricted to the assigned doctor."""
-
     permission_classes = [IsAuthenticated, IsDoctorUser]
 
     def post(self, request, pk):
-        try:
-            consultation = (
-                Consultation.objects
-                .select_related("appointment", "appointment__doctor")
-                .get(pk=pk, appointment__doctor=request.user.doctor)
+        consultation = doctor_consultation(request, pk)
+        if consultation is None:
+            return Response(
+                {"detail": "Consultation not found."},
+                status=status.HTTP_404_NOT_FOUND,
             )
-        except Consultation.DoesNotExist:
-            return Response({"detail": "Consultation not found."}, status=status.HTTP_404_NOT_FOUND)
 
         try:
-            consultation = complete_consultation(consultation=consultation, user=request.user)
+            consultation = complete_consultation(
+                consultation=consultation, user=request.user
+            )
         except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST
+            )
 
-        serializer = ConsultationSerializer(consultation)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        notify(ConsultationNotificationService.consultation_completed, consultation)
+        return Response(ConsultationSerializer(consultation).data)
 
-
-# ============================================================
-# CREATE PRESCRIPTION
-# ============================================================
 
 class PrescriptionCreateView(APIView):
-    """Create a prescription for a consultation. Restricted to the assigned doctor."""
-
     permission_classes = [IsAuthenticated, IsDoctorUser]
 
     def post(self, request, pk):
-        try:
-            consultation = (
-                Consultation.objects
-                .select_related("appointment", "appointment__doctor")
-                .get(pk=pk, appointment__doctor=request.user.doctor)
+        consultation = doctor_consultation(request, pk)
+        if consultation is None:
+            return Response(
+                {"detail": "Consultation not found."},
+                status=status.HTTP_404_NOT_FOUND,
             )
-        except Consultation.DoesNotExist:
-            return Response({"detail": "Consultation not found."}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = PrescriptionCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -385,12 +489,21 @@ class PrescriptionCreateView(APIView):
         try:
             prescription = create_prescription(
                 consultation=consultation,
-                doctor=request.user.doctor,
+                doctor=get_user_doctor(request.user),
                 data=serializer.validated_data,
             )
         except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST
+            )
 
-        response_serializer = PrescriptionSerializer(prescription)
-        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+        notify(
+            ConsultationNotificationService.prescription_added,
+            consultation,
+            prescription,
+        )
+        return Response(
+            PrescriptionSerializer(prescription).data,
+            status=status.HTTP_201_CREATED,
+        )
     

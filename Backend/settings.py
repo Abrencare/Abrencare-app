@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "accounts",
     "services",
     "families",
+    "executive",
     "roles",
     "health_data",
     "appointments",
@@ -223,6 +224,10 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
+
+AUTHENTICATION_BACKENDS = [   
+    "accounts.backends.EmailBackend",
+    "django.contrib.auth.backends.ModelBackend",]
 
 # ======================================================
 # DJANGO REST FRAMEWORK (SESSION AUTH DEFAULT)

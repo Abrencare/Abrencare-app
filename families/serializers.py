@@ -1,828 +1,499 @@
-from django.contrib.auth import get_user_model
-from django.db import transaction
 from django.utils import timezone
-
 from rest_framework import serializers
 
-from patients.models import Patient
-
 from .models import (
-    Family,
-    FamilyMember,
-    FamilyPatient,
-    FamilyInvitation,
-    InvitationDelivery,
-    FamilyAuditLog
+    ServiceVisit,
+    VitalReading,
+    PatientObservation,
+    PatientAlert,
+    CareTask,
+    CareTeamAssignment,
+    Patient,
+    FamilyMember, FamilyProfile,
+    FamilyReading, CarePlanItem, CareVisit,
+    FamilyCareTeamMember, FamilyAttentionFlag,
 )
 
-User = get_user_model()
-
 
 # ============================================================
-# USER / BASIC REPRESENTATION
-# ============================================================
-
-class FamilyUserSerializer(serializers.ModelSerializer):
-    """
-    Safe representation of a user inside the Family module.
-
-    Sensitive authentication fields such as password are never
-    exposed here.
-    """
-
-    full_name = serializers.ReadOnlyField()
-    profile_picture_url = serializers.ReadOnlyField()
-    status = serializers.ReadOnlyField()
-
-    class Meta:
-        model = User
-        fields = [
-            "id",
-            "username",
-            "email",
-            "first_name",
-            "last_name",
-            "full_name",
-            "phone_number",
-            "city",
-            "profile_picture_url",
-            "status",
-        ]
-        read_only_fields = fields
-
-
-# ============================================================
-# FAMILY
-# ============================================================
-
-class FamilySerializer(serializers.ModelSerializer):
-    """
-    Main Family representation.
-    """
-
-    created_by = FamilyUserSerializer(read_only=True)
-
-    member_count = serializers.SerializerMethodField()
-    patient_count = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Family
-        fields = [
-            "id",
-            "name",
-            "created_by",
-            "member_count",
-            "patient_count",
-            "created_at",
-            "updated_at",
-        ]
-
-        read_only_fields = [
-            "id",
-            "created_by",
-            "member_count",
-            "patient_count",
-            "created_at",
-            "updated_at",
-        ]
-
-    def get_member_count(self, obj):
-        return obj.members.count()
-
-    def get_patient_count(self, obj):
-        return obj.patients.count()
-
-    def validate_name(self, value):
-        value = value.strip()
-
-        if not value:
-            raise serializers.ValidationError(
-                "Family name cannot be empty."
-            )
-
-        return value
-
-
-# ============================================================
-# FAMILY MEMBER
+# INDIVIDUAL SERIALIZERS
 # ============================================================
 
 class FamilyMemberSerializer(serializers.ModelSerializer):
     """
-    Representation of a user belonging to a family.
+    Wire format is camelCase to match FamilyContext.normalizeMember().
+
+    Server field        →  Wire field
+    ----------------------------------
+    full_name           →  name
+    date_of_birth       →  dateOfBirth
+    emergency_phone     →  emergencyPhone
+    pk                  →  id (as string)
+
+    Input also accepts snake_case where it's natural to do so — DRF's
+    `source=` makes this transparent for reads, and toWire() sends
+    snake_case for date_of_birth / emergency_phone, which `source=` picks
+    up on the way in.
     """
 
-    user = FamilyUserSerializer(read_only=True)
-
-    role_display = serializers.CharField(
-        source="get_role_display",
-        read_only=True,
+    id = serializers.CharField(source="pk", read_only=True)
+    name = serializers.CharField(source="full_name")
+    dateOfBirth = serializers.DateField(
+        source="date_of_birth", allow_null=True, required=False,
+    )
+    emergencyPhone = serializers.CharField(
+        source="emergency_phone", allow_blank=True, required=False,
     )
 
     class Meta:
         model = FamilyMember
         fields = [
             "id",
-            "family",
-            "user",
-            "role",
-            "role_display",
-            "can_view_patient_records",
-            "can_manage_appointments",
-            "can_manage_medications",
-            "can_manage_family_members",
-            "can_manage_family_patients",
-            "created_at",
-            "updated_at",
-        ]
-
-        read_only_fields = [
-            "id",
-            "family",
-            "user",
-            "role_display",
-            "created_at",
-            "updated_at",
-        ]
-
-    def validate(self, attrs):
-        role = attrs.get(
-            "role",
-            getattr(
-                self.instance,
-                "role",
-                FamilyMember.Role.MEMBER,
-            ),
-        )
-
-        # Owner permissions are controlled by the system.
-        if role == FamilyMember.Role.OWNER:
-            attrs["can_view_patient_records"] = True
-            attrs["can_manage_appointments"] = True
-            attrs["can_manage_medications"] = True
-            attrs["can_manage_family_members"] = True
-            attrs["can_manage_family_patients"] = True
-
-        return attrs
-
-
-# ============================================================
-# FAMILY PATIENT
-# ============================================================
-
-class FamilyPatientSerializer(serializers.ModelSerializer):
-    """
-    Representation of a patient belonging to a family.
-    """
-
-    patient_id = serializers.IntegerField(
-        source="patient.id",
-        read_only=True,
-    )
-
-    patient_name = serializers.CharField(
-        source="patient.user.full_name",
-        read_only=True,
-    )
-
-    patient_user_id = serializers.IntegerField(
-        source="patient.user.id",
-        read_only=True,
-    )
-
-    relationship_display = serializers.CharField(
-        source="get_relationship_display",
-        read_only=True,
-    )
-
-    class Meta:
-        model = FamilyPatient
-        fields = [
-            "id",
-            "family",
-            "patient_id",
-            "patient_name",
-            "patient_user_id",
-            "relationship",
-            "relationship_display",
-            "is_primary",
-            "created_at",
-            "updated_at",
-        ]
-
-        read_only_fields = [
-            "id",
-            "family",
-            "patient_id",
-            "patient_name",
-            "patient_user_id",
-            "relationship_display",
-            "created_at",
-            "updated_at",
-        ]
-
-    def validate(self, attrs):
-        if (
-            self.instance
-            and attrs.get("is_primary") is True
-            and self.instance.is_primary
-        ):
-            return attrs
-
-        return attrs
-
-
-# ============================================================
-# PATIENT REPRESENTATION FOR FAMILY OPERATIONS
-# ============================================================
-
-class FamilyPatientDetailSerializer(serializers.ModelSerializer):
-    """
-    More detailed patient representation for the family dashboard.
-
-    This intentionally does not expose medical records.
-    """
-
-    user = FamilyUserSerializer(
-        read_only=True,
-    )
-
-    gender_display = serializers.CharField(
-        source="get_gender_display",
-        read_only=True,
-    )
-
-    blood_group_display = serializers.CharField(
-        source="get_blood_group_display",
-        read_only=True,
-    )
-
-    class Meta:
-        model = Patient
-        fields = [
-            "id",
-            "user",
-            "gender",
-            "gender_display",
-            "blood_group",
-            "blood_group_display",
-            "created_at",
-            "updated_at",
-        ]
-
-        read_only_fields = fields
-
-
-# ============================================================
-# FAMILY INVITATION
-# ============================================================
-
-class FamilyInvitationSerializer(serializers.ModelSerializer):
-    """
-    Safe representation of a family invitation.
-
-    The raw invitation token is NEVER returned.
-    """
-
-    invited_by = FamilyUserSerializer(
-        read_only=True,
-    )
-
-    accepted_by = FamilyUserSerializer(
-        read_only=True,
-    )
-
-    invitation_type_display = serializers.CharField(
-        source="get_invitation_type_display",
-        read_only=True,
-    )
-
-    status_display = serializers.CharField(
-        source="get_status_display",
-        read_only=True,
-    )
-
-    is_expired = serializers.ReadOnlyField()
-
-    class Meta:
-        model = FamilyInvitation
-        fields = [
-            "id",
-            "family",
-            "invited_by",
-            "invitation_type",
-            "invitation_type_display",
             "name",
-            "email",
-            "phone_number",
-            "role",
-            "patient",
-            "status",
-            "status_display",
-            "expires_at",
-            "is_expired",
-            "accepted_by",
-            "accepted_at",
-            "created_at",
-            "updated_at",
+            "relationship",
+            "dateOfBirth",
+            "phone",
+            "city",
+            "address",
+            "emergencyPhone",
+            "notes",
         ]
-
-        read_only_fields = [
-            "id",
-            "family",
-            "invited_by",
-            "status",
-            "status_display",
-            "is_expired",
-            "accepted_by",
-            "accepted_at",
-            "created_at",
-            "updated_at",
-        ]
-
-    def validate(self, attrs):
-        invitation_type = attrs.get(
-            "invitation_type"
-        )
-
-        email = attrs.get(
-            "email",
-            getattr(self.instance, "email", ""),
-        )
-
-        phone_number = attrs.get(
-            "phone_number",
-            getattr(self.instance, "phone_number", ""),
-        )
-
-        patient = attrs.get(
-            "patient",
-            getattr(self.instance, "patient", None),
-        )
-
-        role = attrs.get(
-            "role",
-            getattr(self.instance, "role", ""),
-        )
-
-        # ----------------------------------------------------
-        # Contact validation
-        # ----------------------------------------------------
-
-        if not email and not phone_number:
-            raise serializers.ValidationError(
-                {
-                    "contact": (
-                        "At least one of email or "
-                        "phone number is required."
-                    )
-                }
-            )
-
-        # ----------------------------------------------------
-        # PATIENT CLAIM
-        # ----------------------------------------------------
-
-        if (
-            invitation_type
-            == FamilyInvitation.InvitationType.PATIENT_CLAIM
-        ):
-            if not patient:
-                raise serializers.ValidationError(
-                    {
-                        "patient": (
-                            "A patient is required for "
-                            "a patient account claim."
-                        )
-                    }
-                )
-
-            if role:
-                raise serializers.ValidationError(
-                    {
-                        "role": (
-                            "Role must not be provided for "
-                            "a patient account claim."
-                        )
-                    }
-                )
-
-        # ----------------------------------------------------
-        # FAMILY MEMBER
-        # ----------------------------------------------------
-
-        if (
-            invitation_type
-            == FamilyInvitation.InvitationType.MEMBER
-        ):
-            if not role:
-                attrs["role"] = (
-                    FamilyMember.Role.MEMBER
-                )
-
-            if patient:
-                raise serializers.ValidationError(
-                    {
-                        "patient": (
-                            "Patient must not be provided "
-                            "for a family member invitation."
-                        )
-                    }
-                )
-
-        # ----------------------------------------------------
-        # Validate expiration
-        # ----------------------------------------------------
-
-        expires_at = attrs.get(
-            "expires_at",
-            getattr(
-                self.instance,
-                "expires_at",
-                None,
-            ),
-        )
-
-        if expires_at and expires_at <= timezone.now():
-            raise serializers.ValidationError(
-                {
-                    "expires_at": (
-                        "Invitation expiration must be "
-                        "in the future."
-                    )
-                }
-            )
-
-        return attrs
-
-
-# ============================================================
-# CREATE FAMILY MEMBER INVITATION
-# ============================================================
-
-class CreateFamilyMemberInvitationSerializer(
-    serializers.Serializer
-):
-    """
-    Input serializer used when a family owner invites
-    another person.
-
-    This serializer does not create the invitation itself.
-    The service layer should handle token generation,
-    invalidating previous invitations and notification
-    delivery.
-    """
-
-    name = serializers.CharField(
-        max_length=150,
-    )
-
-    email = serializers.EmailField(
-        required=False,
-        allow_blank=True,
-    )
-
-    phone_number = serializers.CharField(
-        max_length=20,
-        required=False,
-        allow_blank=True,
-    )
-
-    role = serializers.ChoiceField(
-        choices=[
-            (
-                FamilyMember.Role.MEMBER,
-                FamilyMember.Role.MEMBER.label,
-            ),
-            (
-                FamilyMember.Role.CAREGIVER,
-                FamilyMember.Role.CAREGIVER.label,
-            ),
-        ],
-        default=FamilyMember.Role.MEMBER,
-    )
 
     def validate_name(self, value):
         value = value.strip()
-
         if not value:
-            raise serializers.ValidationError(
-                "Name is required."
-            )
-
+            raise serializers.ValidationError("Name cannot be blank.")
         return value
 
-    def validate(self, attrs):
-        email = attrs.get("email")
-        phone = attrs.get("phone_number")
-
-        if not email and not phone:
-            raise serializers.ValidationError(
-                {
-                    "contact": (
-                        "Provide either an email address "
-                        "or phone number."
-                    )
-                }
-            )
-
-        return attrs
-
-
-# ============================================================
-# CREATE FAMILY PATIENT
-# ============================================================
-
-class CreateFamilyPatientSerializer(
-    serializers.Serializer
-):
-    """
-    Creates a family patient.
-
-    The actual creation of User + Patient +
-    FamilyPatient belongs in the service layer.
-    """
-
-    first_name = serializers.CharField(
-        max_length=30,
-    )
-
-    last_name = serializers.CharField(
-        max_length=30,
-        required=False,
-        allow_blank=True,
-    )
-
-    email = serializers.EmailField(
-        required=False,
-        allow_blank=True,
-    )
-
-    phone_number = serializers.CharField(
-        max_length=15,
-        required=False,
-        allow_blank=True,
-    )
-
-    date_of_birth = serializers.DateField(
-        required=False,
-        allow_null=True,
-    )
-
-    gender = serializers.ChoiceField(
-        choices=Patient.Gender.choices,
-        required=False,
-        allow_blank=True,
-    )
-
-    blood_group = serializers.ChoiceField(
-        choices=Patient.BloodGroup.choices,
-        required=False,
-        allow_blank=True,
-    )
-
-    relationship = serializers.ChoiceField(
-        choices=FamilyPatient.Relationship.choices,
-        default=FamilyPatient.Relationship.OTHER,
-    )
-
-    is_primary = serializers.BooleanField(
-        default=False,
-    )
-
-    def validate_first_name(self, value):
-        value = value.strip()
-
-        if not value:
-            raise serializers.ValidationError(
-                "First name is required."
-            )
-
-        return value
-
-    def validate(self, attrs):
-        email = attrs.get("email")
-        phone = attrs.get("phone_number")
-
-        if not email and not phone:
-            raise serializers.ValidationError(
-                {
-                    "contact": (
-                        "Provide either an email address "
-                        "or phone number for the patient."
-                    )
-                }
-            )
-
-        return attrs
-
-
-# ============================================================
-# PATIENT CLAIM INVITATION
-# ============================================================
-
-class CreatePatientClaimInvitationSerializer(
-    serializers.Serializer
-):
-    """
-    Creates an invitation allowing an existing pending
-    patient to claim their account.
-    """
-
-    email = serializers.EmailField(
-        required=False,
-        allow_blank=True,
-    )
-
-    phone_number = serializers.CharField(
-        max_length=20,
-        required=False,
-        allow_blank=True,
-    )
-
-    def validate(self, attrs):
-        email = attrs.get("email")
-        phone = attrs.get("phone_number")
-
-        if not email and not phone:
-            raise serializers.ValidationError(
-                {
-                    "contact": (
-                        "Provide either an email address "
-                        "or phone number."
-                    )
-                }
-            )
-
-        return attrs
-
-
-# ============================================================
-# INVITATION ACCEPTANCE
-# ============================================================
-
-class AcceptInvitationSerializer(
-    serializers.Serializer
-):
-    """
-    Used when an existing authenticated user accepts
-    an invitation.
-
-    No password is accepted here.
-    """
-
-    confirm = serializers.BooleanField(
-        default=True,
-    )
-
-    def validate_confirm(self, value):
-        if value is not True:
-            raise serializers.ValidationError(
-                "You must confirm acceptance of the invitation."
-            )
-
+    def validate_relationship(self, value):
+        valid = {c[0] for c in FamilyMember.Relationship.choices}
+        if value not in valid:
+            raise serializers.ValidationError("Invalid relationship.")
         return value
 
 
-# ============================================================
-# COMPLETE INVITATION REGISTRATION
-# ============================================================
-
-class CompleteInvitationRegistrationSerializer(
-    serializers.Serializer
-):
+class FamilyProfileSerializer(serializers.ModelSerializer):
     """
-    Used after invitation/contact verification when
-    the invited person does not yet have an account.
-    """
+    Read/write serializer for GET/PUT /family/profile/.
 
-    first_name = serializers.CharField(
-        max_length=30,
-    )
+    Wire shape:
+      { "onboarded": bool, "members": [ {...}, ... ] }
 
-    last_name = serializers.CharField(
-        max_length=30,
-        required=False,
-        allow_blank=True,
-    )
-
-    username = serializers.CharField(
-        max_length=150,
-        required=False,
-        allow_blank=True,
-    )
-
-    password = serializers.CharField(
-        write_only=True,
-        min_length=8,
-    )
-
-    password_confirmation = serializers.CharField(
-        write_only=True,
-        min_length=8,
-    )
-
-    def validate(self, attrs):
-        if attrs["password"] != attrs["password_confirmation"]:
-            raise serializers.ValidationError(
-                {
-                    "password_confirmation": (
-                        "Passwords do not match."
-                    )
-                }
-            )
-
-        return attrs
-
-
-# ============================================================
-# INVITATION DELIVERY
-# ============================================================
-
-class InvitationDeliverySerializer(
-    serializers.ModelSerializer
-):
-    """
-    Delivery history representation.
-
-    Provider information is visible for administration
-    but the actual invitation token is never exposed.
+    `onboarded` is read-only here — it's owned by UserService and flipped
+    only via POST /family/onboarding/complete/.
     """
 
-    channel_display = serializers.CharField(
-        source="get_channel_display",
-        read_only=True,
-    )
+    onboarded = serializers.SerializerMethodField()
+    members = FamilyMemberSerializer(many=True, required=False)
 
+    class Meta:
+        model = FamilyProfile
+        fields = ["onboarded", "members"]
+
+    def get_onboarded(self, obj):
+        return bool(obj.user_service.onboarded)
+
+
+class FamilyMemberWriteSerializer(serializers.Serializer):
+    """
+    Used by FamilyProfileSerializer.update via `members` write input.
+    Kept separate so read and write concerns don't leak into each other.
+    """
+    # Not strictly necessary if we just re-use FamilyMemberSerializer for
+    # write, but keeping the hook here means swapping to upsert-by-id later
+    # is a one-file change.
+    pass
+
+class ServiceVisitSerializer(serializers.ModelSerializer):
+    clinician_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(
-        source="get_status_display",
-        read_only=True,
+        source="get_status_display", read_only=True,
     )
 
     class Meta:
-        model = InvitationDelivery
+        model = ServiceVisit
         fields = [
-            "id",
-            "invitation",
-            "channel",
-            "channel_display",
-            "destination",
-            "status",
-            "status_display",
-            "provider_message_id",
-            "error_message",
-            "sent_at",
-            "created_at",
+            "id", "patient", "clinician", "clinician_name",
+            "status", "status_display",
+            "started_at", "ended_at", "summary",
+            "created_at", "updated_at",
         ]
+        read_only_fields = fields
 
+    def get_clinician_name(self, obj):
+        if not obj.clinician:
+            return None
+        return obj.clinician.get_full_name() or obj.clinician.username
+
+
+class VitalReadingSerializer(serializers.ModelSerializer):
+    kind_display = serializers.CharField(
+        source="get_kind_display", read_only=True,
+    )
+    status_display = serializers.CharField(
+        source="get_status_display", read_only=True,
+    )
+    recorded_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = VitalReading
+        fields = [
+            "id", "patient", "kind", "kind_display",
+            "value", "unit", "status", "status_display",
+            "recorded_by", "recorded_by_name",
+            "recorded_at", "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_recorded_by_name(self, obj):
+        if not obj.recorded_by:
+            return None
+        return obj.recorded_by.get_full_name() or obj.recorded_by.username
+
+
+class PatientObservationSerializer(serializers.ModelSerializer):
+    kind_display = serializers.CharField(
+        source="get_kind_display", read_only=True,
+    )
+    status_display = serializers.CharField(
+        source="get_status_display", read_only=True,
+    )
+
+    class Meta:
+        model = PatientObservation
+        fields = [
+            "id", "patient", "kind", "kind_display",
+            "label", "status", "status_display", "note",
+            "recorded_by", "recorded_at",
+        ]
         read_only_fields = fields
 
 
-class VerifyInvitationOTPSerializer(serializers.Serializer):
-    """
-    Verify an OTP previously sent for an invitation.
-    """
-
-    otp = serializers.CharField(
-        write_only=True,
-        min_length=4,
-        max_length=10,
-        trim_whitespace=True,
+class PatientAlertSerializer(serializers.ModelSerializer):
+    severity_display = serializers.CharField(
+        source="get_severity_display", read_only=True,
     )
+    is_open = serializers.BooleanField(read_only=True)
 
-    def validate_otp(self, value):
-        value = value.strip()
+    class Meta:
+        model = PatientAlert
+        fields = [
+            "id", "patient", "severity", "severity_display",
+            "title", "body", "source",
+            "resolved_at", "is_open", "created_at",
+        ]
+        read_only_fields = fields
 
-        if not value.isdigit():
-            raise serializers.ValidationError(
-                "OTP must contain only digits."
+
+class CareTaskSerializer(serializers.ModelSerializer):
+    status_display = serializers.CharField(
+        source="get_status_display", read_only=True,
+    )
+    time = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CareTask
+        fields = [
+            "id", "patient", "title",
+            "scheduled_at", "time", "status", "status_display",
+            "completed_by", "completed_at", "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_time(self, obj):
+        # Match the Appointment.time shape (HH:mm, 24h).
+        return timezone.localtime(obj.scheduled_at).strftime("%H:%M")
+
+
+class CareTeamAssignmentSerializer(serializers.ModelSerializer):
+    role_display = serializers.CharField(
+        source="get_role_display", read_only=True,
+    )
+    full_name = serializers.SerializerMethodField()
+    phone_number = serializers.CharField(
+        source="staff.phone_number", read_only=True, default="",
+    )
+    profile_picture_url = serializers.SerializerMethodField()
+    is_active = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = CareTeamAssignment
+        fields = [
+            "id", "patient", "staff", "full_name", "phone_number",
+            "profile_picture_url",
+            "role", "role_display", "is_primary", "is_active",
+            "started_at", "ended_at",
+        ]
+        read_only_fields = fields
+
+    def get_full_name(self, obj):
+        return obj.staff.get_full_name() or obj.staff.username
+
+    def get_profile_picture_url(self, obj):
+        return getattr(obj.staff, "profile_picture_url", None)
+
+
+# ============================================================
+# AGGREGATE — ONE CALL FOR THE FAMILY DASHBOARD
+# ============================================================
+
+def _tone_for(status: str) -> str:
+    """Map backend status → frontend Tone union ('good' | 'info' | 'flag')."""
+    return {"good": "good", "info": "info", "flag": "flag"}.get(status, "info")
+
+
+# Order matters — this is the order tiles appear on the screen.
+_DASHBOARD_VITAL_KINDS = [
+    VitalReading.Kind.BLOOD_PRESSURE,
+    VitalReading.Kind.HEART_RATE,
+    VitalReading.Kind.SPO2,
+    VitalReading.Kind.WEIGHT,
+]
+
+
+class PatientSummarySerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+    initials = serializers.SerializerMethodField()
+    phone_number = serializers.CharField(source="user.phone_number", default="")
+
+    class Meta:
+        model = Patient
+        fields = ["id", "full_name", "initials", "phone_number"]
+
+    def get_full_name(self, obj):
+        return obj.user.get_full_name() or obj.user.username
+
+    def get_initials(self, obj):
+        name = self.get_full_name(obj)
+        return "".join(p[0].upper() for p in name.split()[:2])
+
+
+class FamilyOverviewSerializer(serializers.Serializer):
+    """
+    Aggregated payload that maps 1:1 to FamilyOverview.tsx.
+    """
+
+    patient = serializers.SerializerMethodField()
+    active_visit = serializers.SerializerMethodField()
+    open_alert = serializers.SerializerMethodField()
+    readings = serializers.SerializerMethodField()
+    care_plan = serializers.SerializerMethodField()
+    care_plan_progress = serializers.SerializerMethodField()
+    care_team = serializers.SerializerMethodField()
+
+    # ---------- patient ----------
+
+    def get_patient(self, patient):
+        user = patient.user
+        full_name = user.get_full_name() or user.username
+        initials = "".join(
+            part[0].upper() for part in full_name.split()[:2]
+        )
+        return {
+            "id": patient.id,
+            "user_id": user.id,
+            "full_name": full_name,
+            "initials": initials,
+            "phone_number": getattr(user, "phone_number", ""),
+        }
+
+    # ---------- live visit ----------
+
+    def get_active_visit(self, patient):
+        visit = (
+            patient.visits
+            .filter(status=ServiceVisit.Status.IN_PROGRESS)
+            .select_related("clinician")
+            .order_by("-started_at")
+            .first()
+        )
+        if not visit:
+            return None
+        return ServiceVisitSerializer(visit).data
+
+    # ---------- top alert ----------
+
+    def get_open_alert(self, patient):
+        # Critical beats warning beats info.
+        severity_rank = {
+            PatientAlert.Severity.CRITICAL: 0,
+            PatientAlert.Severity.WARNING: 1,
+            PatientAlert.Severity.INFO: 2,
+        }
+        open_alerts = list(
+            patient.alerts.filter(resolved_at__isnull=True)
+        )
+        if not open_alerts:
+            return None
+        open_alerts.sort(key=lambda a: severity_rank.get(a.severity, 99))
+        return PatientAlertSerializer(open_alerts[0]).data
+
+    # ---------- readings ----------
+
+    def get_readings(self, patient):
+        rows = []
+
+        for kind in _DASHBOARD_VITAL_KINDS:
+            reading = (
+                patient.vital_readings
+                .filter(kind=kind)
+                .order_by("-recorded_at")
+                .first()
             )
+            if not reading:
+                continue
+            rows.append({
+                "kind": reading.kind,
+                "label": reading.get_kind_display(),
+                "value": reading.value,
+                "unit": reading.unit,
+                "status": reading.status,
+                "tone": _tone_for(reading.status),
+                "recorded_at": reading.recorded_at,
+            })
 
-        return value
+        # Latest observation rides along as an extra tile.
+        latest_obs = (
+            patient.observations.order_by("-recorded_at").first()
+        )
+        if latest_obs:
+            rows.append({
+                "kind": latest_obs.kind,
+                "label": latest_obs.get_kind_display(),
+                "value": latest_obs.label,
+                "unit": "",
+                "status": latest_obs.status,
+                "tone": _tone_for(latest_obs.status),
+                "recorded_at": latest_obs.recorded_at,
+            })
+
+        return rows
+
+    # ---------- care plan ----------
+
+    def _todays_tasks(self, patient):
+        today = timezone.localdate()
+        return patient.care_tasks.filter(scheduled_at__date=today)
+
+    def get_care_plan(self, patient):
+        qs = self._todays_tasks(patient).order_by("scheduled_at")
+        return CareTaskSerializer(qs, many=True).data
+
+    def get_care_plan_progress(self, patient):
+        qs = self._todays_tasks(patient)
+        total = qs.count()
+        done = qs.filter(status=CareTask.Status.DONE).count()
+        return {
+            "done": done,
+            "total": total,
+            "percent": round((done / total) * 100) if total else 0,
+        }
+
+    # ---------- care team ----------
+
+    def get_care_team(self, patient):
+        qs = (
+            patient.care_team
+            .filter(ended_at__isnull=True)
+            .select_related("staff")
+        )
+        return CareTeamAssignmentSerializer(qs, many=True).data
 
 
-class FamilyAuditLogSerializer(
-    serializers.ModelSerializer
-):
-    actor_name = serializers.SerializerMethodField()
+# ============================================================
+# WRITE SERIALIZERS (staff side — nursing app)
+# ============================================================
+
+class VitalReadingCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VitalReading
+        fields = ["patient", "kind", "value", "unit", "status", "recorded_at"]
+        extra_kwargs = {
+            "recorded_at": {"required": False},
+            "unit": {"required": False},
+            "status": {"required": False},
+        }
+
+
+class CareTaskCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CareTask
+        fields = ["patient", "title", "scheduled_at", "status"]
+
+
+class PatientAlertResolveSerializer(serializers.Serializer):
+    resolved = serializers.BooleanField(default=True)
+
+
+class FamilyReadingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FamilyReading
+        fields = ["id", "kind", "value", "status", "tone", "recorded_at"]
+        read_only_fields = ["id", "recorded_at"]
+
+
+class CarePlanItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CarePlanItem
+        fields = ["id", "title", "scheduled_time", "done", "order", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+
+class CareVisitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CareVisit
+        fields = [
+            "id", "nurse_name", "state",
+            "started_at", "ended_at", "created_at",
+        ]
+        read_only_fields = ["id", "created_at"]
+
+
+class FamilyCareTeamMemberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FamilyCareTeamMember
+        fields = [
+            "id", "role", "full_name", "phone",
+            "available_now", "on_visit",
+        ]
+
+
+class FamilyAttentionFlagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FamilyAttentionFlag
+        fields = [
+            "id", "label", "title", "body",
+            "tone", "resolved", "created_at",
+        ]
+
+
+class FamilyMemberOverviewSerializer(serializers.ModelSerializer):
+    readings = FamilyReadingSerializer(many=True, read_only=True)
+    care_plan_items = CarePlanItemSerializer(many=True, read_only=True)
+    visits = CareVisitSerializer(many=True, read_only=True)
+    care_team = serializers.SerializerMethodField()
+    attention_flags = serializers.SerializerMethodField()
 
     class Meta:
-        model = FamilyAuditLog
+        model = FamilyMember
         fields = [
-            "id",
-            "action",
-            "actor",
-            "actor_name",
-            "invitation",
-            "patient",
-            "metadata",
-            "created_at",
+            "id", "full_name", "relationship", "date_of_birth",
+            "phone", "city", "address", "emergency_phone", "notes",
+            "readings", "care_plan_items", "visits",
+            "care_team", "attention_flags",
         ]
-        read_only_fields = fields
 
-    def get_actor_name(self, obj):
-        if not obj.actor:
-            return "System"
+    def get_care_team(self, member):
+        qs = FamilyCareTeamMember.objects.filter(
+            family_profile=member.family_profile,
+        )
+        return FamilyCareTeamMemberSerializer(qs, many=True).data
 
-        return obj.actor.get_full_name() or obj.actor.username
+    def get_attention_flags(self, member):
+        qs = FamilyAttentionFlag.objects.filter(
+            family_profile=member.family_profile,
+            resolved=False,
+        )
+        return FamilyAttentionFlagSerializer(qs, many=True).data
+
     

@@ -5,7 +5,7 @@ from django.contrib.auth.hashers import check_password, make_password
 class UserManager(BaseUserManager):
     def create_user(
         self,
-        username,
+        username=None,
         email=None,
         password=None,
         **extra_fields
@@ -49,7 +49,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         INVITED = "invited", "Invited"
         SUSPENDED = "suspended", "Suspended"
 
-    username = models.CharField(max_length=150, unique=True)
+    class GenderChoices(models.TextChoices):
+        MALE = "male", "Male"
+        FEMALE = "female", "Female"
+        OTHER = "other", "Other"
+        PREFER_NOT_TO_SAY = "prefer not to say", "Prefer not ot say"
+
+    username = models.CharField(max_length=150, unique=True,null=True,blank=True,)
     email = models.EmailField(unique=True,null=True,blank=True,)
 
     first_name = models.CharField(max_length=30, blank=True, null=True)
@@ -64,8 +70,16 @@ class User(AbstractBaseUser, PermissionsMixin):
         blank=True,
         null=True
     )
-
-    # Address
+    gender = models.CharField(
+        max_length=20,
+        choices=GenderChoices.choices,
+        default=GenderChoices.OTHER,
+        db_index=True,
+        blank=True,
+        null=True,
+    )
+    height = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    weight = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     address = models.CharField(max_length=255, blank=True, null=True)
     postal_code = models.CharField(max_length=255, blank=True, null=True)
     city = models.CharField(max_length=255, blank=True, null=True)
@@ -94,7 +108,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["username",]
+    REQUIRED_FIELDS = []
 
     class Meta:
         verbose_name = "User"

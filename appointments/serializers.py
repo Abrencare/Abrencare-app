@@ -1,21 +1,56 @@
 from datetime import datetime, timedelta
 
-from django.db.models import Q
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import Appointment, AppointmentCheckIn
 from doctors.models import Doctor
 
+from .models import Appointment, AppointmentCheckIn
+
 # ---------------------------------------------------------------------------
-# Shared validation helpers (single source of truth)
+# App <-> API vocabulary
+# ---------------------------------------------------------------------------
+
+API_TO_APP_TYPE = {
+    "doctor_visit": "doctorVisit",
+    "home_visit": "homeVisit",
+    "nurse_check": "nurseCheck",
+    "lab_sample": "labSample",
+}
+APP_TO_API_TYPE = {v: k for k, v in API_TO_APP_TYPE.items()}
+
+# Non-doctor visits have no doctor-configured duration.
+DEFAULT_DURATION_MINUTES = {
+    "doctor_visit": 30,
+    "home_visit": 60,
+    "nurse_check": 30,
+    "lab_sample": 15,
+}
+
+MAX_REMINDER_MINUTES = 7 * 24 * 60  # one week
+
+ACTIVE_STATUSES = [Appointment.Status.PENDING, Appointment.Status.CONFIRMED]
+
+# The app's field names differ from the model's; remap error keys to match.
+_ERROR_KEY_MAP = {"appointment_date": "date", "appointment_time": "time"}
+
+
+# ---------------------------------------------------------------------------
+# Shared validation helpers
 # ---------------------------------------------------------------------------
 
 def get_appointment_window(date, time, duration_minutes):
-    """Return (start_dt, end_dt) as naive datetimes in local time."""
     start = datetime.combine(date, time)
-    end = start + timedelta(minutes=duration_minutes)
-    return start, end
+    return start, start + timedelta(minutes=duration_minutes)
+
+
+def doctor_duration_minutes(doctor):
+    """The two codebases use different attribute names; accept either."""
+    for attr in ("consultation_duration_minutes", "consultation_duration"):
+        value = getattr(doctor, attr, None)
+        if value:
+            return value
+    return None
 
 
 def validate_not_in_past(appointment_date, appointment_time=None):
@@ -24,10 +59,8 @@ def validate_not_in_past(appointment_date, appointment_time=None):
         raise serializers.ValidationError(
             {"appointment_date": "Appointment date cannot be in the past."}
         )
-    # Optional: block times earlier today
     if appointment_date == today and appointment_time is not None:
-        now = timezone.localtime().time()
-        if appointment_time < now:
+        if appointment_time < timezone.localtime().time():
             raise serializers.ValidationError(
                 {"appointment_time": "Appointment time cannot be in the past."}
             )
@@ -42,102 +75,155 @@ def validate_fits_doctor_availability(doctor, appointment_date, appointment_time
             {"appointment_time": "Doctor has no availability on this day."}
         )
 
-    start, end = get_appointment_window(
-        appointment_date, appointment_time, duration_minutes
-    )
+    start, end = get_appointment_window(appointment_date, appointment_time, duration_minutes)
 
     for window in windows:
         window_start = datetime.combine(appointment_date, window.start_time)
         window_end = datetime.combine(appointment_date, window.end_time)
         if start >= window_start and end <= window_end:
-            return  # fits at least one window
+            return
 
     raise serializers.ValidationError(
-        {
-            "appointment_time": (
-                "The selected appointment does not fit within "
-                "the doctor's available hours."
-            )
-        }
+        {"appointment_time": "The selected appointment does not fit within the doctor's available hours."}
     )
 
 
-def validate_no_overlap(doctor, appointment_date, appointment_time, duration_minutes, exclude_pk=None):
-    """
-    Efficient overlap check against active appointments.
-    Only loads the minimal set of candidates for the day.
-    """
-    start, end = get_appointment_window(
-        appointment_date, appointment_time, duration_minutes
-    )
-
-    qs = Appointment.objects.filter(
-        doctor=doctor,
-        appointment_date=appointment_date,
-        status__in=[
-            Appointment.Status.PENDING,
-            Appointment.Status.CONFIRMED,
-        ],
-    ).only("id", "appointment_time", "duration_minutes")
-
-    if exclude_pk:
-        qs = qs.exclude(pk=exclude_pk)
-
-    for appt in qs.iterator(chunk_size=50):  # memory-friendly
+def _first_overlap(queryset, appointment_date, start, end):
+    for appt in queryset.only("id", "appointment_time", "duration_minutes").iterator(chunk_size=50):
         existing_start, existing_end = get_appointment_window(
             appointment_date, appt.appointment_time, appt.duration_minutes
         )
-        # classic interval overlap
         if existing_start < end and existing_end > start:
-            raise serializers.ValidationError(
-                {
-                    "appointment_time": (
-                        "The selected time overlaps with another appointment."
-                    )
-                }
-            )
+            return appt
+    return None
+
+
+def validate_no_overlap(doctor, appointment_date, appointment_time, duration_minutes, exclude_pk=None):
+    start, end = get_appointment_window(appointment_date, appointment_time, duration_minutes)
+    qs = Appointment.objects.filter(
+        doctor=doctor, appointment_date=appointment_date, status__in=ACTIVE_STATUSES
+    )
+    if exclude_pk:
+        qs = qs.exclude(pk=exclude_pk)
+    if _first_overlap(qs, appointment_date, start, end):
+        raise serializers.ValidationError(
+            {"appointment_time": "The selected time overlaps with another appointment."}
+        )
+
+
+def validate_patient_no_overlap(
+    patient, appointment_date, appointment_time, duration_minutes,
+    exclude_pk=None, field="appointment_time",
+):
+    """A patient can't be in two places at once (used for non-doctor visits)."""
+    start, end = get_appointment_window(appointment_date, appointment_time, duration_minutes)
+    qs = Appointment.objects.filter(
+        patient=patient, appointment_date=appointment_date, status__in=ACTIVE_STATUSES
+    )
+    if exclude_pk:
+        qs = qs.exclude(pk=exclude_pk)
+    if _first_overlap(qs, appointment_date, start, end):
+        raise serializers.ValidationError({field: "You already have an appointment at this time."})
 
 
 # ---------------------------------------------------------------------------
-# Nested / lightweight serializers
+# Nested
 # ---------------------------------------------------------------------------
 
 class AppointmentCheckInSerializer(serializers.ModelSerializer):
     class Meta:
         model = AppointmentCheckIn
-        fields = [
-            "checked_in_at",
-            "latitude",
-            "longitude",
-            "gps_verified",
-            "created_at",
-        ]
+        fields = ["checked_in_at", "latitude", "longitude", "gps_verified", "created_at"]
         read_only_fields = fields
 
 
 # ---------------------------------------------------------------------------
-# Main read serializer
+# Mobile app shape  ->  {id, date, time, type, withName, reminderMinutes}
+# ---------------------------------------------------------------------------
+
+class AppointmentMobileSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(read_only=True)
+    date = serializers.DateField(source="appointment_date", read_only=True)
+    time = serializers.TimeField(source="appointment_time", format="%H:%M", read_only=True)
+    type = serializers.SerializerMethodField()
+    withName = serializers.SerializerMethodField()
+    reminderMinutes = serializers.IntegerField(
+        source="reminder_minutes", read_only=True, allow_null=True
+    )
+
+    class Meta:
+        model = Appointment
+        fields = ["id", "date", "time", "type", "withName", "reminderMinutes", "status"]
+        read_only_fields = fields
+
+    def get_type(self, obj):
+        return API_TO_APP_TYPE.get(obj.appointment_type, "doctorVisit")
+
+    def get_withName(self, obj):
+        if obj.provider_name:
+            return obj.provider_name
+        if obj.doctor_id:
+            return obj.doctor.user.full_name
+        return ""
+
+
+class AppointmentMobileCreateSerializer(serializers.Serializer):
+    """Body the app posts: {date, time, type, withName, reminderMinutes}."""
+
+    date = serializers.DateField()
+    time = serializers.TimeField(input_formats=["%H:%M", "%H:%M:%S", "iso-8601"])
+    type = serializers.ChoiceField(choices=list(APP_TO_API_TYPE))
+    withName = serializers.CharField(required=False, allow_blank=True, max_length=150, default="")
+    reminderMinutes = serializers.IntegerField(
+        required=False, allow_null=True, min_value=0, max_value=MAX_REMINDER_MINUTES, default=None
+    )
+
+    def validate(self, attrs):
+        appointment_type = APP_TO_API_TYPE[attrs["type"]]
+        duration = DEFAULT_DURATION_MINUTES[appointment_type]
+
+        try:
+            validate_not_in_past(attrs["date"], attrs["time"])
+        except serializers.ValidationError as exc:
+            raise serializers.ValidationError(
+                {_ERROR_KEY_MAP.get(k, k): v for k, v in exc.detail.items()}
+            )
+
+        validate_patient_no_overlap(
+            self.context["patient"], attrs["date"], attrs["time"], duration, field="time"
+        )
+
+        attrs["appointment_type"] = appointment_type
+        attrs["duration_minutes"] = duration
+        return attrs
+
+
+class AppointmentReminderSerializer(serializers.Serializer):
+    """PATCH body: {reminderMinutes: number | null}."""
+
+    reminderMinutes = serializers.IntegerField(
+        allow_null=True, min_value=0, max_value=MAX_REMINDER_MINUTES
+    )
+
+
+# ---------------------------------------------------------------------------
+# Full read serializer (doctor app / staff)
 # ---------------------------------------------------------------------------
 
 class AppointmentSerializer(serializers.ModelSerializer):
-    patient_name = serializers.CharField(
-        source="patient.user.full_name", read_only=True
-    )
-    doctor = serializers.PrimaryKeyRelatedField(queryset=Doctor.objects.all())
-    doctor_name = serializers.CharField(
-        source="doctor.user.full_name", read_only=True
-    )
+    patient_name = serializers.CharField(source="patient.user.full_name", read_only=True)
+    doctor = serializers.PrimaryKeyRelatedField(read_only=True)
+    doctor_name = serializers.CharField(source="doctor.user.full_name", read_only=True, default=None)
     doctor_specialty = serializers.CharField(
-        source="doctor.specialty.name", read_only=True, allow_null=True
+        source="doctor.specialty.name", read_only=True, default=None
     )
     cancelled_by_name = serializers.CharField(
-        source="cancelled_by.get_full_name", read_only=True, allow_null=True
+        source="cancelled_by.full_name", read_only=True, default=None
     )
-    status_display = serializers.CharField(
-        source="get_status_display", read_only=True
-    )
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
     end_time = serializers.TimeField(read_only=True)
     check_in = AppointmentCheckInSerializer(read_only=True)
+    consultation_id = serializers.IntegerField(source="consultation.id", read_only=True, allow_null=True)
     is_upcoming = serializers.SerializerMethodField()
     can_cancel = serializers.SerializerMethodField()
     can_confirm = serializers.SerializerMethodField()
@@ -147,35 +233,16 @@ class AppointmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = [
-            "id",
-            "patient",
-            "patient_name",
-            "doctor",
-            "doctor_name",
-            "doctor_specialty",
-            "appointment_date",
-            "appointment_time",
-            "end_time",
-            "duration_minutes",
-            "status",
-            "status_display",
-            "reason_for_visit",
-            "confirmed_at",
-            "completed_at",
-            "cancelled_at",
-            "cancelled_by",
-            "cancelled_by_name",
-            "cancellation_reason",
-            "check_in",
-            "is_upcoming",
-            "can_cancel",
-            "can_confirm",
-            "can_complete",
-            "can_mark_no_show",
-            "created_at",
-            "updated_at",
+            "id", "patient", "patient_name", "doctor", "doctor_name", "doctor_specialty",
+            "appointment_type", "provider_name", "reminder_minutes", "consultation_id",
+            "appointment_date", "appointment_time", "end_time", "duration_minutes",
+            "status", "status_display", "reason_for_visit",
+            "confirmed_at", "completed_at", "cancelled_at", "cancelled_by",
+            "cancelled_by_name", "cancellation_reason", "check_in",
+            "is_upcoming", "can_cancel", "can_confirm", "can_complete", "can_mark_no_show",
+            "created_at", "updated_at",
         ]
-        read_only_fields = fields  # fully read-only
+        read_only_fields = fields
 
     def get_is_upcoming(self, obj):
         today = timezone.localdate()
@@ -185,22 +252,25 @@ class AppointmentSerializer(serializers.ModelSerializer):
             return obj.appointment_time >= timezone.localtime().time()
         return False
 
-    def _user_is_doctor_of(self, obj):
+    def _request_user(self):
         request = self.context.get("request")
-        if not request or not request.user.is_authenticated:
-            return False
-        return (
-            hasattr(request.user, "doctor_profile")
-            and obj.doctor.user_id == request.user.id
+        if request and request.user.is_authenticated:
+            return request.user
+        return None
+
+    def _user_is_doctor_of(self, obj):
+        user = self._request_user()
+        return bool(
+            user
+            and obj.doctor_id
+            and hasattr(user, "doctor_profile")
+            and obj.doctor.user_id == user.id
         )
 
     def _user_is_patient_of(self, obj):
-        request = self.context.get("request")
-        if not request or not request.user.is_authenticated:
-            return False
-        return (
-            hasattr(request.user, "patient_profile")
-            and obj.patient.user_id == request.user.id
+        user = self._request_user()
+        return bool(
+            user and hasattr(user, "patient_profile") and obj.patient.user_id == user.id
         )
 
     def get_can_cancel(self, obj):
@@ -210,31 +280,26 @@ class AppointmentSerializer(serializers.ModelSerializer):
             Appointment.Status.NO_SHOW,
         ):
             return False
-        request = self.context.get("request")
-        if not request:
-            return False
-        return (
-            request.user.is_staff
-            or self._user_is_doctor_of(obj)
-            or self._user_is_patient_of(obj)
+        user = self._request_user()
+        return bool(
+            user
+            and (user.is_staff or self._user_is_doctor_of(obj) or self._user_is_patient_of(obj))
         )
 
     def get_can_confirm(self, obj):
-        if obj.status != Appointment.Status.PENDING:
-            return False
-        request = self.context.get("request")
+        user = self._request_user()
         return bool(
-            request
-            and (request.user.is_staff or self._user_is_doctor_of(obj))
+            user
+            and obj.status == Appointment.Status.PENDING
+            and (user.is_staff or self._user_is_doctor_of(obj))
         )
 
     def get_can_complete(self, obj):
-        if obj.status != Appointment.Status.CONFIRMED:
-            return False
-        request = self.context.get("request")
+        user = self._request_user()
         return bool(
-            request
-            and (request.user.is_staff or self._user_is_doctor_of(obj))
+            user
+            and obj.status == Appointment.Status.CONFIRMED
+            and (user.is_staff or self._user_is_doctor_of(obj))
         )
 
     def get_can_mark_no_show(self, obj):
@@ -242,95 +307,68 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
 
 # ---------------------------------------------------------------------------
-# Create serializer
+# Doctor-app create serializer (unchanged contract)
 # ---------------------------------------------------------------------------
 
 class AppointmentCreateSerializer(serializers.ModelSerializer):
+    doctor = serializers.PrimaryKeyRelatedField(
+        queryset=Doctor.objects.filter(approval_status=Doctor.ApprovalStatus.APPROVED)
+    )
+
     class Meta:
         model = Appointment
-        fields = [
-            "doctor",
-            "appointment_date",
-            "appointment_time",
-            #"reason_for_visit",
-        ]
+        fields = ["doctor", "appointment_date", "appointment_time"]
 
     def validate(self, attrs):
         doctor = attrs["doctor"]
         appointment_date = attrs["appointment_date"]
         appointment_time = attrs["appointment_time"]
 
-        # Duration comes exclusively from the doctor
-        duration = getattr(doctor, "consultation_duration_minutes", None)
+        duration = doctor_duration_minutes(doctor)
         if not duration or duration <= 0:
             raise serializers.ValidationError(
-                {
-                    "doctor": (
-                        "Doctor does not have a valid consultation duration configured."
-                    )
-                }
+                {"doctor": "Doctor does not have a valid consultation duration configured."}
             )
 
         validate_not_in_past(appointment_date, appointment_time)
-        validate_fits_doctor_availability(
-            doctor, appointment_date, appointment_time, duration
-        )
-        validate_no_overlap(
-            doctor, appointment_date, appointment_time, duration
-        )
+        validate_fits_doctor_availability(doctor, appointment_date, appointment_time, duration)
+        validate_no_overlap(doctor, appointment_date, appointment_time, duration)
 
-        # Stash duration so create() can use it without another lookup
         attrs["_duration_minutes"] = duration
         return attrs
 
     def create(self, validated_data):
-        duration = validated_data.pop("_duration_minutes")
-        validated_data["duration_minutes"] = duration
-        # patient and status are injected by the view
+        validated_data["duration_minutes"] = validated_data.pop("_duration_minutes")
         return super().create(validated_data)
 
 
 # ---------------------------------------------------------------------------
-# Optional action-specific input serializers (recommended for production)
+# Action inputs
 # ---------------------------------------------------------------------------
 
 class AppointmentCancelSerializer(serializers.Serializer):
     cancellation_reason = serializers.CharField(
-        required=False,
-        allow_blank=True,
-        max_length=1000,
-        default="",
+        required=False, allow_blank=True, max_length=1000, default=""
     )
 
 
 class AppointmentRescheduleSerializer(serializers.Serializer):
-    """
-    Lightweight input for a future reschedule endpoint.
-    Reuses the same validation helpers.
-    """
     appointment_date = serializers.DateField()
     appointment_time = serializers.TimeField()
-    reason_for_visit = serializers.CharField(
-        required=False, allow_blank=True, max_length=2000
-    )
+    reason_for_visit = serializers.CharField(required=False, allow_blank=True, max_length=2000)
 
     def validate(self, attrs):
         appointment = self.context["appointment"]
-        doctor = appointment.doctor
         duration = appointment.duration_minutes
+        date, time = attrs["appointment_date"], attrs["appointment_time"]
 
-        validate_not_in_past(attrs["appointment_date"], attrs["appointment_time"])
-        validate_fits_doctor_availability(
-            doctor,
-            attrs["appointment_date"],
-            attrs["appointment_time"],
-            duration,
-        )
-        validate_no_overlap(
-            doctor,
-            attrs["appointment_date"],
-            attrs["appointment_time"],
-            duration,
-            exclude_pk=appointment.pk,
-        )
+        validate_not_in_past(date, time)
+
+        if appointment.doctor_id:
+            validate_fits_doctor_availability(appointment.doctor, date, time, duration)
+            validate_no_overlap(appointment.doctor, date, time, duration, exclude_pk=appointment.pk)
+        else:
+            validate_patient_no_overlap(
+                appointment.patient, date, time, duration, exclude_pk=appointment.pk
+            )
         return attrs
