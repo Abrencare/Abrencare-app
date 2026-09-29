@@ -371,6 +371,7 @@ export default function ExecutiveReports() {
 }
 
 function LineChart({ trend }: { trend: TrendSeries }) {
+  const styles = useThemedStyles(baseStyles);
   const [width, setWidth] = useState(0);
 
   const color = toneColors[trend.tone].text;

@@ -255,6 +255,7 @@ function TimelineItem({
   status: StepStatus;
   last: boolean;
 }) {
+  const styles = useThemedStyles(baseStyles);
   const pending = status === "pending";
 
   return (

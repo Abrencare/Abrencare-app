@@ -392,6 +392,7 @@ export default function ExecutiveProgramme() {
 }
 
 function SummaryCard({ number, label }: { number: string; label: string }) {
+  const styles = useThemedStyles(baseStyles);
   return (
     <View style={styles.summaryCard}>
       <Text style={styles.summaryNumber}>{number}</Text>

@@ -230,6 +230,7 @@ function DoctorCard({
   onPress: () => void;
   onMessage: () => void;
 }) {
+  const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
 
   return (
@@ -310,6 +311,7 @@ function DoctorCard({
 }
 
 function Stars({ rating }: { rating: number }) {
+  const styles = useThemedStyles(baseStyles);
   return (
     <View style={styles.stars}>
       {[1, 2, 3, 4, 5].map((step) => (
@@ -339,6 +341,7 @@ function FilterChip({
   selected: boolean;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(baseStyles);
   return (
     <TouchableOpacity
       style={[styles.chip, selected && styles.chipSelected]}

@@ -502,6 +502,7 @@ function FilterChip({
   selected: boolean;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(baseStyles);
   return (
     <TouchableOpacity
       style={[styles.chip, selected && styles.chipSelected]}

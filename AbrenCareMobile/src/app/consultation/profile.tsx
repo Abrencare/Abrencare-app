@@ -255,6 +255,7 @@ function InfoRow({
   value: string;
   divider?: boolean;
 }) {
+  const styles = useThemedStyles(baseStyles);
   return (
     <View style={[styles.infoRow, divider && styles.divider]}>
       <View style={styles.settingIcon}>

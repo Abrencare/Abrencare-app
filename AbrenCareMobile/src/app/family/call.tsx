@@ -125,6 +125,7 @@ function ControlButton({
   active?: boolean;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(baseStyles);
   return (
     <View style={styles.control}>
       <TouchableOpacity

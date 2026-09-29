@@ -249,6 +249,7 @@ function UpcomingCard({
   onMessage: () => void;
   onCancel: () => void;
 }) {
+  const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
   const doctor = doctorById(consultation.doctorId);
   const joinable = isJoinable(consultation);
@@ -309,6 +310,7 @@ function UpcomingCard({
 }
 
 function SummaryBody({ consultation }: { consultation: Consultation }) {
+  const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
   const doctor = doctorById(consultation.doctorId);
 

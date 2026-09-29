@@ -348,6 +348,7 @@ function FileCard({
   openLabel: string;
   outgoing?: boolean;
 }) {
+  const styles = useThemedStyles(baseStyles);
   return (
     <View style={styles.fileRow}>
       <View style={[styles.fileIcon, outgoing && styles.fileIconOutgoing]}>
