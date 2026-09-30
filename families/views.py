@@ -15,6 +15,10 @@ from .models import (
     CareVisit,
     FamilyCareTeamMember,
     FamilyAttentionFlag,
+    FamilyReport,
+    FamilyPrescription,
+    FamilyLabResult,
+    FamilyHistoryEntry
 )
 from .serializers import (
     FamilyMemberSerializer,
@@ -25,6 +29,10 @@ from .serializers import (
     CareVisitSerializer,
     FamilyCareTeamMemberSerializer,
     FamilyAttentionFlagSerializer,
+    FamilyHistoryEntrySerializer,
+    FamilyReportSerializer,
+    FamilyPrescriptionSerializer,
+    FamilyLabResultSerializer
 )
 from .services.family import (
     complete_family_onboarding,
@@ -380,4 +388,43 @@ class FamilyAttentionFlagResolveView(APIView):
         flag.resolved = True
         flag.save(update_fields=["resolved"])
         return Response(FamilyAttentionFlagSerializer(flag).data)
+
+class MemberReportListView(generics.ListAPIView):
+    """GET /family/members/<member_id>/reports/"""
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = FamilyReportSerializer
+
+    def get_queryset(self):
+        member = get_member_or_404(self.request.user, self.kwargs["member_id"])
+        return FamilyReport.objects.filter(member=member)
+
+
+class MemberPrescriptionListView(generics.ListAPIView):
+    """GET /family/members/<member_id>/prescriptions/"""
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = FamilyPrescriptionSerializer
+
+    def get_queryset(self):
+        member = get_member_or_404(self.request.user, self.kwargs["member_id"])
+        return FamilyPrescription.objects.filter(member=member)
+
+
+class MemberLabResultListView(generics.ListAPIView):
+    """GET /family/members/<member_id>/labs/"""
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = FamilyLabResultSerializer
+
+    def get_queryset(self):
+        member = get_member_or_404(self.request.user, self.kwargs["member_id"])
+        return FamilyLabResult.objects.filter(member=member)
+
+
+class MemberHistoryListView(generics.ListAPIView):
+    """GET /family/members/<member_id>/history/"""
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = FamilyHistoryEntrySerializer
+
+    def get_queryset(self):
+        member = get_member_or_404(self.request.user, self.kwargs["member_id"])
+        return FamilyHistoryEntry.objects.filter(member=member)
     

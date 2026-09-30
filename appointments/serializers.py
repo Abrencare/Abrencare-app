@@ -270,7 +270,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
     def _user_is_patient_of(self, obj):
         user = self._request_user()
         return bool(
-            user and hasattr(user, "patient_profile") and obj.patient.user_id == user.id
+            user and hasattr(user, "patient_profile") and obj.patient.id == user.id
         )
 
     def get_can_cancel(self, obj):

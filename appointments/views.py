@@ -42,7 +42,7 @@ class AppointmentPagination(PageNumberPagination):
 
 
 def get_user_patient(user):
-    return getattr(user, "patient_profile", None)
+    return user
 
 
 def get_user_doctor(user):
@@ -50,8 +50,8 @@ def get_user_doctor(user):
 
 
 def user_is_patient_of(user, appointment) -> bool:
-    patient = get_user_patient(user)
-    return bool(patient and appointment.patient_id == patient.id)
+    """The appointment's patient FK points at a User; compare directly."""
+    return bool(user and appointment.patient_id == user.id)
 
 
 def user_can_access_appointment(user, appointment) -> bool:
@@ -72,7 +72,7 @@ def user_can_manage_appointment(user, appointment) -> bool:
 def get_base_queryset():
     # prefetch_related works for reverse one-to-one and reverse FK alike.
     return Appointment.objects.select_related(
-        "patient__user", "doctor__user", "doctor__specialty", "cancelled_by"
+        "patient", "doctor__user", "doctor__specialty", "cancelled_by"
     ).prefetch_related("check_in", "consultation")
 
 
@@ -138,15 +138,14 @@ class AppointmentListCreateView(APIView):
 
     def get_queryset(self, request):
         qs = get_base_queryset()
-        patient = get_user_patient(request.user)
         doctor = get_user_doctor(request.user)
 
-        if patient:
-            qs = qs.filter(patient=patient)
-        elif doctor:
+        if doctor:
             qs = qs.filter(doctor=doctor)
-        elif not request.user.is_staff:
-            return Appointment.objects.none()
+        elif request.user.is_staff:
+            pass 
+        else:
+            qs = qs.filter(patient=request.user)
 
         params = request.query_params
 
@@ -173,40 +172,27 @@ class AppointmentListCreateView(APIView):
         return qs
 
     def get(self, request):
-        if not (
-            get_user_patient(request.user)
-            or get_user_doctor(request.user)
-            or request.user.is_staff
-        ):
-            return Response(
-                {"detail": "You do not have access to appointments."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(self.get_queryset(request), request, view=self)
         serializer = AppointmentSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
 
     def post(self, request):
-        patient = get_user_patient(request.user)
-        if not patient:
+        if get_user_doctor(request.user):
             return Response(
-                {"detail": "Only patients can create appointments."},
+                {"detail": "Doctors cannot create patient appointments."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # The mobile app posts {date, time, type, withName, reminderMinutes};
-        # the doctor flow posts {doctor, appointment_date, appointment_time}.
         if "date" in request.data and "appointment_date" not in request.data:
-            return self._create_from_app(request, patient)
-
+            return self._create_from_app(request, request.user)
+        
         serializer = AppointmentCreateSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
         try:
             with transaction.atomic():
-                appointment = serializer.save(patient=patient, status=Appointment.Status.PENDING)
+                appointment = serializer.save(patient=request.user, status=Appointment.Status.PENDING)
         except IntegrityError:
             return Response(
                 {"detail": "The selected appointment slot is no longer available."},

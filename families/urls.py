@@ -16,6 +16,10 @@ from .views import (
     FamilyCareTeamView,
     FamilyAttentionFlagListView,
     FamilyAttentionFlagResolveView,
+    MemberReportListView,
+    MemberHistoryListView,
+    MemberPrescriptionListView,
+    MemberLabResultListView
 )
 
 urlpatterns = [
@@ -37,4 +41,25 @@ urlpatterns = [
     path("care-team/", FamilyCareTeamView.as_view()),
     path("attention/", FamilyAttentionFlagListView.as_view()),
     path("attention/<int:flag_id>/resolve/", FamilyAttentionFlagResolveView.as_view()),
+
+    path(
+        "members/<int:member_id>/reports/",
+        MemberReportListView.as_view(),
+        name="family-member-reports",
+    ),
+    path(
+        "members/<int:member_id>/prescriptions/",
+        MemberPrescriptionListView.as_view(),
+        name="family-member-prescriptions",
+    ),
+    path(
+        "members/<int:member_id>/labs/",
+        MemberLabResultListView.as_view(),
+        name="family-member-labs",
+    ),
+    path(
+        "members/<int:member_id>/history/",
+        MemberHistoryListView.as_view(),
+        name="family-member-history",
+    ),
 ]

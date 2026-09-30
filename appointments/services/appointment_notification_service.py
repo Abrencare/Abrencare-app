@@ -21,12 +21,12 @@ class AppointmentNotificationService:
     @classmethod
     def notify_created(cls, appointment):
         doctor_name = appointment.doctor.user.get_full_name()
-        patient_name = appointment.patient.user.get_full_name()
+        patient_name = appointment.patient.get_full_name()
         when = f"{appointment.appointment_date} at {appointment.appointment_time}"
 
         # Patient
         cls._safe_create(
-            user=appointment.patient.user,
+            user=appointment.patient,
             title="Appointment Scheduled",
             message=(
                 f"Your appointment with Dr. {doctor_name} "
@@ -60,7 +60,7 @@ class AppointmentNotificationService:
         when = f"{appointment.appointment_date} at {appointment.appointment_time}"
 
         cls._safe_create(
-            user=appointment.patient.user,
+            user=appointment.patient,
             title="Appointment Confirmed",
             message=(
                 f"Your appointment with Dr. {doctor_name} "
@@ -81,7 +81,7 @@ class AppointmentNotificationService:
 
         actor = "the clinic"
         if cancelled_by:
-            if cancelled_by == appointment.patient.user:
+            if cancelled_by == appointment.patient:
                 actor = "you"
             elif cancelled_by == appointment.doctor.user:
                 actor = f"Dr. {doctor_name}"
@@ -90,7 +90,7 @@ class AppointmentNotificationService:
 
         # Patient
         cls._safe_create(
-            user=appointment.patient.user,
+            user=appointment.patient,
             title="Appointment Cancelled",
             message=(
                 f"Your appointment with Dr. {doctor_name} "
@@ -121,7 +121,7 @@ class AppointmentNotificationService:
     @classmethod
     def notify_rescheduled(cls, appointment, old_date=None, old_time=None):
         doctor_name = appointment.doctor.user.get_full_name()
-        patient_name = appointment.patient.user.get_full_name()
+        patient_name = appointment.patient.get_full_name()
         new_when = f"{appointment.appointment_date} at {appointment.appointment_time}"
 
         old_when = None
@@ -139,7 +139,7 @@ class AppointmentNotificationService:
             )
 
         cls._safe_create(
-            user=appointment.patient.user,
+            user=appointment.patient,
             title="Appointment Rescheduled",
             message=message_patient,
             notification_type=NotificationType.APPOINTMENT,
@@ -167,7 +167,7 @@ class AppointmentNotificationService:
     def notify_completed(cls, appointment):
         # Usually only the patient cares
         cls._safe_create(
-            user=appointment.patient.user,
+            user=appointment.patient,
             title="Appointment Completed",
             message="Your appointment has been marked as completed.",
             notification_type=NotificationType.APPOINTMENT,
@@ -181,7 +181,7 @@ class AppointmentNotificationService:
     def notify_no_show(cls, appointment):
         # Optional – some clinics notify the patient
         cls._safe_create(
-            user=appointment.patient.user,
+            user=appointment.patient,
             title="Missed Appointment",
             message=(
                 "You were marked as a no-show for your recent appointment. "

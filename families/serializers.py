@@ -12,8 +12,19 @@ from .models import (
     FamilyMember, FamilyProfile,
     FamilyReading, CarePlanItem, CareVisit,
     FamilyCareTeamMember, FamilyAttentionFlag,
+    FamilyHistoryEntry,
+    FamilyLabResult,
+    FamilyPrescription,
+    FamilyReport
 )
 
+def _format_date_label(dt) -> str:
+    """Portable equivalent of strftime('%-d')/('%#d') — works on Windows too."""
+    return f"{dt:%b} {dt.day}, {dt.year}"
+
+
+def _format_day_label(dt) -> str:
+    return str(dt.day)
 
 # ============================================================
 # INDIVIDUAL SERIALIZERS
@@ -496,4 +507,49 @@ class FamilyMemberOverviewSerializer(serializers.ModelSerializer):
         )
         return FamilyAttentionFlagSerializer(qs, many=True).data
 
-    
+
+class FamilyReportSerializer(serializers.ModelSerializer):
+    date_label = serializers.SerializerMethodField()
+    day_label = serializers.SerializerMethodField()
+    description = serializers.CharField(source="summary")
+    tone = serializers.CharField(source="status")   # if you standardize on the same enum
+    is_new = serializers.BooleanField()
+
+    class Meta:
+        model = FamilyReport
+        fields = ["id", "date_label", "day_label", "description", "tone", "is_new"]
+
+    def get_date_label(self, obj):
+        return _format_date_label(obj.published_at)
+
+    def get_day_label(self, obj):
+        return _format_day_label(obj.published_at)
+
+
+class FamilyPrescriptionSerializer(serializers.ModelSerializer):
+    doctor = serializers.CharField(source="prescribed_by")
+    refill = serializers.CharField(source="refill_note")
+    status = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = FamilyPrescription
+        fields = ["id", "name", "dose", "doctor", "refill", "status", "tone"]
+
+
+class FamilyLabResultSerializer(serializers.ModelSerializer):
+    date = serializers.SerializerMethodField()
+    status = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = FamilyLabResult
+        fields = ["id", "name", "date", "value", "status", "tone"]
+
+    def get_date(self, obj):
+        return _format_date_label(obj.collected_at)
+
+
+class FamilyHistoryEntrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FamilyHistoryEntry
+        fields = ["id", "title", "detail", "year", "icon", "tone"]
+

@@ -13,9 +13,17 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 import os
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+# DJANGO_ENV defaults to "dev". Set it to "prod" in production.
+_ENV = os.environ.get("DJANGO_ENV", "dev")
+_env_file = BASE_DIR / f".env.{_ENV}"
+if _env_file.exists():
+    load_dotenv(_env_file, override=False)
+
+load_dotenv(BASE_DIR / ".env")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -69,6 +77,7 @@ INSTALLED_APPS = [
     "notifications",
     "patients",
     "chat",
+    "payments",
 ]
 
 # ======================================================
@@ -254,6 +263,9 @@ REST_FRAMEWORK = {
 
         "family_invitation_create": "20/hour",
         "family_patient_create": "20/hour",
+
+        "payment_poll": "60/minute",
+        "payment_initiate": "10/minute",
     },
 }
 
@@ -328,6 +340,60 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ── Telebirr ────────────────────────────────────────────
+TELEBIRR_MODE = os.environ.get("TELEBIRR_MODE", "mock")
+TELEBIRR_MERCHANT_APP_ID = os.environ.get("TELEBIRR_MERCHANT_APP_ID", "dev-merchant-app-id")
+TELEBIRR_APP_SECRET = os.environ.get("TELEBIRR_APP_SECRET", "dev-app-secret")
+TELEBIRR_SHORT_CODE = os.environ.get("TELEBIRR_SHORT_CODE", "123456")
+TELEBIRR_BASE_URL = os.environ.get(
+    "TELEBIRR_BASE_URL", "http://localhost:9000/mock-telebirr",
+)
+TELEBIRR_NOTIFY_URL = os.environ.get(
+    "TELEBIRR_NOTIFY_URL", "http://localhost:8000/webhooks/telebirr/notify/",
+)
+TELEBIRR_RETURN_URL = os.environ.get(
+    "TELEBIRR_RETURN_URL", "http://localhost:8000/webhooks/telebirr/return/",
+)
+TELEBIRR_RETURN_REDIRECT_URL = os.environ.get(
+    "TELEBIRR_RETURN_REDIRECT_URL", "/payments/status/",
+)
+
+def _read_pem(env_var: str) -> str:
+    """Load a PEM from a path in an env var, or inline content."""
+    inline = os.environ.get(env_var, "")
+    if inline.strip().startswith("-----BEGIN"):
+        return inline.replace("\\n", "\n")
+
+    raw_path = os.environ.get(f"{env_var}_PATH", "")
+    if not raw_path:
+        return ""
+    p = Path(raw_path)
+    if not p.is_absolute():
+        p = BASE_DIR / p
+    return p.read_text() if p.exists() else ""
+
+TELEBIRR_PUBLIC_KEY = _read_pem("TELEBIRR_PUBLIC_KEY")
+TELEBIRR_PRIVATE_KEY = _read_pem("TELEBIRR_PRIVATE_KEY")
+
+# Fail loud in production if anything is missing.
+if _ENV == "prod":
+    _required = [
+        "TELEBIRR_MERCHANT_APP_ID", "TELEBIRR_APP_SECRET",
+        "TELEBIRR_SHORT_CODE", "TELEBIRR_BASE_URL",
+        "TELEBIRR_NOTIFY_URL", "TELEBIRR_RETURN_URL",
+    ]
+    _missing = [n for n in _required if not globals().get(n)]
+    if _missing:
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured(
+            f"Missing in production: {', '.join(_missing)}"
+        )
+    if not TELEBIRR_PUBLIC_KEY or not TELEBIRR_PRIVATE_KEY:
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured(
+            "TELEBIRR_PUBLIC_KEY / TELEBIRR_PRIVATE_KEY could not be loaded."
+        )
 
 # ====================================================== 
 # END OF SETTINGS

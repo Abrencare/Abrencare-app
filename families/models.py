@@ -834,3 +834,124 @@ class FamilyAuditLog(models.Model):
             f"{self.created_at}"
         )
 
+# backend/families/models.py
+
+class FamilyReport(models.Model):
+    """
+    A periodic health summary for a FamilyMember.
+
+    Examples: weekly summary, monthly review, post-visit recap.
+    """
+
+    class Kind(models.TextChoices):
+        WEEKLY = "weekly", "Weekly summary"
+        MONTHLY = "monthly", "Monthly review"
+        POST_VISIT = "post_visit", "Post-visit recap"
+        AD_HOC = "ad_hoc", "Ad-hoc report"
+
+    class Status(models.TextChoices):
+        GOOD = "good", "Good"
+        INFO = "info", "Info"
+        FLAG = "flag", "Flag"
+
+    member = models.ForeignKey(
+        FamilyMember, on_delete=models.CASCADE, related_name="reports",
+    )
+    kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.WEEKLY)
+    title = models.CharField(max_length=200)
+    summary = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=10, choices=Status.choices, default=Status.INFO,
+    )
+    is_new = models.BooleanField(default=False)
+    published_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-published_at"]
+
+    def __str__(self):
+        return f"{self.member.full_name} · {self.title}"
+    
+
+class FamilyPrescription(models.Model):
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        REFILL_SOON = "refill_soon", "Refill soon"
+        EXPIRED = "expired", "Expired"
+        STOPPED = "stopped", "Stopped"
+
+    class Tone(models.TextChoices):
+        GOOD = "good", "Good"
+        WARN = "warn", "Warn"
+        BAD = "bad", "Bad"
+
+    member = models.ForeignKey(
+        FamilyMember, on_delete=models.CASCADE, related_name="prescriptions",
+    )
+    name = models.CharField(max_length=200)
+    dose = models.CharField(max_length=100)              # "500 mg · twice daily"
+    prescribed_by = models.CharField(max_length=200)     # doctor name
+    refill_note = models.CharField(max_length=200, blank=True)  # "Refill in 6 days"
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.ACTIVE,
+    )
+    tone = models.CharField(
+        max_length=10, choices=Tone.choices, default=Tone.GOOD,
+    )
+    started_at = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+class FamilyLabResult(models.Model):
+    class Status(models.TextChoices):
+        NORMAL = "normal", "Normal"
+        REVIEW = "review", "Review"
+        ABNORMAL = "abnormal", "Abnormal"
+
+    member = models.ForeignKey(
+        FamilyMember, on_delete=models.CASCADE, related_name="lab_results",
+    )
+    name = models.CharField(max_length=200)              # "Complete blood count"
+    value = models.CharField(max_length=100, blank=True) # "Normal range"
+    collected_at = models.DateField()
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.NORMAL,
+    )
+    tone = models.CharField(
+        max_length=10, choices=[
+            ("good", "Good"), ("warn", "Warn"), ("bad", "Bad"),
+        ],
+        default="good",
+    )
+    file_url = models.URLField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-collected_at"]
+
+
+class FamilyHistoryEntry(models.Model):
+    class Tone(models.TextChoices):
+        GOOD = "good", "Good"
+        WARN = "warn", "Warn"
+        BAD = "bad", "Bad"
+
+    member = models.ForeignKey(
+        FamilyMember, on_delete=models.CASCADE, related_name="history_entries",
+    )
+    title = models.CharField(max_length=200)              # "Hypertension"
+    detail = models.CharField(max_length=300, blank=True) # "Diagnosed 2018"
+    year = models.CharField(max_length=10, blank=True)    # "2018"
+    icon = models.CharField(max_length=40, blank=True)    # Ionicons glyph name
+    tone = models.CharField(
+        max_length=10, choices=Tone.choices, default=Tone.GOOD,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-year", "-created_at"]
+        verbose_name_plural = "family history entries"
+

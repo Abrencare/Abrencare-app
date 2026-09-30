@@ -6,11 +6,16 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
-from patients.models import Patient
 from doctors.models import Doctor
 
 
 class Appointment(models.Model):
+
+    class AppointmentType(models.TextChoices):
+        DOCTOR_VISIT = "doctor_visit", "Doctor Visit"
+        HOME_VISIT = "home_visit", "Home Visit"
+        NURSE_CHECK = "nurse_check", "Nurse Check"
+        LAB_SAMPLE = "lab_sample", "Lab Sample"
 
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
@@ -20,7 +25,7 @@ class Appointment(models.Model):
         NO_SHOW = "no_show", "No Show"
 
     patient = models.ForeignKey(
-        Patient,
+        settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="appointments",
         null=True,
@@ -31,7 +36,10 @@ class Appointment(models.Model):
         Doctor,
         on_delete=models.PROTECT,
         related_name="appointments",
+        null=True,
+        blank=True,
     )
+
     appointment_date = models.DateField()
     appointment_time = models.TimeField()
     duration_minutes = models.PositiveIntegerField()
@@ -42,6 +50,24 @@ class Appointment(models.Model):
         db_index=True,
     )
     reason_for_visit = models.TextField(null=True,blank=True,)
+    appointment_type = models.CharField(
+        max_length=20,
+        choices=AppointmentType.choices,
+        default=AppointmentType.DOCTOR_VISIT,
+        db_index=True,
+    )
+    provider_name = models.CharField(
+        max_length=150,
+        blank=True,
+        default="",
+        help_text="Display name for non-doctor visits (nurse, lab tech, etc.).",
+    )
+    reminder_minutes = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text="How many minutes before the appointment to notify the patient.",
+    )
     confirmed_at = models.DateTimeField(null=True, blank=True,)
     completed_at = models.DateTimeField(null=True, blank=True,)
     cancelled_at = models.DateTimeField(null=True,blank=True,)
@@ -108,8 +134,8 @@ class Appointment(models.Model):
 
     def __str__(self):
         return (
-            f"{self.doctor.user.full_name} - "
-            f"{self.patient.user.full_name} - "
+            f"{self.doctor} - "
+            f"{self.patient.full_name if self.patient else '—'} - "
             f"{self.appointment_date} "
             f"{self.appointment_time}"
         )

@@ -13,6 +13,10 @@ from .models import (
     FamilyInvitation,
     InvitationDelivery,
     FamilyAuditLog,
+    FamilyReport,
+    FamilyPrescription,
+    FamilyLabResult,
+    FamilyHistoryEntry,
 )
 
 
@@ -470,4 +474,233 @@ class FamilyAuditLogAdmin(admin.ModelAdmin):
     @admin.display(description="Metadata")
     def metadata_preview(self, obj):
         return format_html("<code>{}</code>", obj.metadata)
+
+
+class FamilyReportInline(admin.TabularInline):
+    model = FamilyReport
+    extra = 0
+    fields = (
+        "title", "kind", "status", "is_new",
+        "published_at", "summary",
+    )
+    ordering = ("-published_at",)
+    show_change_link = True
+
+
+class FamilyPrescriptionInline(admin.TabularInline):
+    model = FamilyPrescription
+    extra = 0
+    fields = (
+        "name", "dose", "prescribed_by",
+        "status", "tone", "refill_note", "started_at",
+    )
+    ordering = ("-created_at",)
+    show_change_link = True
+
+
+class FamilyLabResultInline(admin.TabularInline):
+    model = FamilyLabResult
+    extra = 0
+    fields = (
+        "name", "value", "collected_at",
+        "status", "tone", "file_url",
+    )
+    ordering = ("-collected_at",)
+    show_change_link = True
+
+
+class FamilyHistoryEntryInline(admin.TabularInline):
+    model = FamilyHistoryEntry
+    extra = 0
+    fields = ("title", "detail", "year", "tone", "icon")
+    ordering = ("-year",)
+    show_change_link = True
+
+
+# ============================================================
+# TOP-LEVEL ADMIN CLASSES
+# ============================================================
+
+
+@admin.register(FamilyReport)
+class FamilyReportAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "title",
+        "member",
+        "kind",
+        "status_badge",
+        "is_new",
+        "published_at",
+    )
+    list_filter = ("kind", "status", "is_new", "published_at")
+    search_fields = ("title", "summary", "member__full_name")
+    autocomplete_fields = ("member",)
+    date_hierarchy = "published_at"
+    ordering = ("-published_at",)
+
+    fieldsets = (
+        (None, {
+            "fields": ("member", "kind", "title"),
+        }),
+        ("Content", {
+            "fields": ("summary",),
+        }),
+        ("Status", {
+            "fields": ("status", "is_new", "published_at"),
+        }),
+    )
+
+    @admin.display(description="Status", ordering="status")
+    def status_badge(self, obj):
+        colors = {
+            "good": "#5D9C59",
+            "info": "#556CD6",
+            "flag": "#D64545",
+        }
+        color = colors.get(obj.status, "#999")
+        return format_html(
+            '<span style="display:inline-block;padding:2px 8px;'
+            'border-radius:10px;background:{};color:#fff;'
+            'font-size:11px;font-weight:600;">{}</span>',
+            color,
+            obj.get_status_display(),
+        )
+
+
+@admin.register(FamilyPrescription)
+class FamilyPrescriptionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "name",
+        "member",
+        "dose",
+        "prescribed_by",
+        "status_badge",
+        "tone_badge",
+        "started_at",
+    )
+    list_filter = ("status", "tone", "started_at")
+    search_fields = ("name", "prescribed_by", "member__full_name")
+    autocomplete_fields = ("member",)
+    ordering = ("-created_at",)
+
+    fieldsets = (
+        (None, {
+            "fields": ("member", "name", "dose", "prescribed_by"),
+        }),
+        ("Refill", {
+            "fields": ("refill_note", "started_at"),
+        }),
+        ("Status", {
+            "fields": ("status", "tone"),
+        }),
+    )
+
+    @admin.display(description="Status", ordering="status")
+    def status_badge(self, obj):
+        return obj.get_status_display()
+
+    @admin.display(description="Tone", ordering="tone")
+    def tone_badge(self, obj):
+        colors = {
+            "good": "#5D9C59",
+            "info": "#556CD6",
+            "flag": "#D64545",
+        }
+        color = colors.get(obj.tone, "#999")
+        return format_html(
+            '<span style="display:inline-block;padding:2px 8px;'
+            'border-radius:10px;background:{};color:#fff;'
+            'font-size:11px;font-weight:600;">{}</span>',
+            color,
+            obj.tone,
+        )
+
+
+@admin.register(FamilyLabResult)
+class FamilyLabResultAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "name",
+        "member",
+        "value",
+        "collected_at",
+        "status_badge",
+        "has_file",
+    )
+    list_filter = ("status", "tone", "collected_at")
+    search_fields = ("name", "value", "member__full_name")
+    autocomplete_fields = ("member",)
+    date_hierarchy = "collected_at"
+    ordering = ("-collected_at",)
+
+    fieldsets = (
+        (None, {
+            "fields": ("member", "name", "value", "collected_at"),
+        }),
+        ("Report", {
+            "fields": ("status", "tone", "file_url"),
+        }),
+    )
+
+    @admin.display(description="Status", ordering="status")
+    def status_badge(self, obj):
+        return obj.get_status_display()
+
+    @admin.display(boolean=True, description="File")
+    def has_file(self, obj):
+        return bool(obj.file_url)
+
+
+@admin.register(FamilyHistoryEntry)
+class FamilyHistoryEntryAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "title",
+        "member",
+        "detail",
+        "year",
+        "icon_preview",
+        "tone_badge",
+    )
+    list_filter = ("tone", "year")
+    search_fields = ("title", "detail", "member__full_name")
+    autocomplete_fields = ("member",)
+    ordering = ("-year", "-created_at")
+
+    fieldsets = (
+        (None, {
+            "fields": ("member", "title", "detail", "year"),
+        }),
+        ("Display", {
+            "fields": ("icon", "tone"),
+            "description": (
+                "'icon' is an Ionicons glyph name (e.g. 'heart-outline', "
+                "'water-outline'). Leave blank to fall back to a neutral dot."
+            ),
+        }),
+    )
+
+    @admin.display(description="Icon")
+    def icon_preview(self, obj):
+        if not obj.icon:
+            return "—"
+        return obj.icon
+
+    @admin.display(description="Tone", ordering="tone")
+    def tone_badge(self, obj):
+        colors = {
+            "good": "#5D9C59",
+            "info": "#556CD6",
+            "flag": "#D64545",
+        }
+        color = colors.get(obj.tone, "#999")
+        return format_html(
+            '<span style="display:inline-block;padding:2px 8px;'
+            'border-radius:10px;background:{};color:#fff;'
+            'font-size:11px;font-weight:600;">{}</span>',
+            color,
+            obj.tone,
+        )
     

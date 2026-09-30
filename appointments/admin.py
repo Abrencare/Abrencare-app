@@ -57,9 +57,9 @@ class AppointmentAdmin(admin.ModelAdmin):
 
     @admin.display(description="Patient")
     def patient_name(self, obj):
-        return obj.patient.user.full_name
+        return obj.patient
 
     @admin.display(description="Doctor")
     def doctor_name(self, obj):
-        return obj.doctor.user.full_name
+        return obj.doctor
     
