@@ -5,7 +5,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from .models import Payment, PaymentEvent, Refund
-
+from .payables import resolve, spec_for
 
 # ── Small reusable serializers ──────────────────────────────
 
@@ -31,16 +31,18 @@ class RefundSerializer(serializers.ModelSerializer):
         model = Refund
         fields = [
             "id", "reference", "payment", "amount", "reason",
-            "status", "provider_reference", "failure_reason",
+            "status",
             "requested_by", "requested_by_display",
             "metadata", "created_at", "updated_at", "completed_at",
         ]
-        read_only_fields = [
-            "id", "reference", "payment", "status", "provider_reference",
-            "failure_reason", "requested_by", "created_at", "updated_at",
-            "completed_at",
-        ]
+        read_only_fields = fields
 
+class RefundStaffSerializer(RefundSerializer):
+    class Meta(RefundSerializer.Meta):
+        fields = RefundSerializer.Meta.fields + [
+            "payment", "provider_reference", "failure_reason",
+            "requested_by", "metadata", "updated_at",
+        ]
 
 # ── Read serializer ─────────────────────────────────────────
 
@@ -82,36 +84,44 @@ class PaymentSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class PaymentPublicSerializer(serializers.ModelSerializer):
+    """User-facing representation. No provider internals, no raw errors.
+
+    Exposes a `failure_code` the client can map to UI, but never the raw
+    `failure_reason` (which may carry provider text and PII).
+    """
+
+    class Meta:
+        model = Payment
+        fields = [
+            "reference", "provider", "amount", "currency",
+            "amount_refunded", "status",
+            "failure_code",       # machine-readable, safe to show
+            "created_at", "paid_at", "expires_at",
+            "description",
+        ]
+        read_only_fields = fields
+
 # ── Write serializers ───────────────────────────────────────
 
 
 class PaymentCreateSerializer(serializers.Serializer):
-    """Input for creating a payment (either provider-hosted checkout or
-    manual/cash entry)."""
+    """Create a payment for a registered payable.
+
+    The client sends `payable_type` and `payable_id`. The server resolves
+    the payable, derives the amount from it, and authorizes the payer.
+
+    `amount` is deliberately NOT a field on this serializer. The amount is
+    a server-side property of the payable, not a client-supplied value.
+    """
 
     provider = serializers.ChoiceField(choices=Payment.Provider.choices)
-    amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    payable_type = serializers.CharField(max_length=64)
+    payable_id = serializers.CharField(max_length=64)
     currency = serializers.CharField(max_length=3, default="ETB")
-    payer = serializers.PrimaryKeyRelatedField(
-        queryset=Payment._meta.get_field("payer").remote_field.model.objects.all(),
-        required=False,
-        help_text="Defaults to request.user.",
-    )
     patient = serializers.PrimaryKeyRelatedField(
         queryset=Payment._meta.get_field("patient").remote_field.model.objects.all(),
         required=False, allow_null=True,
-    )
-    recorded_by = serializers.PrimaryKeyRelatedField(
-        queryset=Payment._meta.get_field("recorded_by").remote_field.model.objects.all(),
-        required=False, allow_null=True,
-    )
-    content_type = serializers.PrimaryKeyRelatedField(
-        queryset=ContentType.objects.all(),
-        required=False, allow_null=True,
-    )
-    object_id = serializers.IntegerField(required=False, allow_null=True)
-    description = serializers.CharField(
-        max_length=255, required=False, allow_blank=True,
     )
     idempotency_key = serializers.CharField(
         max_length=64, required=False, allow_blank=True, allow_null=True,
@@ -119,42 +129,55 @@ class PaymentCreateSerializer(serializers.Serializer):
     expires_at = serializers.DateTimeField(required=False, allow_null=True)
     metadata = serializers.JSONField(required=False, default=dict)
 
-    # ── Validation ──────────────────────────────────────────
-
-    def validate_amount(self, value: Decimal) -> Decimal:
-        if value <= 0:
-            raise serializers.ValidationError("Amount must be positive.")
-        return value
-
     def validate(self, attrs):
-        provider = attrs["provider"]
-        ct = attrs.get("content_type")
-        obj_id = attrs.get("object_id")
+        request = self.context["request"]
+        payer = request.user
 
-        if (ct is None) != (obj_id is None):
+        payable_type = attrs.get("payable_type")
+        payable_id = attrs.get("payable_id")
+        if not payable_type or not payable_id:
             raise serializers.ValidationError(
-                "content_type and object_id must be provided together.",
+                {"payable_type": ["payable_type and payable_id are required."]}
             )
 
-        if provider == Payment.Provider.MANUAL:
-            if not attrs.get("recorded_by"):
-                raise serializers.ValidationError(
-                    {"recorded_by": "Required for manual/cash payments."},
-                )
-        else:
-            if attrs.get("recorded_by"):
-                raise serializers.ValidationError(
-                    {"recorded_by": "Only valid for manual payments."},
-                )
+        try:
+            spec = spec_for(payable_type)
+            payable = resolve(payable_type, payable_id)
+        except LookupError as exc:
+            raise serializers.ValidationError(
+                {"payable_id": [str(exc)]}
+            ) from exc
 
-        # Default payer to the requester when omitted.
-        request = self.context.get("request")
-        if not attrs.get("payer") and request and request.user.is_authenticated:
-            attrs["payer"] = request.user
+        if not spec.authorize(payer, payable):
+            raise serializers.ValidationError(
+                {"payable_id": ["You are not authorized to pay for this."]}
+            )
+
+        amount = spec.amount_of(payable)
+        if not isinstance(amount, Decimal):
+            amount = Decimal(str(amount))
+        if amount <= 0:
+            raise serializers.ValidationError(
+                {"payable_id": ["Payable has no amount due."]}
+            )
+
+        ct = ContentType.objects.get_for_model(spec.model)
+        attrs["amount"] = amount
+        attrs["currency"] = attrs.get("currency", "ETB")
+        attrs["content_type"] = ct
+        attrs["object_id"] = payable.pk
+        attrs["description"] = spec.description_of(payable)
+        attrs["payer"] = payer
+
+        if attrs["provider"] == Payment.Provider.MANUAL:
+            attrs["recorded_by"] = payer
+            if not getattr(payer, "is_staff", False):
+                raise serializers.ValidationError(
+                    {"provider": ["Only staff can record manual payments."]}
+                )
 
         return attrs
-
-
+    
 class RefundRequestSerializer(serializers.Serializer):
     """Input for requesting a refund against a payment."""
 

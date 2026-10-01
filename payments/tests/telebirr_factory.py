@@ -20,9 +20,14 @@ def _canonical(params: dict[str, Any], exclude: str = "sign") -> str:
     return "&".join(f"{k}={v}" for k, v in items)
 
 
-def _sign(params: dict[str, Any]) -> str:
+def _sign(params: dict[str, Any], private_pem: str) -> str:
+    """Sign `params` with the given PEM-encoded RSA private key.
+
+    Uses RSA-PSS/SHA256 with salt length 32 — the padding scheme Telebirr's
+    webhook signature verifier expects.
+    """
     key = serialization.load_pem_private_key(
-        settings.TELEBIRR_PRIVATE_KEY.encode(), password=None,
+        private_pem.encode(), password=None,
     )
     message = _canonical(params).encode("utf-8")
     sig = key.sign(
@@ -39,9 +44,23 @@ def make_notify_payload(
     amount: str,
     trans_id: str | None = None,
     trade_status: str = "Completed",
+    private_pem: str | None = None,
     extra: dict | None = None,
 ) -> dict:
-    """Build a signed notify payload ready to POST to the webhook."""
+    """Return a signed Telebirr notify payload.
+
+    `private_pem` is optional: if omitted, `settings.TELEBIRR_PRIVATE_KEY`
+    is used. Passing it explicitly makes the helper usable outside the
+    test run (e.g., from a management command or a debug script).
+    """
+    if private_pem is None:
+        private_pem = settings.TELEBIRR_PRIVATE_KEY
+    if not private_pem:
+        raise RuntimeError(
+            "No Telebirr private key available. Pass private_pem=... or "
+            "set settings.TELEBIRR_PRIVATE_KEY."
+        )
+
     payload: dict[str, Any] = {
         "outTradeNo": out_trade_no,
         "transId": trans_id or f"MOCK-TXN-{uuid.uuid4().hex[:12]}",
@@ -53,5 +72,5 @@ def make_notify_payload(
     }
     if extra:
         payload.update(extra)
-    payload["sign"] = _sign(payload)
+    payload["sign"] = _sign(payload, private_pem)
     return payload

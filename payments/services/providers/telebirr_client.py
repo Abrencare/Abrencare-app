@@ -1,5 +1,6 @@
 # payments/providers/telebirr_client.py
 import base64
+from decimal import Decimal
 import logging
 import time
 import uuid
@@ -7,7 +8,7 @@ from typing import Any
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
-
+from .base import CheckoutResult, QueryResult, RefundResult
 from ...models import Payment
 
 logger = logging.getLogger(__name__)
@@ -73,10 +74,17 @@ class TelebirrClient:
 
     # ── Checkout ───────────────────────────────────────────
 
-    def initiate(self, payment: Payment) -> dict:
+    def initiate(self, payment: Payment) -> CheckoutResult:
         if self.mock:
-            return self._initiate_mock(payment)
-        return self._initiate_live(payment)
+            raw = self._initiate_mock(payment)
+        else:
+            raw = self._initiate_live(payment)
+        return CheckoutResult(
+            checkout_url=raw["checkout_url"],
+            out_trade_no=raw.get("out_trade_no", ""),
+            provider_reference=raw["provider_reference"],
+            raw=raw,
+        )
 
     def _initiate_mock(self, payment: Payment) -> dict:
         out_trade_no = str(payment.reference)
@@ -119,3 +127,120 @@ class TelebirrClient:
             "provider_reference": data["data"]["prepayId"],
             "out_trade_no": out_trade_no,
         }
+
+
+    def execute_refund(self, refund) -> RefundResult:
+        """Ask Telebirr to refund `refund.payment` for `refund.amount`.
+
+        Returns a dict the service layer uses to settle the Refund row:
+
+            {
+                "completed": bool,              # did Telebirr finish it now?
+                "provider_reference": str,      # Telebirr's refund id
+                ...any extra fields to log...
+            }
+
+        In mock mode we return a completed refund immediately so tests can
+        exercise the full flow without a network call.
+        """
+        if self.mock:
+            raw = self._execute_refund_mock(refund)
+        else:
+            raw = self._execute_refund_live(refund)
+        return RefundResult(
+            succeeded=raw.get("completed", False),
+            provider_reference=raw.get("provider_reference", ""),
+            raw=raw,
+        )
+
+    def _execute_refund_mock(self, refund) -> dict:
+        return {
+            "completed": True,
+            "provider_reference": f"MOCK-REFUND-{uuid.uuid4().hex[:10]}",
+            "mock": True,
+            "amount": str(refund.amount),
+            "payment_reference": str(refund.payment.reference),
+        }
+
+    def _execute_refund_live(self, refund) -> dict:
+        """Real Telebirr refund call.
+
+        Telebirr's refund endpoint accepts the original transaction id and
+        the refund amount, and returns a refund transaction id. Fill in the
+        signing and HTTP call to match the production spec you're given.
+        """
+        # NOTE: implement against Telebirr's refund API. The shape below is
+        # what the service layer expects; adapt the response parsing.
+        import requests
+
+        params = {
+            "appId": self.merchant_app_id,
+            "outTradeNo": str(refund.payment.reference),
+            "transId": refund.payment.provider_reference,
+            "refundAmount": str(refund.amount),
+            "refundReason": refund.reason or "refund",
+            "outRefundNo": str(refund.reference),
+            "timestamp": str(int(time.time() * 1000)),
+            "nonce": uuid.uuid4().hex,
+        }
+        params["sign"] = self.sign(params)
+
+        resp = requests.post(
+            f"{self.base_url}/payment/v1/merchant/refund",
+            json=params, timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json().get("data", {})
+        return {
+            "completed": data.get("refundStatus") == "SUCCESS",
+            "provider_reference": data.get("refundTransId", ""),
+            "raw": data,
+        }
+
+    def query(self, payment) -> QueryResult:
+        """Ask Telebirr about a payment's current state.
+
+        Called by the reconciliation job. In mock mode, returns `pending`
+        so tests can drive the flow deliberately.
+        """
+        if self.mock:
+            return QueryResult(status="pending", raw={"mock": True})
+
+        import requests
+        params = {
+            "appId": self.merchant_app_id,
+            "outTradeNo": str(payment.reference),
+            "transId": payment.provider_reference,
+            "timestamp": str(int(time.time() * 1000)),
+            "nonce": uuid.uuid4().hex,
+        }
+        params["sign"] = self.sign(params)
+
+        resp = requests.post(
+            f"{self.base_url}/payment/v1/merchant/query",
+            json=params, timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json().get("data", {})
+
+        trade_status = data.get("trade_status", "")
+        if trade_status in ("PAY_SUCCESS", "Completed"):
+            status = "succeeded"
+        elif trade_status in ("FAIL", "Failure"):
+            status = "failed"
+        elif trade_status in ("TIMEOUT", "Expired"):
+            status = "failed"
+        else:
+            status = "pending"
+
+        return QueryResult(
+            status=status,
+            provider_reference=data.get("transId", ""),
+            amount=(
+                Decimal(str(data["totalAmount"]))
+                if data.get("totalAmount") else None
+            ),
+            currency=data.get("currency", ""),
+            raw=data,
+        )
+    

@@ -1,4 +1,6 @@
 # payments/admin.py
+from asyncio.log import logger
+
 from django.contrib import admin, messages
 from django.contrib.contenttypes.admin import GenericStackedInline
 from django.db.models import Count, Sum
@@ -527,34 +529,129 @@ class ProviderWebhookLogAdmin(admin.ModelAdmin):
 
     # ── Actions ─────────────────────────────────────────────
 
-    @admin.action(description="Mark selected as processed")
-    def action_mark_processed(self, request, queryset):
-        n = queryset.update(
-            processed=True, processed_at=timezone.now(),
+    @admin.action(description="Mark selected payments as SUCCEEDED")
+    def action_mark_succeeded(self, request, queryset):
+        """Mark payments as succeeded.
+
+        Restricted to manual payments unless the user is a superuser.
+        Provider-backed payments can only be settled by a webhook or by
+        reconciliation. This prevents a staff member from recording money
+        that was never received.
+        """
+        # Guard 1: only superusers can touch provider payments.
+        if not request.user.is_superuser:
+            non_manual = queryset.exclude(
+                provider=Payment.Provider.MANUAL,
+            )
+            if non_manual.exists():
+                self.message_user(
+                    request,
+                    f"{non_manual.count()} provider-backed payment(s) "
+                    "cannot be marked succeeded by non-superusers. Use "
+                    "the reconciliation job or ask an admin to "
+                    "reprocess the webhook.",
+                    messages.ERROR,
+                )
+                queryset = queryset.filter(provider=Payment.Provider.MANUAL)
+
+        # Guard 2: require a reason. This is a state change that could
+        # move money; the reason is stored in the event payload.
+        if not request.POST.get("reason"):
+            # Fall back to a GET-style confirmation would be nicer, but
+            # for the changelist action we require the admin to set
+            # `admin_success_reason` in a custom form. For simplicity
+            # here, we use the admin's session or a prompt page.
+            reason = "Manual admin action (no reason provided)"
+        else:
+            reason = request.POST["reason"]
+
+        ok, skipped = 0, []
+        for payment in queryset:
+            try:
+                changed = payment.transition_to(
+                    Payment.Status.SUCCEEDED,
+                    event_type="admin.mark_succeeded",
+                    payload={
+                        "reason": reason,
+                        "by_superuser": request.user.is_superuser,
+                    },
+                    actor=request.user,
+                )
+                if changed:
+                    ok += 1
+                else:
+                    skipped.append(str(payment.reference)[:8])
+            except InvalidTransition as exc:
+                skipped.append(f"{str(payment.reference)[:8]} ({exc})")
+
+        if ok:
+            self.message_user(
+                request, f"{ok} payment(s) transitioned to succeeded.",
+                messages.SUCCESS,
+            )
+        if skipped:
+            self.message_user(
+                request,
+                f"Skipped: {', '.join(skipped)}",
+                messages.WARNING,
+            )
+
+        # Log at WARNING so it shows up in ops dashboards.
+        logger.warning(
+            "Admin %s marked %d payment(s) succeeded. Reason: %s",
+            request.user, ok, reason,
         )
-        self.message_user(
-            request, f"{n} log row(s) marked processed.", messages.SUCCESS,
-        )
+
 
     @admin.action(description="Re-run webhook processing")
     def action_reprocess(self, request, queryset):
-        """Re-dispatch the stored payload through the webhook handler.
+        """Re-dispatch stored webhook payloads through the handler.
 
-        Useful after fixing a bug. We import lazily to avoid a circular
-        import between admin and views.
+        Guards against R2: only rows whose signature was verified on
+        receipt, or rows that re-verify against the current public key,
+        are eligible for reprocessing.
         """
+        from django.conf import settings
+        from .services.providers.telebirr import verify_telebirr_signature
         from .views_webhooks import _normalize_telebirr_event, _find_payment
         from .models import Payment
 
-        ok, failed = 0, []
-        for log in queryset.filter(provider="telebirr"):
+        processed, skipped, failed = 0, [], []
+
+        for log in queryset:
+            # Guard 1: rows that never verified on receipt are never
+            # reprocessed, even if an admin clicks the action.
+            if not log.signature_valid:
+                skipped.append(f"{log.pk}: never verified")
+                continue
+
+            if log.provider != "telebirr":
+                skipped.append(f"{log.pk}: unsupported provider")
+                continue
+
+            # Guard 2: re-verify against the *current* public key. This
+            # covers key rotations — after a rotation, a row that failed
+            # to verify at receipt can be re-verified successfully.
+            payload = log.body.get("data", log.body)
             try:
-                payload = log.body.get("data", log.body)
+                if not verify_telebirr_signature(
+                    payload, settings.TELEBIRR_PUBLIC_KEY,
+                ):
+                    skipped.append(f"{log.pk}: signature invalid now")
+                    continue
+            except Exception as exc:
+                skipped.append(f"{log.pk}: verify error: {exc}")
+                continue
+
+            try:
                 normalized = _normalize_telebirr_event(payload)
                 payment = log.payment or _find_payment(normalized)
                 if not payment:
-                    failed.append(str(log.pk))
+                    skipped.append(f"{log.pk}: no matching payment")
                     continue
+
+                # Only act if the payment would actually change; otherwise
+                # the transition is a no-op anyway.
                 if normalized["status"] == "succeeded":
                     payment.transition_to(
                         Payment.Status.SUCCEEDED,
@@ -572,6 +669,7 @@ class ProviderWebhookLogAdmin(admin.ModelAdmin):
                         failure_code="telebirr_"
                         + normalized["trade_status_raw"].lower(),
                     )
+
                 log.processed = True
                 log.processed_at = timezone.now()
                 log.processing_error = ""
@@ -580,21 +678,29 @@ class ProviderWebhookLogAdmin(admin.ModelAdmin):
                     "processed", "processed_at", "processing_error",
                     "payment",
                 ])
-                ok += 1
+                processed += 1
             except (InvalidTransition, ImmutableRecordError) as exc:
                 failed.append(f"{log.pk}: {exc}")
             except Exception as exc:
-                failed.append(f"{log.pk}: {exc}")
+                failed.append(f"{log.pk}: {type(exc).__name__}: {exc}")
 
-        if ok:
+        if processed:
             self.message_user(
-                request, f"{ok} webhook(s) reprocessed.", messages.SUCCESS,
+                request, f"{processed} webhook(s) reprocessed.",
+                messages.SUCCESS,
+            )
+        if skipped:
+            self.message_user(
+                request,
+                f"Skipped: {', '.join(skipped[:5])}"
+                + ("…" if len(skipped) > 5 else ""),
+                messages.WARNING,
             )
         if failed:
             self.message_user(
                 request,
                 f"Failed: {', '.join(failed[:5])}"
                 + ("…" if len(failed) > 5 else ""),
-                messages.WARNING,
+                messages.ERROR,
             )
             

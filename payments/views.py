@@ -13,6 +13,7 @@ from .permissions import CanRequestRefund, IsPayerOrStaff
 from .serializers import (
     ManualPaymentSettleSerializer,
     PaymentCreateSerializer,
+    PaymentPublicSerializer,
     PaymentSerializer,
     RefundRequestSerializer,
     RefundSerializer,
@@ -34,12 +35,15 @@ class PaymentViewSet(viewsets.ModelViewSet):
     destroy are disabled because status transitions must go through the
     state machine.
     """
-
-    serializer_class = PaymentSerializer
     permission_classes = [IsAuthenticated, IsPayerOrStaff]
     lookup_field = "reference"
     http_method_names = ["get", "post", "head", "options"]
 
+    def get_serializer_class(self):
+        if self.request.user.is_staff:
+            return PaymentSerializer
+        return PaymentPublicSerializer
+    
     def get_queryset(self):
         user = self.request.user
         qs = (
@@ -181,6 +185,5 @@ class PaymentStatusView(APIView):
             "currency": payment.currency,
             "checkout_url": payment.checkout_url,
             "paid_at": payment.paid_at,
-            "failure_reason": payment.failure_reason or None,
         })
     

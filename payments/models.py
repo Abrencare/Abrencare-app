@@ -293,15 +293,25 @@ class Payment(models.Model):
             ):
                 self.paid_at = timezone.now()
 
-            self.save(update_fields={
-                *updates, "status", "paid_at", "updated_at",
-            })
-            PaymentEvent.objects.create(
+            self.save(update_fields={*updates, "status", "paid_at", "updated_at"})
+            event = PaymentEvent.objects.create(
                 payment=self,
                 event_type=event_type or f"status.{new_status}",
                 from_status=old_status,
                 to_status=new_status,
                 payload=payload or {},
+                actor=actor,
+            )
+
+            # Emit the signal *after* the event is written but *before* we leave
+            # the transaction, so receivers can opt into transaction.on_commit.
+            from .signals import payment_status_changed
+            payment_status_changed.send(
+                sender=Payment,
+                payment=self,
+                event=event,
+                old_status=old_status,
+                new_status=new_status,
                 actor=actor,
             )
         return True
@@ -511,6 +521,13 @@ class Refund(models.Model):
                 payload={"refund": str(self.reference), "reason": reason,
                          **(payload or {})},
             )
+            from .signals import refund_failed
+            refund_failed.send(
+                sender=Refund,
+                refund=self,
+                reason=reason,
+                actor=None,
+            )
         return True
 
 
@@ -575,3 +592,19 @@ class ProviderWebhookLog(models.Model):
             else:
                 cleaned[name] = value
         return cleaned
+
+class TestPayable(models.Model):
+    """A concrete model used only by the payments test suite.
+
+    Real models exist for payables like appointments, invoices, etc.
+    This one exists so tests can exercise `ContentType.get_for_model()`
+    and the payable registry without depending on another app.
+
+    Not referenced by production code. If it ever is, that's a bug.
+    """
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    description = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        verbose_name = "Test payable (testing only)"
+        

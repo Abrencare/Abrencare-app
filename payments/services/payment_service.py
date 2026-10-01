@@ -12,7 +12,7 @@ from ..models import (
     RefundError,
 )
 from .providers.telebirr_client import TelebirrClient
-
+from functools import lru_cache
 logger = logging.getLogger(__name__)
 
 
@@ -65,7 +65,7 @@ _PROVIDER_CLIENTS: dict[str, BaseProviderClient] = {
     Payment.Provider.MANUAL: StubProviderClient(),
 }
 
-
+@lru_cache(maxsize=None)
 def get_provider_client(provider: str) -> BaseProviderClient:
     try:
         return _PROVIDER_CLIENTS[provider]
@@ -141,11 +141,11 @@ def create_payment(*, actor, data: dict) -> Payment:
     payment.transition_to(
         Payment.Status.PROCESSING,
         event_type="payment.checkout_created",
-        payload=result,
+        payload=result.raw,
         actor=actor,
-        provider_reference=result.get("provider_reference", ""),
-        checkout_url=result.get("checkout_url", ""),
-        metadata={**payment.metadata, "out_trade_no": result.get("out_trade_no", "")},
+        provider_reference=result.provider_reference,
+        checkout_url=result.checkout_url,
+        metadata={**payment.metadata, "out_trade_no": result.out_trade_no},
     )
     return payment
 
@@ -195,10 +195,10 @@ def request_refund(*, payment: Payment, actor, amount: Decimal, reason: str = ""
         raise RefundError(str(exc)) from exc
 
     # Providers that settle synchronously: flip immediately.
-    if result.get("completed"):
+    if result.succeeded:
         refund.mark_succeeded(
-            provider_reference=result.get("provider_reference", ""),
-            payload=result,
+            provider_reference=result.provider_reference,
+            payload=result.raw,
         )
     return refund
 

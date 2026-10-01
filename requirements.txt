@@ -67,6 +67,7 @@ PyJWT==2.12.1
 pyOpenSSL==26.4.0
 pyparsing==3.3.2
 pytest==9.1.1
+pytest-django==4.14.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
 PyYAML==6.0.3

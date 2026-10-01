@@ -12,6 +12,7 @@ them into a common shape before calling the service layer.
 import json
 import logging
 from datetime import timedelta
+from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -21,7 +22,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from .models import Payment, PaymentEvent, ProviderWebhookLog
+from .models import InvalidTransition, Payment, PaymentEvent, ProviderWebhookLog
 from .services.providers.telebirr import (
     TELEBIRR_NOTIFY_EXPIRED,
     TELEBIRR_NOTIFY_FAILURE,
@@ -34,6 +35,22 @@ from .services.providers.telebirr import (
 logger = logging.getLogger(__name__)
 
 
+def _alert_signature_failure(log_row: ProviderWebhookLog) -> None:
+    """Record an actionable alert when a webhook signature is invalid."""
+    logger.error(
+        "ALERT: webhook signature failure. log_id=%s provider=%s",
+        log_row.pk, log_row.provider,
+    )
+
+def _alert_terminal_conflict(payment, exc):
+    logger.error(
+        "ALERT: terminal-state conflict on payment %s: %s",
+        payment.reference, exc,
+    )
+
+class AmountMismatch(Exception):
+    """The provider's notified amount doesn't match the stored amount."""
+
 def _get_public_key() -> str:
     """Load the Telebirr public key from settings."""
     key = getattr(settings, "TELEBIRR_PUBLIC_KEY", None)
@@ -41,6 +58,42 @@ def _get_public_key() -> str:
         raise ImproperlyConfigured("TELEBIRR_PUBLIC_KEY is not set.")
     return key
 
+
+
+
+class AmountMismatch(Exception):
+    """The provider's notified amount doesn't match the stored amount."""
+
+
+def _check_notified_amount(
+    payment: Payment, normalized: dict,
+) -> None:
+    """Raise AmountMismatch if the notified amount/currency differs.
+
+    Telebirr sends `totalAmount` as a string. Parse it as Decimal (never
+    float) and compare exactly. Also check currency if present.
+    """
+    raw = normalized.get("total_amount") or ""
+    if not raw:
+        raise AmountMismatch("Webhook carried no total_amount.")
+
+    try:
+        notified = Decimal(str(raw))
+    except (InvalidOperation, ValueError) as exc:
+        raise AmountMismatch(f"Unparseable amount: {raw!r}") from exc
+
+    if notified != payment.amount:
+        raise AmountMismatch(
+            f"Notified amount {notified} != payment amount {payment.amount}"
+        )
+
+    # Currency check is best-effort: some payloads omit it.
+    notified_currency = normalized["raw"].get("currency")
+    if notified_currency and notified_currency.upper() != payment.currency.upper():
+        raise AmountMismatch(
+            f"Notified currency {notified_currency} != "
+            f"payment currency {payment.currency}"
+        )
 
 def _log_webhook(
     *,
@@ -192,14 +245,21 @@ def telebirr_notify(request):
     )
 
     if not signature_valid:
-        # Still return 200 if this is a duplicate we've already seen,
-        # otherwise 401 so Telebirr retries a genuine signature failure.
-        # For simplicity here, return 200 to avoid retry storms on
-        # known-bad signatures; adjust based on your dispute workflow.
         log_row.processing_error = "signature verification failed"
         log_row.save(update_fields=["processing_error"])
-        logger.warning("Telebirr notify: signature invalid, ignoring")
-        return JsonResponse({"code": "0", "msg": "ok"})
+        logger.warning(
+            "Telebirr notify: signature invalid for event %s",
+            normalized_for_log.get("trans_id", "<no-transid>"),
+        )
+        # Alert: this is either a key rotation (fixable) or an attack
+        # (needs eyes). Fire whatever alerting you use.
+        _alert_signature_failure(log_row)
+
+        # Return 401 so Telebirr retries a bounded number of times. The
+        # retry gives us a window to rotate the key and reprocess.
+        return JsonResponse(
+            {"code": "1", "msg": "signature invalid"}, status=401,
+        )
 
     # ── Resolve payment ───────────────────────────────────
     payment = payment_for_log
@@ -229,6 +289,31 @@ def telebirr_notify(request):
     try:
         with transaction.atomic():
             if normalized_for_log["status"] == "succeeded":
+                # Guard against a mismatched amount before we move money.
+                try:
+                    _check_notified_amount(payment, normalized_for_log)
+                except AmountMismatch as exc:
+                    # Leave the payment in PROCESSING, log the conflict,
+                    # return 200 so Telebirr doesn't retry — this needs
+                    # a human, not another delivery.
+                    log_row.processing_error = f"amount mismatch: {exc}"
+                    log_row.save(update_fields=["processing_error"])
+                    PaymentEvent.objects.create(
+                        payment=payment,
+                        event_type="payment.telebirr.notify.amount_mismatch",
+                        payload={
+                            "notified_amount": normalized_for_log["total_amount"],
+                            "payment_amount": str(payment.amount),
+                            "raw": normalized_for_log["raw"],
+                        },
+                    )
+                    logger.error(
+                        "Telebirr notify: amount mismatch on %s: %s",
+                        payment.reference, exc,
+                    )
+                    # In production, also fire an alert (Sentry, PagerDuty).
+                    return JsonResponse({"code": "0", "msg": "ok"})
+                _check_notified_amount(payment, normalized_for_log)
                 payment.transition_to(
                     Payment.Status.SUCCEEDED,
                     event_type="payment.telebirr.notify.success",
@@ -264,13 +349,47 @@ def telebirr_notify(request):
         log_row.payment = payment
         log_row.save(update_fields=["processed", "processed_at", "payment"])
 
+    except AmountMismatch as exc:
+        # Handled inside the branch above; this is a safety net.
+        log_row.processing_error = f"amount mismatch: {exc}"
+        log_row.save(update_fields=["processing_error"])
+        return JsonResponse({"code": "0", "msg": "ok"})
+
+    except InvalidTransition as exc:
+        # Success webhook for a terminal non-success payment. Money was
+        # taken but the payment is in a state we can't accept it from.
+        # This needs a human: refund the user, or investigate why the
+        # payment was cancelled.
+        logger.error(
+            "Telebirr notify: conflict on %s: %s",
+            payment.reference, exc,
+        )
+        PaymentEvent.objects.create(
+            payment=payment,
+            event_type="payment.telebirr.notify.conflict",
+            from_status=payment.status,
+            to_status=normalized_for_log["status"],
+            payload={
+                "reason": str(exc),
+                "webhook_raw": normalized_for_log["raw"],
+            },
+        )
+        log_row.processing_error = f"terminal-state conflict: {exc}"
+        log_row.processed = True
+        log_row.processed_at = timezone.now()
+        log_row.save(update_fields=[
+            "processed", "processed_at", "processing_error",
+        ])
+        _alert_terminal_conflict(payment, exc)
+        return JsonResponse({"code": "0", "msg": "conflict logged"})
+
     except Exception as exc:
         logger.exception("Telebirr notify: transition failed")
         log_row.processing_error = str(exc)
         log_row.save(update_fields=["processing_error"])
-        # Return 500 so Telebirr retries; a transient failure shouldn't
-        # permanently drop the notification.
-        return JsonResponse({"code": "1", "msg": "internal error"}, status=500)
+        return JsonResponse(
+            {"code": "1", "msg": "internal error"}, status=500,
+        )
 
     return JsonResponse({"code": "0", "msg": "ok"})
 
