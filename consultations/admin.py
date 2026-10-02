@@ -1,7 +1,11 @@
 from django.contrib import admin
 
-from .models import Consultation, Prescription
+from .models import Consultation, ConsultationProfile, Prescription
 
+
+# ============================================================
+# INLINES
+# ============================================================
 
 class PrescriptionInline(admin.TabularInline):
     model = Prescription
@@ -22,6 +26,99 @@ class PrescriptionInline(admin.TabularInline):
         "updated_at",
     )
 
+
+# ============================================================
+# CONSULTATION PROFILE  (onboarding state)
+# ============================================================
+
+@admin.register(ConsultationProfile)
+class ConsultationProfileAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "user",
+        "date_of_birth",
+        "gender",
+        "is_onboarded",
+        "onboarded_at",
+        "created_at",
+    )
+
+    list_filter = (
+        "gender",
+        "onboarded_at",
+        "created_at",
+    )
+
+    search_fields = (
+        "user_service__user__full_name",
+        "user_service__user__email",
+        "user_service__user__username",
+    )
+
+    date_hierarchy = "created_at"
+
+    ordering = (
+        "-created_at",
+    )
+
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "onboarded_at",
+    )
+
+    list_select_related = (
+        "user_service",
+        "user_service__user",
+        "user_service__service",
+    )
+
+    fieldsets = (
+        (
+            "Account",
+            {
+                "fields": (
+                    "user_service",
+                    "created_by",
+                )
+            },
+        ),
+        (
+            "Onboarding",
+            {
+                "fields": (
+                    "date_of_birth",
+                    "gender",
+                    "onboarded_at",
+                )
+            },
+        ),
+        (
+            "System Information",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
+    )
+
+    @admin.display(
+        description="User",
+        ordering="user_service__user__full_name",
+    )
+    def user(self, obj):
+        return obj.user_service.user.full_name
+
+    @admin.display(description="Onboarded", boolean=True)
+    def is_onboarded(self, obj):
+        return obj.onboarded_at is not None
+
+
+# ============================================================
+# CONSULTATION
+# ============================================================
 
 @admin.register(Consultation)
 class ConsultationAdmin(admin.ModelAdmin):
@@ -129,11 +226,17 @@ class ConsultationAdmin(admin.ModelAdmin):
         PrescriptionInline,
     )
 
-    @admin.display(description="Patient", ordering="appointment__patient__user__full_name")
+    @admin.display(
+        description="Patient",
+        ordering="appointment__patient__user__full_name",
+    )
     def patient_name(self, obj):
         return obj.appointment.patient.user.full_name
 
-    @admin.display(description="Doctor", ordering="appointment__doctor__user__full_name")
+    @admin.display(
+        description="Doctor",
+        ordering="appointment__doctor__user__full_name",
+    )
     def doctor_name(self, obj):
         return obj.appointment.doctor.user.full_name
 
@@ -151,6 +254,10 @@ class ConsultationAdmin(admin.ModelAdmin):
     def appointment_time(self, obj):
         return obj.appointment.appointment_time
 
+
+# ============================================================
+# PRESCRIPTION
+# ============================================================
 
 @admin.register(Prescription)
 class PrescriptionAdmin(admin.ModelAdmin):
@@ -228,3 +335,4 @@ class PrescriptionAdmin(admin.ModelAdmin):
             },
         ),
     )
+    

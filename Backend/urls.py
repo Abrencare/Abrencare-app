@@ -28,8 +28,10 @@ urlpatterns = [
     path('api/patients/', include('patients.urls')),
     path("api/chat/", include("chat.urls")),
     path("api/families/",include("families.urls")),
-    path("api/consultations/",include("consultations.urls"))
-
+    path("api/executive/",include("executive.urls")),
+    path("api/consultations/",include("consultations.urls")),
+    path("api/payments/", include("payments.urls")),
+    path("webhooks/", include("payments.urls_webhooks")),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

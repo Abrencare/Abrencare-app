@@ -231,4 +231,53 @@ class ServiceFeature(models.Model):
         # Note: iterating many of these without select_related("service", "feature")
         # will cause N+1 queries — prefetch in admin/list views.
         return f"{self.service.name} - {self.feature.name}"
-    
+
+
+class UserService(TimeStampedModel):
+    """
+    Which services a user has enrolled in, and whether they've completed
+    that service's onboarding.
+
+    This is NOT catalog data — it's per-user state. Kept in this app because
+    it's tightly coupled to `Service`, but it has different lifecycle rules:
+    hard-delete on un-enroll is fine (no audit trail needed for the join
+    itself; the onboarding data lives in the profile models).
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name=_("User"),
+        on_delete=models.CASCADE,
+        related_name="user_services",
+    )
+    service = models.ForeignKey(
+        Service,
+        verbose_name=_("Service"),
+        on_delete=models.PROTECT,
+        related_name="created_services",
+    )
+    onboarded = models.BooleanField(_("Onboarding complete"), default=False)
+    onboarded_at = models.DateTimeField(_("Onboarded at"), auto_now_add=True, null=True, blank=True)
+    joined_at = models.DateTimeField(_("Joined at"), auto_now_add=True)
+
+    class Meta:
+        verbose_name = _("User Service")
+        verbose_name_plural = _("User Services")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "service"],
+                name="unique_user_service",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["user", "service"]),
+            models.Index(fields=["user", "onboarded"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user} · {self.service.code}"
+
+    def mark_onboarded(self):
+        self.onboarded = True
+        self.onboarded_at = timezone.now()
+        self.save(update_fields=["onboarded", "onboarded_at"])

@@ -2,7 +2,7 @@ import logging
 
 from django.conf import settings
 from django.contrib.auth import update_session_auth_hash
-from django.db import transaction
+from django.db import models, transaction
 from django.utils import timezone
 from django.contrib.auth import authenticate, login,logout
 from rest_framework import generics, permissions, status
@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
-
+from services.models import UserService
 from .models import User
 from .serializers import (
     UserSerializer,
@@ -153,14 +153,16 @@ class UserProfileView(APIView):
     ]
 
     def get(self, request):
-        serializer = UserSerializer(
-            request.user
+        user = (
+            User.objects
+            .prefetch_related(models.Prefetch(
+                    "user_services",
+                    queryset=UserService.objects.select_related("service"),
+                ))
+            .get(pk=request.user.pk)
         )
-
-        return Response(
-            serializer.data,
-            status=status.HTTP_200_OK,
-        )
+        data = UserSerializer(user).data
+        return Response(data)
 
     def put(self, request):
         serializer = UserUpdateSerializer(
@@ -208,10 +210,14 @@ class CustomTokenObtainPairView(
 
 
 class LoginView(APIView): 
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [LoginThrottle]
+    
     def post(self, request): 
         email = request.data.get('email') 
         password = request.data.get('password') 
-        user = authenticate(email=email, password=password) 
+        user = authenticate(request, email=email, password=password) 
+        
         profile_image = None
         if hasattr(user, "profile_image") and user.profile_image:
             profile_image = request.build_absolute_uri(user.profile_image)
@@ -241,43 +247,37 @@ class RegisterUserView(APIView):
     """
     Register a new user.
 
-    Registration is publicly accessible but throttled.
+    Creates the account, enrolls the user in the service supplied in the
+    payload, and bootstraps that service's onboarding profile — all in a
+    single transaction owned by the serializer. Returns JWT tokens so the
+    mobile client can go straight from signup to onboarding without a
+    second login round-trip.
     """
 
-    permission_classes = [
-        permissions.AllowAny
-    ]
-
-    throttle_classes = [
-        RegistrationThrottle
-    ]
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [RegistrationThrottle]
 
     def post(self, request):
-        serializer = UserCreateSerializer(
-            data=request.data
-        )
         print(request.data)
+        serializer = UserCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        serializer.is_valid(
-            raise_exception=True
-        )
+        # UserCreateSerializer.create is @transaction.atomic — everything
+        # (user + UserService + profile) rolls back together on failure.
+        user = serializer.save()
 
-        with transaction.atomic():
-            user = serializer.save()
+        refresh = RefreshToken.for_user(user)
 
         return Response(
             {
-                "message": (
-                    "User registered successfully."
-                ),
-                "user": UserSerializer(
-                    user
-                ).data,
+                "message": "User registered successfully.",
+                "user": UserSerializer(user).data,
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
             },
             status=status.HTTP_201_CREATED,
         )
-
-
+    
 # ============================================================
 # LOGOUT
 # ============================================================

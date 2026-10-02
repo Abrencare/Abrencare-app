@@ -144,4 +144,5 @@ class ConsultationNotificationService:
                 "medication": prescription.medication,
             },
         )
-    
+
+   

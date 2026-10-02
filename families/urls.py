@@ -1,77 +1,65 @@
+# families/urls.py
 from django.urls import path
-
 from .views import (
-    FamilyListCreateView,
-    FamilyDetailView,
-
+    FamilyProfileView,
     FamilyMemberListView,
-
-    FamilyPatientListView,
-    FamilyPatientDetailView,
-    FamilyPatientCreateView,
-
-    FamilyMemberInvitationCreateView,
-    PatientClaimInvitationCreateView,
-
-    InvitationDetailView,
-    InvitationContactVerificationView,
-    InvitationOTPVerificationView,
-    InvitationAcceptView,
-    InvitationRegistrationView,
-    PatientClaimCompletionView,
-
-    InvitationDeliveryListView,
+    FamilyMemberDetailView,
+    FamilyMemberByRelationshipView,
+    FamilyOnboardingCompleteView,
+    FamilyMemberOverviewView,
+    MemberReadingListView,
+    MemberCarePlanListView,
+    CarePlanItemCompleteView,
+    MemberVisitListView,
+    MemberVisitStartView,
+    MemberVisitEndView,
+    FamilyCareTeamView,
+    FamilyAttentionFlagListView,
+    FamilyAttentionFlagResolveView,
+    MemberReportListView,
+    MemberHistoryListView,
+    MemberPrescriptionListView,
+    MemberLabResultListView
 )
 
-
 urlpatterns = [
-    # ========================================================
-    # FAMILY
-    # ========================================================
+    # Onboarding / roster
+    path("profile/", FamilyProfileView.as_view()),
+    path("members/", FamilyMemberListView.as_view()),
+    path("members/by-relationship/", FamilyMemberByRelationshipView.as_view()),
+    path("members/<int:pk>/", FamilyMemberDetailView.as_view()),
+    path("onboarding/complete/", FamilyOnboardingCompleteView.as_view()),
 
-    path("",FamilyListCreateView.as_view(),name="family-list-create",),
-    path("<int:family_id>/",FamilyDetailView.as_view(),name="family-detail",),
+    # Dashboard
+    path("members/<int:member_id>/overview/", FamilyMemberOverviewView.as_view()),
+    path("members/<int:member_id>/readings/", MemberReadingListView.as_view()),
+    path("members/<int:member_id>/care-plan/", MemberCarePlanListView.as_view()),
+    path("members/<int:member_id>/care-plan/<int:item_id>/complete/", CarePlanItemCompleteView.as_view()),
+    path("members/<int:member_id>/visits/", MemberVisitListView.as_view()),
+    path("members/<int:member_id>/visits/<int:visit_id>/start/", MemberVisitStartView.as_view()),
+    path("members/<int:member_id>/visits/<int:visit_id>/end/", MemberVisitEndView.as_view()),
+    path("care-team/", FamilyCareTeamView.as_view()),
+    path("attention/", FamilyAttentionFlagListView.as_view()),
+    path("attention/<int:flag_id>/resolve/", FamilyAttentionFlagResolveView.as_view()),
 
-    # ========================================================
-    # FAMILY MEMBERS
-    # ========================================================
-
-    path("<int:family_id>/members/",FamilyMemberListView.as_view(),name="family-member-list",),
-
-    # ========================================================
-    # FAMILY PATIENTS
-    # ========================================================
-
-    path("<int:family_id>/patients/",FamilyPatientListView.as_view(),name="family-patient-list",),
-    path("<int:family_id>/patients/create/",FamilyPatientCreateView.as_view(),name="family-patient-create",),
-    path("<int:family_id>/patients/<int:patient_id>/",FamilyPatientDetailView.as_view(),name="family-patient-detail",),
-
-    # ========================================================
-    # FAMILY MEMBER INVITATIONS
-    # ========================================================
-
-    path("<int:family_id>/invitations/members/", FamilyMemberInvitationCreateView.as_view(),name="family-member-invitation-create",),
-
-    # ========================================================
-    # PATIENT CLAIM INVITATIONS
-    # ========================================================
-
-    path("<int:family_id>/patients/""<int:patient_id>/claim-invitation/", PatientClaimInvitationCreateView.as_view(),name="patient-claim-invitation-create",),
-
-    # ========================================================
-    # INVITATION
-    # ========================================================
-
-    path("invitations/<str:token>/", InvitationDetailView.as_view(), name="invitation-detail",),
-    path("invitations/<str:token>/verify-contact/", InvitationContactVerificationView.as_view(),name="invitation-verify-contact",),
-    path("invitations/<str:token>/verify-otp/", InvitationOTPVerificationView.as_view(),name="invitation-verify-otp",),
-    path("invitations/<str:token>/accept/", InvitationAcceptView.as_view(),name="invitation-accept",),
-    path("invitations/<str:token>/register/",InvitationRegistrationView.as_view(),name="invitation-register",),
-    path("invitations/<str:token>/claim-patient/",PatientClaimCompletionView.as_view(),name="patient-claim-complete",),
-
-    # ========================================================
-    # INVITATION DELIVERY
-    # ========================================================
-
-    path("<int:family_id>/invitations/""<int:invitation_id>/deliveries/",InvitationDeliveryListView.as_view(),name="invitation-delivery-list",),
+    path(
+        "members/<int:member_id>/reports/",
+        MemberReportListView.as_view(),
+        name="family-member-reports",
+    ),
+    path(
+        "members/<int:member_id>/prescriptions/",
+        MemberPrescriptionListView.as_view(),
+        name="family-member-prescriptions",
+    ),
+    path(
+        "members/<int:member_id>/labs/",
+        MemberLabResultListView.as_view(),
+        name="family-member-labs",
+    ),
+    path(
+        "members/<int:member_id>/history/",
+        MemberHistoryListView.as_view(),
+        name="family-member-history",
+    ),
 ]

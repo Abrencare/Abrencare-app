@@ -1,904 +1,430 @@
-from django.shortcuts import get_object_or_404
+# backend/families/views.py
 
-from rest_framework import serializers, status
-from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import (
-    AllowAny,
-    IsAuthenticated,
-)
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import (
-    Family,
     FamilyMember,
-    FamilyPatient,
-    FamilyInvitation,
-    InvitationDelivery,
-    FamilyAuditLog
+    FamilyProfile,
+    FamilyReading,
+    CarePlanItem,
+    CareVisit,
+    FamilyCareTeamMember,
+    FamilyAttentionFlag,
+    FamilyReport,
+    FamilyPrescription,
+    FamilyLabResult,
+    FamilyHistoryEntry
 )
-
-from .permissions import (
-    IsFamilyMember,
-    CanManageFamilyMembers,
-    CanManageFamilyPatients,
-)
-
 from .serializers import (
-    FamilySerializer,
     FamilyMemberSerializer,
-    FamilyPatientSerializer,
-    FamilyPatientDetailSerializer,
-    FamilyInvitationSerializer,
-    InvitationDeliverySerializer,
-    CreateFamilyMemberInvitationSerializer,
-    CreateFamilyPatientSerializer,
-    CreatePatientClaimInvitationSerializer,
-    AcceptInvitationSerializer,
-    VerifyInvitationOTPSerializer,
-    CompleteInvitationRegistrationSerializer,
-    FamilyAuditLogSerializer
+    FamilyProfileSerializer,
+    FamilyMemberOverviewSerializer,
+    FamilyReadingSerializer,
+    CarePlanItemSerializer,
+    CareVisitSerializer,
+    FamilyCareTeamMemberSerializer,
+    FamilyAttentionFlagSerializer,
+    FamilyHistoryEntrySerializer,
+    FamilyReportSerializer,
+    FamilyPrescriptionSerializer,
+    FamilyLabResultSerializer
 )
-
-from .services import (
-    create_family,
-    create_family_patient,
-    invite_family_member,
-    create_patient_claim_invitation,
-    get_invitation_by_token,
-    request_invitation_contact_verification,
-    verify_invitation_otp,
-    accept_invitation,
-    complete_invitation_registration,
-    complete_patient_claim,
+from .services.family import (
+    complete_family_onboarding,
+    create_family_profile_for_user,
+    get_user_family_profile,
+    replace_family_members,
+    user_has_family_service,
 )
 
 
 # ============================================================
-# HELPERS
+# SHARED HELPERS
 # ============================================================
 
-def get_family_or_404(family_id):
+def user_family_members(user):
     """
-    Return a family or raise HTTP 404.
+    All FamilyMember rows for the current user's family profile.
+
+    Ownership path:
+        FamilyMember.family_profile
+            → FamilyProfile.user_service
+                → UserService.user
+                    → User
     """
-    return get_object_or_404(
-        Family,
-        id=family_id,
+    if not user or not user.is_authenticated:
+        return FamilyMember.objects.none()
+
+    return (
+        FamilyMember.objects
+        .filter(family_profile__user_service__user=user)
+        .select_related("family_profile")
     )
 
 
-def get_pending_invitation(token):
-    """
-    Resolve an invitation through the service layer.
+def user_owns_member(user, member: FamilyMember) -> bool:
+    """True if `user` owns the family profile this member belongs to."""
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_staff:
+        return True
+    return member.family_profile.user_service.user_id == user.id
 
-    Token hashing, expiration handling and status validation
-    belong to the service layer rather than the view.
-    """
-    return get_invitation_by_token(token)
+
+def get_member_or_404(user, pk) -> FamilyMember:
+    """Fetch a FamilyMember the given user is allowed to see."""
+    return get_object_or_404(user_family_members(user), pk=pk)
+
+
+EMPTY_PROFILE = {"onboarded": False, "members": []}
 
 
 # ============================================================
-# FAMILY
+# FAMILY PROFILE — ROSTER OF FamilyMember ROWS
 # ============================================================
 
-class FamilyListCreateView(APIView):
+class FamilyProfileView(APIView):
     """
-    GET: Return families where the authenticated user is a member.
-    POST: Create a new family and automatically make the creator its owner.
+    GET  /family/profile/   → current user's family profile + members + onboarded
+    PUT  /family/profile/   → replace members roster (full replace)
     """
-    permission_classes = [IsAuthenticated,]
+
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        families = (Family.objects.filter(members__user=request.user,).distinct()
-            .prefetch_related(
-                "members",
-                "patients",
-            )
-        )
-
-        serializer = FamilySerializer(
-            families,
-            many=True,
-        )
-
-        return Response(
-            serializer.data,
-            status=status.HTTP_200_OK,
-        )
-
-    def post(self, request):
-        serializer = FamilySerializer(
-            data=request.data,
-        )
-
-        serializer.is_valid(
-            raise_exception=True,
-        )
-
-        family = create_family(
-            user=request.user,
-            name=serializer.validated_data["name"],
-        )
-
-        return Response(
-            FamilySerializer(family).data,
-            status=status.HTTP_201_CREATED,
-        )
-
-
-class FamilyDetailView(APIView):
-    """
-    Retrieve or update a family.
-    Only an existing family member can access the family.
-    """
-
-    permission_classes = [
-        IsAuthenticated,
-        IsFamilyMember,
-    ]
-
-    def get_object(self, family_id):
-        return get_family_or_404(family_id)
-
-    def get(self, request, family_id):
-        family = self.get_object(family_id)
-
-        return Response(
-            FamilySerializer(family).data,
-            status=status.HTTP_200_OK,
-        )
-
-    def patch(self, request, family_id):
-        family = self.get_object(family_id)
-
-        serializer = FamilySerializer(
-            family,
-            data=request.data,
-            partial=True,
-        )
-
-        serializer.is_valid(
-            raise_exception=True,
-        )
-
-        serializer.save()
-
-        return Response(
-            FamilySerializer(family).data,
-            status=status.HTTP_200_OK,
-        )
-
-
-# ============================================================
-# FAMILY MEMBERS
-# ============================================================
-
-class FamilyMemberListView(APIView):
-    """
-    List all members of a family.
-    Membership authorization is handled by IsFamilyMember.
-    """
-
-    permission_classes = [
-        IsAuthenticated,
-        IsFamilyMember,
-    ]
-
-    def get(self, request, family_id):
-
-        family = get_family_or_404(
-            family_id,
-        )
-
-        members = (
-            FamilyMember.objects
-            .filter(
-                family=family,
-            )
-            .select_related(
-                "user",
-                "family",
-            )
-            .order_by(
-                "created_at",
-            )
-        )
-
-        serializer = FamilyMemberSerializer(
-            members,
-            many=True,
-        )
-
-        return Response(
-            serializer.data,
-            status=status.HTTP_200_OK,
-        )
-
-
-# ============================================================
-# FAMILY PATIENTS
-# ============================================================
-
-class FamilyPatientListView(APIView):
-    """
-    List patients associated with a family.
-    """
-
-    permission_classes = [
-        IsAuthenticated,
-        IsFamilyMember,
-    ]
-
-    def get(self, request, family_id):
-
-        family = get_family_or_404(
-            family_id,
-        )
-
-        patients = (
-            FamilyPatient.objects
-            .filter(
-                family=family,
-            )
-            .select_related(
-                "family",
-                "patient",
-                "patient__user",
-            )
-            .order_by(
-                "created_at",
-            )
-        )
-
-        serializer = FamilyPatientSerializer(
-            patients,
-            many=True,
-        )
-
-        return Response(
-            serializer.data,
-            status=status.HTTP_200_OK,
-        )
-
-
-class FamilyPatientDetailView(APIView):
-    """
-    Retrieve detailed information about a patient belonging
-    to a family.
-
-    Medical records are intentionally not exposed here.
-    """
-
-    permission_classes = [
-        IsAuthenticated,
-        IsFamilyMember,
-    ]
-
-    def get(
-        self,
-        request,
-        family_id,
-        patient_id,
-    ):
-
-        family = get_family_or_404(
-            family_id,
-        )
-
-        family_patient = get_object_or_404(
-            FamilyPatient.objects.select_related(
-                "patient",
-                "patient__user",
-            ),
-            family=family,
-            patient_id=patient_id,
-        )
-
-        serializer = FamilyPatientDetailSerializer(
-            family_patient.patient,
-        )
-
-        return Response(
-            serializer.data,
-            status=status.HTTP_200_OK,
-        )
-
-
-# ============================================================
-# CREATE FAMILY PATIENT
-# ============================================================
-
-class FamilyPatientCreateView(APIView):
-    """
-    Create a patient and associate the patient with a family.
-
-    The service handles:
-        User reuse/creation
-        Patient creation
-        FamilyPatient creation
-        duplicate prevention
-    """
-
-    permission_classes = [
-        IsAuthenticated,
-        CanManageFamilyPatients,
-    ]
-
-    def post(self, request, family_id):
-
-        family = get_family_or_404(
-            family_id,
-        )
-
-        serializer = CreateFamilyPatientSerializer(
-            data=request.data,
-        )
-
-        serializer.is_valid(
-            raise_exception=True,
-        )
-
-        try:
-            family_patient = create_family_patient(
-                family=family,
-                created_by=request.user,
-                validated_data=serializer.validated_data,
-            )
-
-        except ValueError as exc:
+        if not user_has_family_service(request.user):
             return Response(
-                {
-                    "detail": str(exc),
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        return Response(
-            FamilyPatientSerializer(
-                family_patient,
-            ).data,
-            status=status.HTTP_201_CREATED,
-        )
-
-
-# ============================================================
-# INVITE FAMILY MEMBER
-# ============================================================
-
-class FamilyMemberInvitationCreateView(APIView):
-    """
-    Create an invitation for a new family member.
-
-    The raw token is intentionally never returned to the client.
-    """
-
-    permission_classes = [
-        IsAuthenticated,
-        CanManageFamilyMembers,
-    ]
-
-    def post(self, request, family_id):
-
-        family = get_family_or_404(
-            family_id,
-        )
-
-        serializer = CreateFamilyMemberInvitationSerializer(
-            data=request.data,
-        )
-
-        serializer.is_valid(
-            raise_exception=True,
-        )
-
-        try:
-            invitation, raw_token = invite_family_member(
-                family=family,
-                invited_by=request.user,
-                validated_data=serializer.validated_data,
-            )
-
-        except ValueError as exc:
-            return Response(
-                {
-                    "detail": str(exc),
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # IMPORTANT:
-        #
-        # raw_token exists only in this request lifecycle.
-        #
-        # Pass it to the notification service here.
-        #
-        # queue_family_invitation_notification.delay(
-        #     invitation.id,
-        #     raw_token,
-        # )
-
-        return Response(
-            FamilyInvitationSerializer(
-                invitation,
-            ).data,
-            status=status.HTTP_201_CREATED,
-        )
-
-
-# ============================================================
-# PATIENT CLAIM INVITATION
-# ============================================================
-
-class PatientClaimInvitationCreateView(APIView):
-    """
-    Create an invitation allowing a pending patient to
-    claim their existing account.
-    """
-
-    permission_classes = [
-        IsAuthenticated,
-        CanManageFamilyPatients,
-    ]
-
-    def post(
-        self,
-        request,
-        family_id,
-        patient_id,
-    ):
-
-        family = get_family_or_404(
-            family_id,
-        )
-
-        family_patient = get_object_or_404(
-            FamilyPatient.objects.select_related(
-                "patient",
-                "patient__user",
-            ),
-            family=family,
-            patient_id=patient_id,
-        )
-
-        serializer = CreatePatientClaimInvitationSerializer(
-            data=request.data,
-        )
-
-        serializer.is_valid(
-            raise_exception=True,
-        )
-
-        try:
-            invitation, raw_token = (
-                create_patient_claim_invitation(
-                    family=family,
-                    patient=family_patient.patient,
-                    invited_by=request.user,
-                    validated_data=serializer.validated_data,
-                )
-            )
-
-        except ValueError as exc:
-            return Response(
-                {
-                    "detail": str(exc),
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Send through notification layer.
-        #
-        # queue_patient_claim_notification.delay(
-        #     invitation.id,
-        #     raw_token,
-        # )
-
-        return Response(
-            FamilyInvitationSerializer(
-                invitation,
-            ).data,
-            status=status.HTTP_201_CREATED,
-        )
-
-
-# ============================================================
-# INVITATION DETAILS
-# ============================================================
-
-class InvitationDetailView(APIView):
-    """
-    Public invitation lookup.
-
-    No authentication is required because the recipient may
-    not have an account yet.
-
-    The service layer is responsible for:
-        token hashing
-        expiration
-        status validation
-    """
-
-    permission_classes = [
-        AllowAny,
-    ]
-
-    def get(self, request, token):
-
-        try:
-            invitation = get_pending_invitation(
-                token,
-            )
-
-        except ValueError as exc:
-            return Response(
-                {
-                    "valid": False,
-                    "detail": str(exc),
-                },
+                {"detail": "This account does not have the family service."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        return Response(
-            {
-                "valid": True,
-                "invitation": FamilyInvitationSerializer(
-                    invitation,
-                ).data,
-            },
-            status=status.HTTP_200_OK,
-        )
+        profile = get_user_family_profile(request.user)
+        if profile is None:
+            return Response(EMPTY_PROFILE)
 
+        return Response(FamilyProfileSerializer(profile).data)
 
-# ============================================================
-# REQUEST CONTACT VERIFICATION
-# ============================================================
-
-class InvitationContactVerificationView(APIView):
-    """
-    Start contact verification for an invitation.
-
-    This endpoint does NOT accept the invitation.
-
-    It only triggers the OTP delivery process.
-    """
-
-    permission_classes = [
-        AllowAny,
-    ]
-
-    def post(self, request, token):
-
-        try:
-            result = request_invitation_contact_verification(
-                token=token,
-            )
-
-        except ValueError as exc:
+    def put(self, request):
+        if not user_has_family_service(request.user):
             return Response(
-                {
-                    "detail": str(exc),
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+                {"detail": "This account does not have the family service."},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
-        return Response(
-            result,
-            status=status.HTTP_200_OK,
-        )
+        profile = get_user_family_profile(request.user)
+        if profile is None:
+            profile = create_family_profile_for_user(request.user)
 
-
-# ============================================================
-# VERIFY INVITATION OTP
-# ============================================================
-
-class InvitationOTPVerificationView(APIView):
-
-    permission_classes = [
-        AllowAny,
-    ]
-
-    def post(self, request, token):
-
-        serializer = VerifyInvitationOTPSerializer(
-            data=request.data,
-        )
-
-        serializer.is_valid(
-            raise_exception=True,
-        )
-
-        try:
-            result = verify_invitation_otp(
-                token=token,
-                otp=serializer.validated_data["otp"],
-            )
-
-        except ValueError as exc:
-            return Response(
-                {"detail": str(exc)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        return Response(
-            result,
-            status=status.HTTP_200_OK,
-        )
-
-
-# ============================================================
-# ACCEPT INVITATION — EXISTING USER
-# ============================================================
-
-class InvitationAcceptView(APIView):
-    """
-    Accept a family-member invitation for an existing
-    authenticated user.
-
-    Required security layers:
-
-        authenticated user
-        +
-        invitation token
-        +
-        verified contact
-    """
-
-    permission_classes = [
-        IsAuthenticated,
-    ]
-
-    def post(self, request, token):
-
-        serializer = AcceptInvitationSerializer(
-            data=request.data,
-        )
-
-        serializer.is_valid(
-            raise_exception=True,
-        )
-
-        try:
-            member = accept_invitation(
-                token=token,
-                user=request.user,
-            )
-
-        except ValueError as exc:
-            return Response(
-                {
-                    "detail": str(exc),
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        return Response(
-            FamilyMemberSerializer(
-                member,
-            ).data,
-            status=status.HTTP_200_OK,
-        )
-
-
-# ============================================================
-# COMPLETE INVITATION REGISTRATION
-# ============================================================
-
-class InvitationRegistrationView(APIView):
-    """
-    Complete registration for an invited person who does
-    not already have an active account.
-
-    The invitation/contact verification must already have
-    succeeded.
-    """
-
-    permission_classes = [
-        AllowAny,
-    ]
-
-    def post(self, request, token):
-
-        serializer = (
-            CompleteInvitationRegistrationSerializer(
-                data=request.data,
-            )
-        )
-
-        serializer.is_valid(
-            raise_exception=True,
-        )
-
-        try:
-            user, member = (
-                complete_invitation_registration(
-                    token=token,
-                    validated_data=serializer.validated_data,
-                )
-            )
-
-        except ValueError as exc:
-            return Response(
-                {
-                    "detail": str(exc),
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        return Response(
-            {
-                "user": {
-                    "id": user.id,
-                    "username": user.username,
-                    "email": user.email,
-                    "first_name": user.first_name,
-                    "last_name": user.last_name,
-                    "account_status": user.account_status,
-                },
-                "family_member": (
-                    FamilyMemberSerializer(
-                        member,
-                    ).data
-                ),
-            },
-            status=status.HTTP_201_CREATED,
-        )
-
-
-# ============================================================
-# COMPLETE PATIENT CLAIM
-# ============================================================
-
-class PatientClaimCompletionView(APIView):
-    """
-    Complete a patient account claim.
-
-    The existing Patient object is retained.
-
-    The service must:
-        verify invitation
-        verify contact
-        activate/create the User
-        set password
-        retain existing Patient
-        accept invitation
-    """
-
-    permission_classes = [
-        AllowAny,
-    ]
-
-    def post(self, request, token):
-
-        serializer = (
-            CompleteInvitationRegistrationSerializer(
-                data=request.data,
-            )
-        )
-
-        serializer.is_valid(
-            raise_exception=True,
-        )
-
-        try:
-            user, patient = complete_patient_claim(
-                token=token,
-                validated_data=serializer.validated_data,
-            )
-
-        except ValueError as exc:
-            return Response(
-                {
-                    "detail": str(exc),
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        return Response(
-            {
-                "user": {
-                    "id": user.id,
-                    "username": user.username,
-                    "email": user.email,
-                    "first_name": user.first_name,
-                    "last_name": user.last_name,
-                    "account_status": user.account_status,
-                },
-                "patient": {
-                    "id": patient.id,
-                },
-            },
-            status=status.HTTP_200_OK,
-        )
-
-
-# ============================================================
-# INVITATION DELIVERY HISTORY
-# ============================================================
-
-class InvitationDeliveryListView(APIView):
-    """
-    List delivery attempts for an invitation.
-
-    This is intentionally restricted to authenticated users
-    with access to the relevant family.
-    """
-
-    permission_classes = [
-        IsAuthenticated,
-        IsFamilyMember,
-    ]
-
-    def get(self, request, family_id, invitation_id):
-
-        family = get_family_or_404(
-            family_id,
-        )
-
-        invitation = get_object_or_404(
-            FamilyInvitation,
-            id=invitation_id,
-            family=family,
-        )
-
-        deliveries = (
-            InvitationDelivery.objects
-            .filter(
-                invitation=invitation,
-            )
-            .order_by(
-                "-created_at",
-            )
-        )
-
-        serializer = InvitationDeliverySerializer(
-            deliveries,
+        member_ser = FamilyMemberSerializer(
+            data=request.data.get("members", []),
             many=True,
         )
+        member_ser.is_valid(raise_exception=True)
+        replace_family_members(profile, member_ser.validated_data)
 
-        return Response(
-            serializer.data,
-            status=status.HTTP_200_OK,
-        )
+        profile.refresh_from_db()
+        return Response(FamilyProfileSerializer(profile).data)
 
 
-class FamilyAuditLogListView(APIView):
-    permission_classes = [
-        IsAuthenticated,
-        IsFamilyMember,
-    ]
+class FamilyMemberListView(generics.ListCreateAPIView):
+    """
+    GET  /family/members/   → flat list of the current user's family members
+    POST /family/members/   → add a single family member
+    """
 
-    def get(self, request, family_id):
-        family = get_object_or_404(
-            Family,
-            id=family_id,
-        )
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = FamilyMemberSerializer
 
-        if not FamilyMember.objects.filter(
-            family=family,
-            user=request.user,
-        ).exists():
-            raise PermissionDenied(
-                "You are not a member of this family."
+    def get_queryset(self):
+        return user_family_members(self.request.user).order_by("full_name")
+
+    def perform_create(self, serializer):
+        profile = get_user_family_profile(self.request.user)
+        if profile is None:
+            profile = create_family_profile_for_user(self.request.user)
+        serializer.save(family_profile=profile)
+
+
+class FamilyMemberDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET    /family/members/<pk>/
+    PATCH  /family/members/<pk>/
+    DELETE /family/members/<pk>/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = FamilyMemberSerializer
+
+    def get_queryset(self):
+        return user_family_members(self.request.user)
+
+
+class FamilyMemberByRelationshipView(generics.ListAPIView):
+    """
+    GET /family/members/by-relationship/?relationship=mother
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = FamilyMemberSerializer
+
+    def get_queryset(self):
+        qs = user_family_members(self.request.user)
+        relationship = self.request.query_params.get("relationship")
+        if relationship:
+            qs = qs.filter(relationship=relationship)
+        return qs.order_by("full_name")
+
+
+class FamilyOnboardingCompleteView(APIView):
+    """
+    POST /family/onboarding/complete/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        profile = get_user_family_profile(request.user)
+        if profile is None:
+            return Response(
+                {"detail": "Save your family members before completing onboarding."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        logs = (
-            FamilyAuditLog.objects
-            .filter(family=family)
-            .select_related(
-                "actor",
-                "invitation",
-                "patient",
+        complete_family_onboarding(profile)
+        return Response({"onboarded": True})
+
+
+# ============================================================
+# AGGREGATE VIEW — THE FAMILY DASHBOARD
+# ============================================================
+
+class FamilyMemberOverviewView(APIView):
+    """
+    GET /family/members/<member_id>/overview/
+
+    Single call that powers the family dashboard for one FamilyMember:
+    readings, today's care plan, live visit, care team, attention flags.
+
+    Replaces the old Patient-based FamilyOverviewView.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, member_id):
+        member = get_member_or_404(request.user, member_id)
+        data = FamilyMemberOverviewSerializer(member).data
+        return Response(data)
+
+
+# ============================================================
+# SECTION VIEWS (per FamilyMember)
+# ============================================================
+
+class MemberReadingListView(generics.ListCreateAPIView):
+    """
+    GET  /family/members/<member_id>/readings/
+    POST /family/members/<member_id>/readings/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = FamilyReadingSerializer
+
+    def get_queryset(self):
+        member = get_member_or_404(self.request.user, self.kwargs["member_id"])
+        qs = FamilyReading.objects.filter(member=member)
+        kind = self.request.query_params.get("kind")
+        if kind:
+            qs = qs.filter(kind=kind)
+        return qs.order_by("-recorded_at")
+
+    def perform_create(self, serializer):
+        member = get_member_or_404(self.request.user, self.kwargs["member_id"])
+        serializer.save(member=member)
+
+
+class MemberCarePlanListView(generics.ListCreateAPIView):
+    """
+    GET  /family/members/<member_id>/care-plan/
+    POST /family/members/<member_id>/care-plan/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = CarePlanItemSerializer
+
+    def get_queryset(self):
+        member = get_member_or_404(self.request.user, self.kwargs["member_id"])
+        return CarePlanItem.objects.filter(member=member).order_by(
+            "order", "scheduled_time",
+        )
+
+    def perform_create(self, serializer):
+        member = get_member_or_404(self.request.user, self.kwargs["member_id"])
+        serializer.save(member=member)
+
+
+class CarePlanItemCompleteView(APIView):
+    """
+    POST /family/members/<member_id>/care-plan/<item_id>/complete/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, member_id, item_id):
+        member = get_member_or_404(request.user, member_id)
+        item = get_object_or_404(CarePlanItem, pk=item_id, member=member)
+        item.done = True
+        item.save(update_fields=["done"])
+        return Response(CarePlanItemSerializer(item).data)
+
+
+class MemberVisitListView(generics.ListCreateAPIView):
+    """
+    GET  /family/members/<member_id>/visits/
+    POST /family/members/<member_id>/visits/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = CareVisitSerializer
+
+    def get_queryset(self):
+        member = get_member_or_404(self.request.user, self.kwargs["member_id"])
+        return CareVisit.objects.filter(member=member).order_by("-started_at")
+
+    def perform_create(self, serializer):
+        member = get_member_or_404(self.request.user, self.kwargs["member_id"])
+        serializer.save(member=member)
+
+
+class MemberVisitStartView(APIView):
+    """
+    POST /family/members/<member_id>/visits/<visit_id>/start/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, member_id, visit_id):
+        member = get_member_or_404(request.user, member_id)
+        visit = get_object_or_404(CareVisit, pk=visit_id, member=member)
+        visit.state = CareVisit.State.IN_PROGRESS
+        visit.started_at = timezone.now()
+        visit.save(update_fields=["state", "started_at"])
+        return Response(CareVisitSerializer(visit).data)
+
+
+class MemberVisitEndView(APIView):
+    """
+    POST /family/members/<member_id>/visits/<visit_id>/end/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, member_id, visit_id):
+        member = get_member_or_404(request.user, member_id)
+        visit = get_object_or_404(CareVisit, pk=visit_id, member=member)
+        visit.state = CareVisit.State.COMPLETED
+        visit.ended_at = timezone.now()
+        visit.save(update_fields=["state", "ended_at"])
+        return Response(CareVisitSerializer(visit).data)
+
+
+class FamilyCareTeamView(generics.ListAPIView):
+    """
+    GET /family/care-team/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = FamilyCareTeamMemberSerializer
+
+    def get_queryset(self):
+        profile = get_user_family_profile(self.request.user)
+        if profile is None:
+            return FamilyCareTeamMember.objects.none()
+        return FamilyCareTeamMember.objects.filter(
+            family_profile=profile,
+        ).order_by("role", "full_name")
+
+
+class FamilyAttentionFlagListView(generics.ListAPIView):
+    """
+    GET /family/attention/?open=1
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = FamilyAttentionFlagSerializer
+
+    def get_queryset(self):
+        profile = get_user_family_profile(self.request.user)
+        if profile is None:
+            return FamilyAttentionFlag.objects.none()
+        qs = FamilyAttentionFlag.objects.filter(family_profile=profile)
+        only_open = self.request.query_params.get("open")
+        if only_open in ("1", "true", "True"):
+            qs = qs.filter(resolved=False)
+        return qs.order_by("-created_at")
+
+
+class FamilyAttentionFlagResolveView(APIView):
+    """
+    POST /family/attention/<flag_id>/resolve/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, flag_id):
+        profile = get_user_family_profile(request.user)
+        if profile is None:
+            return Response(
+                {"detail": "No family profile."},
+                status=status.HTTP_404_NOT_FOUND,
             )
-            .order_by("-created_at")
+        flag = get_object_or_404(
+            FamilyAttentionFlag, pk=flag_id, family_profile=profile,
         )
+        flag.resolved = True
+        flag.save(update_fields=["resolved"])
+        return Response(FamilyAttentionFlagSerializer(flag).data)
 
-        serializer = FamilyAuditLogSerializer(
-            logs,
-            many=True,
-        )
+class MemberReportListView(generics.ListAPIView):
+    """GET /family/members/<member_id>/reports/"""
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = FamilyReportSerializer
 
-        return Response(
-            serializer.data
-        )
-     
+    def get_queryset(self):
+        member = get_member_or_404(self.request.user, self.kwargs["member_id"])
+        return FamilyReport.objects.filter(member=member)
+
+
+class MemberPrescriptionListView(generics.ListAPIView):
+    """GET /family/members/<member_id>/prescriptions/"""
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = FamilyPrescriptionSerializer
+
+    def get_queryset(self):
+        member = get_member_or_404(self.request.user, self.kwargs["member_id"])
+        return FamilyPrescription.objects.filter(member=member)
+
+
+class MemberLabResultListView(generics.ListAPIView):
+    """GET /family/members/<member_id>/labs/"""
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = FamilyLabResultSerializer
+
+    def get_queryset(self):
+        member = get_member_or_404(self.request.user, self.kwargs["member_id"])
+        return FamilyLabResult.objects.filter(member=member)
+
+
+class MemberHistoryListView(generics.ListAPIView):
+    """GET /family/members/<member_id>/history/"""
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = FamilyHistoryEntrySerializer
+
+    def get_queryset(self):
+        member = get_member_or_404(self.request.user, self.kwargs["member_id"])
+        return FamilyHistoryEntry.objects.filter(member=member)
+    

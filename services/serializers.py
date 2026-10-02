@@ -13,7 +13,7 @@ Design notes:
 
 from rest_framework import serializers
 
-from .models import Feature, Service, ServiceAudience, ServiceFeature
+from .models import Feature, Service, ServiceAudience, ServiceFeature, UserService
 
 
 class FeatureSerializer(serializers.ModelSerializer):
@@ -129,3 +129,27 @@ class ServiceWriteSerializer(serializers.ModelSerializer):
         if len(feature_ids) != len(set(feature_ids)):
             raise serializers.ValidationError("Duplicate feature_id in features list.")
         return value
+
+class UserServiceSerializer(serializers.ModelSerializer):
+    """
+    Read-only view of a user's enrollment in a service.
+
+    The `service` field is flattened to its code so the mobile client can
+    match it directly against its `CareService` union without a lookup.
+    `service_name` is included for display purposes.
+    """
+
+    service = serializers.CharField(source="service.code", read_only=True)
+    service_name = serializers.CharField(source="service.name", read_only=True)
+
+    class Meta:
+        model = UserService
+        fields = [
+            "service",
+            "service_name",
+            "onboarded",
+            "joined_at",
+            "onboarded_at",
+        ]
+        read_only_fields = fields
+        
