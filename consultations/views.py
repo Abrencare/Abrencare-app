@@ -1,3 +1,4 @@
+# consultations/views.py
 import logging
 from datetime import datetime, timedelta
 
@@ -25,6 +26,9 @@ from .serializers import (
     PrescriptionSerializer,
     SpecialtySerializer,
 )
+from .services.consultation_notification_service import (
+    ConsultationNotificationService,
+)
 from .services.services import (
     ACTIVE_APPOINTMENT_STATUSES,
     book_consultation,
@@ -33,7 +37,6 @@ from .services.services import (
     create_prescription,
     start_consultation,
 )
-from .services.consultation_notification_service import ConsultationNotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -43,12 +46,12 @@ logger = logging.getLogger(__name__)
 # ============================================================
 
 def get_user_patient(user):
-    return getattr(user, "patient_profile", None)
+    return getattr(user, "patient", None)
 
 
 def get_user_doctor(user):
-    # The two apps disagree on the reverse name; accept either.
-    return getattr(user, "doctor_profile", None) or getattr(user, "doctor", None)
+    """The two apps disagree on the reverse name; accept either."""
+    return getattr(user, "doctor", None) or getattr(user, "doctor", None)
 
 
 def get_consultation_profile(user):
@@ -68,9 +71,7 @@ def consultation_queryset():
     return Consultation.objects.select_related(
         "appointment",
         "appointment__patient",
-        "appointment__patient__user",
         "appointment__doctor",
-        "appointment__doctor__user",
         "appointment__doctor__specialty",
     )
 
@@ -84,12 +85,12 @@ def notify(callback, *args, **kwargs):
 
 
 def patient_consultation(request, pk):
-    patient = get_user_patient(request.user)
-    if patient is None:
+    user = request.user
+    if user is None:
         return None
     return (
         consultation_queryset()
-        .filter(pk=pk, appointment__patient=patient)
+        .filter(pk=pk, appointment__patient=user)
         .first()
     )
 
@@ -106,9 +107,14 @@ def doctor_consultation(request, pk):
 
 
 def cancel_for_patient(request, pk):
-    """Shared by POST .../cancel/ and DELETE .../<pk>/. Returns (consultation, error)."""
+    """
+    Shared by POST .../cancel/ and DELETE .../<pk>/.
+
+    Returns (consultation, error_response).
+    """
     input_serializer = ConsultationCancelSerializer(data=request.data)
     input_serializer.is_valid(raise_exception=True)
+    reason = input_serializer.validated_data.get("reason", "")
 
     consultation = patient_consultation(request, pk)
     if consultation is None:
@@ -121,19 +127,18 @@ def cancel_for_patient(request, pk):
         consultation = cancel_consultation(
             consultation=consultation,
             user=request.user,
-            reason=input_serializer.validated_data["reason"],
+            reason=reason,
         )
     except ValueError as exc:
         return None, Response(
-            {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST
+            {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # Notification runs after the service commits.
     notify(
         ConsultationNotificationService.consultation_cancelled,
         consultation,
         cancelled_by=request.user,
-        reason=input_serializer.validated_data["reason"],
+        reason=reason,
     )
     return consultation, None
 
@@ -146,7 +151,7 @@ class SpecialtyListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        specialties = Specialty.objects.filter(is_active=True)
+        specialties = Specialty.objects.filter(is_active=True).order_by("name")
         return Response(SpecialtySerializer(specialties, many=True).data)
 
 
@@ -160,10 +165,15 @@ class ConsultationDoctorListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        queryset = Doctor.objects.filter(
-            approval_status=Doctor.ApprovalStatus.APPROVED,
-            specialty__is_active=True,
-        ).select_related("user", "specialty")
+        queryset = (
+            Doctor.objects
+            .filter(
+                approval_status=Doctor.ApprovalStatus.APPROVED,
+                specialty__is_active=True,
+            )
+            .select_related("user", "specialty")
+            .order_by("user__first_name", "user__last_name")
+            )
 
         specialty_id = request.query_params.get("specialty")
         if specialty_id:
@@ -173,7 +183,8 @@ class ConsultationDoctorListView(APIView):
 
 
 # ============================================================
-# AVAILABILITY   GET /api/consultations/availability/?doctor=12&date=2026-08-30
+# AVAILABILITY
+# GET /api/consultations/availability/?doctor=12&date=2026-08-30
 # ============================================================
 
 class ConsultationAvailabilityView(APIView):
@@ -183,28 +194,44 @@ class ConsultationAvailabilityView(APIView):
         doctor_id = request.query_params.get("doctor")
         date_string = request.query_params.get("date")
 
+        errors = {}
         if not doctor_id:
-            return Response({"doctor": "This parameter is required."}, status=400)
+            errors["doctor"] = "This parameter is required."
         if not date_string:
-            return Response({"date": "This parameter is required."}, status=400)
+            errors["date"] = "This parameter is required."
+        if errors:
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             doctor_id = int(doctor_id)
-        except ValueError:
-            return Response({"doctor": "Must be a valid integer id."}, status=400)
+        except (TypeError, ValueError):
+            return Response(
+                {"doctor": "Must be a valid integer id."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         try:
             appointment_date = datetime.strptime(date_string, "%Y-%m-%d").date()
         except ValueError:
-            return Response({"date": "Use YYYY-MM-DD format."}, status=400)
+            return Response(
+                {"date": "Use YYYY-MM-DD format."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if appointment_date < timezone.localdate():
-            return Response({"date": "Date cannot be in the past."}, status=400)
+            return Response(
+                {"date": "Date cannot be in the past."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         try:
             doctor = (
-                Doctor.objects.select_related("user", "specialty")
-                .get(pk=doctor_id, approval_status=Doctor.ApprovalStatus.APPROVED)
+                Doctor.objects
+                .select_related("user", "specialty")
+                .get(
+                    pk=doctor_id,
+                    approval_status=Doctor.ApprovalStatus.APPROVED,
+                )
             )
         except Doctor.DoesNotExist:
             return Response(
@@ -213,20 +240,21 @@ class ConsultationAvailabilityView(APIView):
             )
 
         weekday = appointment_date.strftime("%A").lower()
-        windows = doctor.availability.filter(
-            day=weekday, is_available=True
-        ).order_by("start_time")
+        windows = (
+            doctor.availability
+            .filter(day=weekday, is_available=True)
+            .order_by("start_time")
+        )
 
         active = doctor.appointments.filter(
             appointment_date=appointment_date,
             status__in=ACTIVE_APPOINTMENT_STATUSES,
-        )
+        ).only("appointment_time", "duration_minutes")
+
         booked = []
         for a in active:
             start = datetime.combine(appointment_date, a.appointment_time)
-            booked.append(
-                (start, start + timedelta(minutes=a.duration_minutes))
-            )
+            booked.append((start, start + timedelta(minutes=a.duration_minutes)))
 
         duration = doctor.consultation_duration
         now_local = timezone.localtime().replace(tzinfo=None)
@@ -236,8 +264,8 @@ class ConsultationAvailabilityView(APIView):
             current = datetime.combine(appointment_date, window.start_time)
             window_end = datetime.combine(appointment_date, window.end_time)
 
-            # Step by the consultation duration, NOT a fixed interval.
-            # Otherwise a 45-min consultation produces overlapping slots.
+            # Step by the consultation duration, NOT a fixed interval —
+            # otherwise a 45-min consultation produces overlapping slots.
             while current + timedelta(minutes=duration) <= window_end:
                 slot_end = current + timedelta(minutes=duration)
 
@@ -247,9 +275,7 @@ class ConsultationAvailabilityView(APIView):
                         current < b_end and slot_end > b_start
                         for b_start, b_end in booked
                     )
-                    slots.append(
-                        {"time": current.time(), "available": available}
-                    )
+                    slots.append({"time": current.time(), "available": available})
 
                 current += timedelta(minutes=duration)
 
@@ -268,8 +294,9 @@ class ConsultationAvailabilityView(APIView):
 
 
 # ============================================================
-# ONBOARDING   POST /api/consultations/onboarding/complete/
-#              GET  /api/consultations/profile/
+# ONBOARDING
+# POST /api/consultations/onboarding/complete/
+# GET  /api/consultations/profile/
 # ============================================================
 
 class ConsultationOnboardingCompleteView(APIView):
@@ -310,14 +337,19 @@ class ConsultationProfileView(APIView):
         profile = get_consultation_profile(request.user)
         if profile is None:
             return Response(
-                {"detail": "This account is not enrolled in the consultation service."},
+                {
+                    "detail": (
+                        "This account is not enrolled in the consultation service."
+                    )
+                },
                 status=status.HTTP_404_NOT_FOUND,
             )
         return Response(ConsultationProfileSerializer(profile).data)
 
 
 # ============================================================
-# BOOK   POST /api/consultations/
+# BOOK
+# POST /api/consultations/
 # ============================================================
 
 class ConsultationBookingView(APIView):
@@ -329,29 +361,30 @@ class ConsultationBookingView(APIView):
         data = serializer.validated_data
 
         try:
-            with transaction.atomic():
-                consultation = book_consultation(
-                    user=request.user,
-                    doctor=data["doctor"],
-                    appointment_date=data["appointment_date"],
-                    appointment_time=data["appointment_time"],
-                    consultation_type=data["consultation_type"],
-                    language=data["language"],
-                    reason_for_visit=data["reason_for_visit"],
-                )
+            consultation = book_consultation(
+                user=request.user,
+                doctor=data["doctor"],
+                appointment_date=data["appointment_date"],
+                appointment_time=data["appointment_time"],
+                consultation_type=data["consultation_type"],
+                language=data["language"],
+                reason_for_visit=data["reason_for_visit"],
+            )
         except ValueError as exc:
             # `full_clean()` errors arrive as a dict; return them per-field
             # so the frontend's `describeError` renders each cleanly.
             if exc.args and isinstance(exc.args[0], dict):
                 return Response(exc.args[0], status=status.HTTP_400_BAD_REQUEST)
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST,
+            )
         except IntegrityError:
             return Response(
                 {"detail": "The selected slot is no longer available."},
                 status=status.HTTP_409_CONFLICT,
             )
 
-        # Notification runs AFTER the transaction has committed.
+        # Notification runs AFTER the service's transaction has committed.
         notify(ConsultationNotificationService.consultation_booked, consultation)
 
         consultation = consultation_queryset().get(pk=consultation.pk)
@@ -362,7 +395,8 @@ class ConsultationBookingView(APIView):
 
 
 # ============================================================
-# MINE   GET /api/consultations/mine/
+# MINE
+# GET /api/consultations/mine/
 # Cancelled consultations are hidden by default (the app removes them
 # locally on cancel). Use ?include=all for history including cancelled.
 # ============================================================
@@ -371,11 +405,7 @@ class MyConsultationsView(APIView):
     permission_classes = [IsAuthenticated, IsPatientUser]
 
     def get(self, request):
-        patient = get_user_patient(request.user)
-        if patient is None:
-            return Response([])
-
-        queryset = consultation_queryset().filter(appointment__patient=patient)
+        queryset = consultation_queryset().filter(appointment__patient=request.user)
         if request.query_params.get("include") != "all":
             queryset = queryset.exclude(status=Consultation.Status.CANCELLED)
 
@@ -383,8 +413,9 @@ class MyConsultationsView(APIView):
 
 
 # ============================================================
-# DETAIL   GET / DELETE /api/consultations/<pk>/
-# DELETE is a soft cancel: the row and its prescriptions are kept.
+# DETAIL
+# GET    /api/consultations/<pk>/
+# DELETE /api/consultations/<pk>/   (soft cancel)
 # ============================================================
 
 class ConsultationDetailView(APIView):
@@ -407,7 +438,8 @@ class ConsultationDetailView(APIView):
 
 
 # ============================================================
-# CANCEL   POST /api/consultations/<pk>/cancel/
+# CANCEL
+# POST /api/consultations/<pk>/cancel/
 # ============================================================
 
 class ConsultationCancelView(APIView):
@@ -437,14 +469,16 @@ class ConsultationStartView(APIView):
 
         try:
             consultation = start_consultation(
-                consultation=consultation, user=request.user
+                consultation=consultation, user=request.user,
             )
         except ValueError as exc:
             return Response(
-                {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST
+                {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST,
             )
 
-        notify(ConsultationNotificationService.consultation_started, consultation)
+        notify(
+            ConsultationNotificationService.consultation_started, consultation,
+        )
         return Response(ConsultationSerializer(consultation).data)
 
 
@@ -461,14 +495,17 @@ class ConsultationCompleteView(APIView):
 
         try:
             consultation = complete_consultation(
-                consultation=consultation, user=request.user
+                consultation=consultation, user=request.user,
             )
         except ValueError as exc:
             return Response(
-                {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST
+                {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST,
             )
 
-        notify(ConsultationNotificationService.consultation_completed, consultation)
+        notify(
+            ConsultationNotificationService.consultation_completed,
+            consultation,
+        )
         return Response(ConsultationSerializer(consultation).data)
 
 
@@ -494,7 +531,7 @@ class PrescriptionCreateView(APIView):
             )
         except ValueError as exc:
             return Response(
-                {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST
+                {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST,
             )
 
         notify(
@@ -506,4 +543,3 @@ class PrescriptionCreateView(APIView):
             PrescriptionSerializer(prescription).data,
             status=status.HTTP_201_CREATED,
         )
-    
