@@ -29,8 +29,8 @@ GENDER_BACK_TO_FRONT = {
     "male": "male",
     "female": "female",
     "other": "other",
-    "prefer_not": "preferNot",
-    "suspended": "preferNot",  # legacy bad value
+    "preferNot": "prefer_not",
+    "prefer_not": "prefer_not",
 }
 
 class FlexibleDateField(serializers.DateField):

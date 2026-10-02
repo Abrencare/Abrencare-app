@@ -53,7 +53,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         MALE = "male", "Male"
         FEMALE = "female", "Female"
         OTHER = "other", "Other"
-        PREFER_NOT_TO_SAY = "prefer not to say", "Prefer not ot say"
+        PREFER_NOT_TO_SAY = "prefer_not", "Prefer not to say"
 
     username = models.CharField(max_length=150, unique=True,null=True,blank=True,)
     email = models.EmailField(unique=True,null=True,blank=True,)
@@ -115,7 +115,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         verbose_name_plural = "Users"
 
     def __str__(self):
-        return self.username
+        return self.username or self.email or f"User #{self.pk}"
 
     # ============================
     # COMPUTED / UI-FRIENDLY FIELDS
