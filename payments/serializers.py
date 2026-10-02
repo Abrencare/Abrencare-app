@@ -90,7 +90,7 @@ class PaymentPublicSerializer(serializers.ModelSerializer):
     Exposes a `failure_code` the client can map to UI, but never the raw
     `failure_reason` (which may carry provider text and PII).
     """
-
+    checkout_url = serializers.URLField(allow_null=True, required=False)
     class Meta:
         model = Payment
         fields = [
@@ -98,7 +98,7 @@ class PaymentPublicSerializer(serializers.ModelSerializer):
             "amount_refunded", "status",
             "failure_code",       # machine-readable, safe to show
             "created_at", "paid_at", "expires_at",
-            "description",
+            "description", "checkout_url", "payer",  
         ]
         read_only_fields = fields
 

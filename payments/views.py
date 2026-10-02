@@ -77,7 +77,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        out = PaymentSerializer(payment, context={"request": request})
+        out = PaymentPublicSerializer(payment, context={"request": request})
         return Response(out.data, status=status.HTTP_201_CREATED)
 
     # ── Custom actions ──────────────────────────────────────
