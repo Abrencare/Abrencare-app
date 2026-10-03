@@ -255,10 +255,6 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "login": "10/minute",  # 
         "registration": "5/hour",  # 
-        "invitation_lookup": "30/minute",
-        "invitation_contact": "5/minute",
-        "invitation_otp": "10/minute",
-        "invitation_registration": "5/hour",
         "patient_claim": "5/hour",
 
         "family_invitation_create": "20/hour",
@@ -266,6 +262,14 @@ REST_FRAMEWORK = {
 
         "payment_poll": "60/minute",
         "payment_initiate": "10/minute",
+
+        "invitation_lookup": "30/min",
+        "invitation_contact": "5/min",
+        "invitation_otp": "5/min",
+        "invitation_registration": "10/min",
+        "family_invitation_create": "20/hour",
+        "family_member_write": "60/hour",
+        "family_overview": "120/min",
     },
 }
 

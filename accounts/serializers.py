@@ -213,7 +213,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         user.set_password(password)
 
         user.save()
-
+        PasswordHistory.objects.create(user=user, password=user.password)
         service = Service.objects.get(code=service_code)
         user_service = UserService.objects.create(
             user=user, 
@@ -228,8 +228,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
 def _bootstrap_profile(user_service: UserService, user):
     code = user_service.service.code
     if code == "family":
-        from families.models import FamilyProfile
-        FamilyProfile.objects.get_or_create(user_service=user_service, created_by=user)
+        from families.services.family import bootstrap_family_owner
+        bootstrap_family_owner(user, user_service)
     elif code == "executive":
         from executive.models import ExecutiveProfile
         ExecutiveProfile.objects.get_or_create(user_service=user_service, created_by=user)

@@ -1,8 +1,9 @@
-# family/throttles.py
+# backend/families/throttles.py
 
-from rest_framework.throttling import AnonRateThrottle
-from rest_framework.throttling import UserRateThrottle
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
+
+# --- anonymous (invitation acceptance flows) ---
 
 class InvitationLookupThrottle(AnonRateThrottle):
     scope = "invitation_lookup"
@@ -20,14 +21,17 @@ class InvitationRegistrationThrottle(AnonRateThrottle):
     scope = "invitation_registration"
 
 
-class PatientClaimThrottle(AnonRateThrottle):
-    scope = "patient_claim"
-
+# --- authenticated (family owners) ---
 
 class FamilyInvitationCreateThrottle(UserRateThrottle):
     scope = "family_invitation_create"
 
 
-class FamilyPatientCreateThrottle(UserRateThrottle):
-    scope = "family_patient_create"
-    
+class FamilyMemberWriteThrottle(UserRateThrottle):
+    """Bursts of member-create / roster-replace / reading-create."""
+    scope = "family_member_write"
+
+
+class FamilyOverviewThrottle(UserRateThrottle):
+    """The aggregate dashboard endpoint; usually cheap, but cap it anyway."""
+    scope = "family_overview"
