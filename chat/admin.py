@@ -1,3 +1,5 @@
+# chat/admin.py
+
 from django.contrib import admin
 
 from .models import (
@@ -45,6 +47,10 @@ class ConversationParticipantAdmin(admin.ModelAdmin):
         "user__email",
     )
 
+    list_select_related = ("conversation", "user")
+
+    autocomplete_fields = ("conversation", "user")
+
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
@@ -68,3 +74,9 @@ class MessageAdmin(admin.ModelAdmin):
         "content",
         "sender__username",
     )
+
+    list_select_related = ("conversation", "sender")
+
+    # Don't render a dropdown of every row — use the autocomplete widget
+    # backed by the related admin's search_fields.
+    autocomplete_fields = ("conversation", "sender")

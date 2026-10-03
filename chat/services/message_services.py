@@ -1,6 +1,7 @@
 # chat/services/message_services.py
 
-from django.core.exceptions import ValidationError
+import os
+
 from django.db import transaction
 from django.utils import timezone
 
@@ -12,12 +13,29 @@ MAX_ATTACHMENT_SIZE = 25 * 1024 * 1024  # 25 MB
 ALLOWED_MESSAGE_TYPES = {"text", "image", "file", "audio", "video"}
 FILE_REQUIRED_TYPES = {"image", "file", "audio", "video"}
 
+# Extension allow-list per message type. Deliberately conservative;
+# widen as needed. Empty set means "no extension restrictions".
+ALLOWED_EXTENSIONS = {
+    "image": {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"},
+    "audio": {".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac"},
+    "video": {".mp4", ".webm", ".mov", ".avi", ".mkv"},
+    "file": {
+        ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+        ".txt", ".csv", ".zip", ".rar", ".7z", ".json", ".xml",
+    },
+}
+
+# MIME prefix required for each typed upload. "file" accepts anything
+# that passes the extension check.
+ALLOWED_MIME_PREFIXES = {
+    "image": ("image/",),
+    "audio": ("audio/",),
+    "video": ("video/",),
+    "file": None,  # any
+}
+
 
 class MessageService:
-
-    # ------------------------------------------------------------------ #
-    # creation
-    # ------------------------------------------------------------------ #
 
     @staticmethod
     @transaction.atomic
@@ -29,13 +47,6 @@ class MessageService:
         message_type="text",
         file=None,
     ):
-        """
-        Create a message inside a conversation.
-
-        Raises ValueError for validation problems so the view layer can
-        translate them into 400 responses without importing Django's
-        ValidationError.
-        """
         content = (content or "").strip()
         message_type = message_type or "text"
 
@@ -52,8 +63,6 @@ class MessageService:
                 "A file is required for this message type."
             )
 
-        # Only participants may post into a conversation. Cheap check,
-        # and it protects against callers that bypassed the view's gate.
         if not ConversationParticipant.objects.filter(
             conversation=conversation,
             user=sender,
@@ -61,7 +70,7 @@ class MessageService:
             raise ValueError("Sender is not a participant.")
 
         if file is not None:
-            _validate_attachment(file)
+            _validate_attachment(file, message_type)
 
         message = Message.objects.create(
             conversation=conversation,
@@ -78,26 +87,15 @@ class MessageService:
                 update_fields=["file", "file_name", "file_size"]
             )
 
-        # Bump the conversation so list views sort by recent activity.
-        # Using .update() avoids a race with concurrent saves and skips
-        # the auto_now machinery (which only fires on .save()).
         conversation.__class__.objects.filter(pk=conversation.pk).update(
             updated_at=timezone.now()
         )
 
         return message
 
-    # ------------------------------------------------------------------ #
-    # edits / deletes
-    # ------------------------------------------------------------------ #
-
     @staticmethod
     @transaction.atomic
     def update_message(*, message, editor, content):
-        """
-        Update the text content of an existing message. Only the original
-        sender may edit, and only text messages are editable.
-        """
         if message.sender_id != editor.id:
             raise ValueError("Only the sender can edit this message.")
 
@@ -114,18 +112,26 @@ class MessageService:
 
         message.content = content
         message.is_edited = True
-        message.save(update_fields=["content", "is_edited", "updated_at"])
+
+        # Don't list updated_at in update_fields: auto_now is only
+        # honoured reliably across versions when Django performs the
+        # save itself. Assign explicitly for deterministic behaviour.
+        message.updated_at = timezone.now()
+        message.save(
+            update_fields=["content", "is_edited", "updated_at"]
+        )
+
+        # An edit is activity — bump the conversation so list views
+        # sort the conversation to the top.
+        message.conversation.__class__.objects.filter(
+            pk=message.conversation_id
+        ).update(updated_at=timezone.now())
 
         return message
 
     @staticmethod
     @transaction.atomic
     def delete_message(*, message, actor):
-        """
-        Soft-delete a message. Only the original sender may delete.
-        Content is cleared so downstream clients that render tombstones
-        cannot leak the original text.
-        """
         if message.sender_id != actor.id:
             raise ValueError("Only the sender can delete this message.")
 
@@ -134,8 +140,21 @@ class MessageService:
 
         message.is_deleted = True
         message.content = ""
+        # Clear the file reference so the serializer can't leak a URL
+        # to a "deleted" attachment.
+        message.file = None
+        message.file_name = ""
+        message.file_size = None
+        message.updated_at = timezone.now()
         message.save(
-            update_fields=["is_deleted", "content", "updated_at"]
+            update_fields=[
+                "is_deleted",
+                "content",
+                "file",
+                "file_name",
+                "file_size",
+                "updated_at",
+            ]
         )
 
         return message
@@ -143,10 +162,6 @@ class MessageService:
     @staticmethod
     @transaction.atomic
     def mark_read(*, conversation, user, up_to_message_id=None):
-        """
-        Placeholder for read receipts. Wire this up when you add a
-        `last_read_at` field on ConversationParticipant.
-        """
         raise NotImplementedError
 
 
@@ -154,10 +169,10 @@ class MessageService:
 # helpers
 # ---------------------------------------------------------------------- #
 
-def _validate_attachment(file):
+def _validate_attachment(file, message_type):
     """
-    Enforce the size cap the view used to own. Raises ValueError so the
-    caller's error handling stays uniform.
+    Enforce size, extension, and MIME-prefix rules for the given
+    message type. Raises ValueError for uniform error handling.
     """
     size = getattr(file, "size", None)
     if size is None:
@@ -170,4 +185,22 @@ def _validate_attachment(file):
         raise ValueError(
             f"File too large (max {MAX_ATTACHMENT_SIZE // (1024 * 1024)}MB)."
         )
-    
+
+    name = (file.name or "").lower()
+    ext = os.path.splitext(name)[1]
+
+    allowed_exts = ALLOWED_EXTENSIONS.get(message_type)
+    if allowed_exts is not None and ext not in allowed_exts:
+        raise ValueError(
+            f"Extension '{ext}' not allowed for message_type "
+            f"'{message_type}'."
+        )
+
+    allowed_prefixes = ALLOWED_MIME_PREFIXES.get(message_type)
+    if allowed_prefixes is not None:
+        content_type = (getattr(file, "content_type", "") or "").lower()
+        if not any(content_type.startswith(p) for p in allowed_prefixes):
+            raise ValueError(
+                f"Content type '{content_type}' not allowed for "
+                f"message_type '{message_type}'."
+            )

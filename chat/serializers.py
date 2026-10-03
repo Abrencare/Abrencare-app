@@ -69,7 +69,22 @@ class MessageSerializer(serializers.ModelSerializer):
             "is_edited",
             "is_deleted",
         ]
-        read_only_fields = [f for f in fields if f != "content"]
+        # Explicit is better than a comprehension that silently changes
+        # meaning when a new field is added above.
+        read_only_fields = [
+            "id",
+            "conversation",
+            "sender_id",
+            "sender_username",
+            "message_type",
+            "file_url",
+            "file_name",
+            "file_size",
+            "created_at",
+            "updated_at",
+            "is_edited",
+            "is_deleted",
+        ]
 
     def get_file_url(self, obj):
         if not obj.file:
@@ -113,11 +128,6 @@ class ConversationSerializer(serializers.ModelSerializer):
         ]
 
     def get_other_user(self, obj):
-        """
-        For a private conversation, return the participant that is NOT
-        the requesting user. Returns None for group conversations or if
-        no request is available in the serializer context.
-        """
         if obj.conversation_type != "private":
             return None
 
@@ -135,14 +145,6 @@ class ConversationSerializer(serializers.ModelSerializer):
         return None
 
     def get_last_message(self, obj):
-        """
-        Return the most recent message in this conversation, or None
-        if the conversation has no messages yet.
-
-        Prefers a prefetched `recent_messages` attribute (set via
-        Prefetch(...) in the view) to avoid N+1 queries. Falls back
-        to a single query per conversation otherwise.
-        """
         recent = getattr(obj, "recent_messages", None)
 
         if recent is not None:
@@ -151,7 +153,7 @@ class ConversationSerializer(serializers.ModelSerializer):
             message = (
                 obj.messages
                 .select_related("sender")
-                .order_by("-created_at")
+                .order_by("-created_at", "-id")   # ← tiebreak
                 .first()
             )
 
@@ -162,4 +164,3 @@ class ConversationSerializer(serializers.ModelSerializer):
             message,
             context=self.context,
         ).data
-    

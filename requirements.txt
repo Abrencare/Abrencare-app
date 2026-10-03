@@ -32,6 +32,7 @@ environ==1.0
 factory_boy==3.3.3
 Faker==40.40.0
 firebase-admin==6.6.0
+freezegun==1.5.5
 google-api-core==2.30.3
 google-api-python-client==2.198.0
 google-auth==2.56.2
@@ -69,6 +70,7 @@ PyJWT==2.12.1
 pyOpenSSL==26.4.0
 pyparsing==3.3.2
 pytest==9.1.1
+pytest-asyncio==1.4.0
 pytest-django==4.14.0
 pytest-mock==3.16.0
 python-dateutil==2.9.0.post0
