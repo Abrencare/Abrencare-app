@@ -1,25 +1,41 @@
 # consultations/services/consultation_notification_service.py
 """
-Owns every notification the Consultation module sends. `services.py` (the state-machine
-layer) calls one method here per event instead of building titles/messages/payloads
-inline — that keeps copy and payload shape in one place, and keeps the state-machine
-functions focused on what changed rather than how it's announced.
+Owns every notification the Consultation module sends.
 
-Each method is a thin wrapper around notifications.services.notification_service
-.NotificationService.create, which is itself @transaction.atomic and defers the actual
-websocket push to transaction.on_commit — so calling these from inside an outer
-@transaction.atomic block in services.py is safe: nothing is broadcast if the outer
-transaction rolls back.
+The service layer (consultations/services/services.py) calls one method here
+per lifecycle event instead of building titles/messages/payloads inline. That
+keeps:
+
+  * copy and payload shape in one place, and
+  * the state-machine functions focused on *what changed* rather than
+    *how it is announced*.
+
+Each method is a thin wrapper around
+``notifications.services.notification_service.NotificationService.create``,
+which is itself ``@transaction.atomic`` and defers the websocket push to
+``transaction.on_commit``. Calling these from inside an outer
+``@transaction.atomic`` block in the service layer is therefore safe: nothing
+is broadcast if the outer transaction rolls back.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from notifications.services.notification_service import NotificationService
+
+if TYPE_CHECKING:
+    from consultations.models import Consultation, Prescription
+    from accounts.models import User  # adjust to your actual user import
 
 
 class ConsultationNotificationType:
     """
-    Wire values for Notification.notification_type. Centralized here so the frontend
-    guide and any future notification-preferences UI can reference the same constants
-    this service uses, instead of duplicating string literals.
+    Wire values for ``Notification.notification_type``.
+
+    Centralized so the frontend guide and any future notification-preferences
+    UI can reference the same constants this service uses, instead of
+    duplicating string literals.
     """
 
     CONSULTATION_BOOKED = "consultation_booked"
@@ -36,23 +52,43 @@ class ConsultationNotificationType:
 
 class ConsultationNotificationService:
     """
-    One classmethod per consultation lifecycle event. Call these from
-    consultations/services.py at the point of each state transition.
+    One classmethod per consultation lifecycle event.
+
+    Call these from ``consultations.services.services`` at the point of each
+    state transition, *after* the state has been persisted.
     """
 
+    # ------------------------------------------------------------------
+    # INTERNAL HELPERS
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _patient_user(consultation):
+        return consultation.appointment.patient 
+
+    @staticmethod
+    def _doctor_user(consultation: "Consultation") -> "User":
+        return consultation.appointment.doctor
+
+    @staticmethod
+    def _format_when(consultation: "Consultation") -> str:
+        appt = consultation.appointment
+        return f"{appt.appointment_date} at {appt.appointment_time}"
+
+    # ------------------------------------------------------------------
+    # LIFECYCLE EVENTS
+    # ------------------------------------------------------------------
     @classmethod
-    def consultation_booked(cls, consultation):
+    def consultation_booked(cls, consultation: "Consultation"):
         """Notify the doctor that a patient booked a consultation."""
         appointment = consultation.appointment
-        doctor_user = appointment.doctor.user
         patient_name = appointment.patient.user.full_name
 
         return NotificationService.create(
-            user=doctor_user,
+            user=cls._doctor_user(consultation),
             title="New consultation booked",
             message=(
-                f"{patient_name} booked a {consultation.consultation_type} consultation "
-                f"on {appointment.appointment_date} at {appointment.appointment_time}."
+                f"{patient_name} booked a {consultation.consultation_type} "
+                f"consultation on {cls._format_when(consultation)}."
             ),
             notification_type=ConsultationNotificationType.CONSULTATION_BOOKED,
             data={
@@ -64,28 +100,42 @@ class ConsultationNotificationService:
         )
 
     @classmethod
-    def consultation_cancelled(cls, consultation, *, cancelled_by, reason=""):
+    def consultation_cancelled(
+        cls,
+        consultation: "Consultation",
+        *,
+        cancelled_by: "User",
+        reason: str = "",
+    ):
         """
-        Notify the other party that a consultation was cancelled. `cancelled_by` is the
-        User who cancelled it — the notification goes to whichever side did NOT cancel,
-        so a doctor-initiated cancel (once that flow exists) notifies the patient instead
-        of always notifying the doctor.
+        Notify the other party that a consultation was cancelled.
+
+        ``cancelled_by`` is the User who cancelled it — the notification goes
+        to whichever side did NOT cancel, so a future doctor-initiated cancel
+        notifies the patient instead of always notifying the doctor.
         """
         appointment = consultation.appointment
         patient_user = appointment.patient.user
         doctor_user = appointment.doctor.user
 
-        recipient = doctor_user if cancelled_by == patient_user else patient_user
-        canceller_label = "The patient" if recipient == doctor_user else "The doctor"
+        if cancelled_by == patient_user:
+            recipient = doctor_user
+            canceller_label = "The patient"
+        else:
+            recipient = patient_user
+            canceller_label = "The doctor"
+
+        message = (
+            f"{canceller_label} cancelled the consultation on "
+            f"{cls._format_when(consultation)}."
+        )
+        if reason:
+            message = f"{message} Reason: {reason}"
 
         return NotificationService.create(
             user=recipient,
             title="Consultation cancelled",
-            message=(
-                f"{canceller_label} cancelled the consultation on "
-                f"{appointment.appointment_date} at {appointment.appointment_time}."
-                + (f" Reason: {reason}" if reason else "")
-            ),
+            message=message,
             notification_type=ConsultationNotificationType.CONSULTATION_CANCELLED,
             data={
                 "consultation_id": consultation.id,
@@ -95,16 +145,17 @@ class ConsultationNotificationService:
         )
 
     @classmethod
-    def consultation_started(cls, consultation):
-        """Notify the patient that the doctor has started the session and a room is ready."""
-        appointment = consultation.appointment
-        patient_user = appointment.patient.user
-        doctor_name = appointment.doctor.user.full_name
+    def consultation_started(cls, consultation: "Consultation"):
+        """Notify the patient that the doctor has started the session."""
+        doctor_name = consultation.appointment.doctor.user.full_name
 
         return NotificationService.create(
-            user=patient_user,
+            user=cls._patient_user(consultation),
             title="Your consultation has started",
-            message=f"Dr. {doctor_name} is ready for your {consultation.consultation_type} consultation.",
+            message=(
+                f"Dr. {doctor_name} is ready for your "
+                f"{consultation.consultation_type} consultation."
+            ),
             notification_type=ConsultationNotificationType.CONSULTATION_STARTED,
             data={
                 "consultation_id": consultation.id,
@@ -114,29 +165,32 @@ class ConsultationNotificationService:
         )
 
     @classmethod
-    def consultation_completed(cls, consultation):
+    def consultation_completed(cls, consultation: "Consultation"):
         """Notify the patient that the session has ended."""
-        appointment = consultation.appointment
-        patient_user = appointment.patient.user
-
         return NotificationService.create(
-            user=patient_user,
+            user=cls._patient_user(consultation),
             title="Consultation completed",
-            message="Your consultation has ended. Check your prescriptions if any were issued.",
+            message=(
+                "Your consultation has ended. "
+                "Check your prescriptions if any were issued."
+            ),
             notification_type=ConsultationNotificationType.CONSULTATION_COMPLETED,
             data={"consultation_id": consultation.id},
         )
 
     @classmethod
-    def prescription_added(cls, consultation, prescription):
-        """Notify the patient that a prescription was added to their consultation."""
-        appointment = consultation.appointment
-        patient_user = appointment.patient.user
-
+    def prescription_added(
+        cls,
+        consultation: "Consultation",
+        prescription: "Prescription",
+    ):
+        """Notify the patient that a prescription was added."""
         return NotificationService.create(
-            user=patient_user,
+            user=cls._patient_user(consultation),
             title="New prescription added",
-            message=f"{prescription.medication} was added to your consultation record.",
+            message=(
+                f"{prescription.medication} was added to your consultation record."
+            ),
             notification_type=ConsultationNotificationType.PRESCRIPTION_ADDED,
             data={
                 "consultation_id": consultation.id,
@@ -144,5 +198,3 @@ class ConsultationNotificationService:
                 "medication": prescription.medication,
             },
         )
-
-   

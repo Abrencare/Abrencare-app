@@ -1,3 +1,4 @@
+# consultations/urls.py
 from django.urls import path
 
 from .views import (
@@ -15,6 +16,7 @@ from .views import (
     SpecialtyListView,
 )
 
+app_name = "consultations"
 
 urlpatterns = [
     # ------------------------------------------------------
@@ -23,12 +25,12 @@ urlpatterns = [
     path(
         "specialties/",
         SpecialtyListView.as_view(),
-        name="specialties",
+        name="specialty-list",
     ),
     path(
         "doctors/",
         ConsultationDoctorListView.as_view(),
-        name="doctors",
+        name="doctor-list",
     ),
     path(
         "availability/",
@@ -66,12 +68,12 @@ urlpatterns = [
 
     # ------------------------------------------------------
     # Per-consultation actions (detail-level)
+    #
+    # Ordering matters: Django resolves top-to-bottom. `<int:pk>/` would
+    # match `<int:pk>/cancel/` if placed first in some routers, but with
+    # `path()` the trailing slash makes them distinct — still, we keep the
+    # more specific routes above the bare detail route for readability.
     # ------------------------------------------------------
-    path(
-        "<int:pk>/",
-        ConsultationDetailView.as_view(),
-        name="detail",
-    ),
     path(
         "<int:pk>/cancel/",
         ConsultationCancelView.as_view(),
@@ -91,5 +93,10 @@ urlpatterns = [
         "<int:pk>/prescriptions/",
         PrescriptionCreateView.as_view(),
         name="prescription-create",
+    ),
+    path(
+        "<int:pk>/",
+        ConsultationDetailView.as_view(),
+        name="detail",
     ),
 ]

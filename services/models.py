@@ -256,7 +256,7 @@ class UserService(TimeStampedModel):
         on_delete=models.PROTECT,
         related_name="created_services",
     )
-    onboarded = models.BooleanField(_("Onboarding complete"), default=False)
+    onboarded = models.BooleanField(_("Onboarding complete"), default=True, db_index=True)
     onboarded_at = models.DateTimeField(_("Onboarded at"), auto_now_add=True, null=True, blank=True)
     joined_at = models.DateTimeField(_("Joined at"), auto_now_add=True)
 
