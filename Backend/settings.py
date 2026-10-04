@@ -118,14 +118,17 @@ MIDDLEWARE = [
 # ======================================================
 CORS_ALLOW_CREDENTIALS = True
 
+
 CORS_ALLOWED_ORIGINS = [
-     "http://127.0.0.1:8000",
-     "http://localhost:8081",
+    origin.strip()
+    for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-     "http://127.0.0.1:8000",
-     "http://localhost:8081"
+    origin.strip()
+    for origin in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -148,6 +151,7 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 else:
     SECURE_SSL_REDIRECT = False
     SESSION_COOKIE_SECURE = False
@@ -177,46 +181,44 @@ TEMPLATES = [
 WSGI_APPLICATION = 'Backend.wsgi.application'
 ASGI_APPLICATION = 'Backend.asgi.application'
 
-try:
-    import redis
-    redis_client = redis.Redis(host='127.0.0.1', port=6379, socket_connect_timeout=1)
-    redis_client.ping()
-    REDIS_AVAILABLE = True
-except:
-    REDIS_AVAILABLE = False
+# ======================================================
+# REDIS / CACHE / CHANNELS
+# ======================================================
 
-if REDIS_AVAILABLE:
+REDIS_URL = os.environ.get("REDIS_URL")
+
+if REDIS_URL:
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.redis.RedisCache",
-            "LOCATION": "redis://127.0.0.1:6379/1",
+            "LOCATION": REDIS_URL,
         }
     }
-    
+
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
-                "hosts": [("127.0.0.1", 6379)],
+                "hosts": [REDIS_URL],
             },
         },
     }
 else:
+    # Development fallback only
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
             "LOCATION": "unique-snowflake",
         }
     }
-    
+
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels.layers.InMemoryChannelLayer",
         },
     }
-    
-    print("WARNING: Redis not available. Using in-memory cache.")
 
+    print("WARNING: REDIS_URL not configured. Using in-memory cache/channel layer.")
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
@@ -234,13 +236,6 @@ DATABASES = {
 # ======================================================
 # PASSWORD VALIDATION
 # ======================================================
-
-AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
-]
 
 AUTHENTICATION_BACKENDS = [   
     "accounts.backends.EmailBackend",
