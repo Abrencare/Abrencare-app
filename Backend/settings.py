@@ -14,6 +14,7 @@ from pathlib import Path
 from datetime import timedelta
 import os
 from dotenv import load_dotenv
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -29,16 +30,23 @@ load_dotenv(BASE_DIR / ".env")
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-e6+4zy12kj0k7d3d003rc^opnj6uck#3^4p$$$100#1fgo*9d5'
+
+SECRET_KEY = os.environ["SECRET_KEY"]
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DEBUG", "True") == "True"
+DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
 ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    "192.168.1.100",
+    host.strip()
+    for host in os.environ.get(
+        "ALLOWED_HOSTS", ""
+    ).split(",")
+    if host.strip()
 ]
+
+render_hostname = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+if render_hostname and render_hostname not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(render_hostname)
 
 # ======================================================
 # APPLICATIONS
@@ -110,14 +118,17 @@ MIDDLEWARE = [
 # ======================================================
 CORS_ALLOW_CREDENTIALS = True
 
+
 CORS_ALLOWED_ORIGINS = [
-     "http://127.0.0.1:8000",
-     "http://localhost:8081",
+    origin.strip()
+    for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-     "http://127.0.0.1:8000",
-     "http://localhost:8081"
+    origin.strip()
+    for origin in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -140,6 +151,7 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 else:
     SECURE_SSL_REDIRECT = False
     SESSION_COOKIE_SECURE = False
@@ -169,46 +181,44 @@ TEMPLATES = [
 WSGI_APPLICATION = 'Backend.wsgi.application'
 ASGI_APPLICATION = 'Backend.asgi.application'
 
-try:
-    import redis
-    redis_client = redis.Redis(host='127.0.0.1', port=6379, socket_connect_timeout=1)
-    redis_client.ping()
-    REDIS_AVAILABLE = True
-except:
-    REDIS_AVAILABLE = False
+# ======================================================
+# REDIS / CACHE / CHANNELS
+# ======================================================
 
-if REDIS_AVAILABLE:
+REDIS_URL = os.environ.get("REDIS_URL")
+
+if REDIS_URL:
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.redis.RedisCache",
-            "LOCATION": "redis://127.0.0.1:6379/1",
+            "LOCATION": REDIS_URL,
         }
     }
-    
+
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
-                "hosts": [("127.0.0.1", 6379)],
+                "hosts": [REDIS_URL],
             },
         },
     }
 else:
+    # Development fallback only
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
             "LOCATION": "unique-snowflake",
         }
     }
-    
+
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels.layers.InMemoryChannelLayer",
         },
     }
-    
-    print("WARNING: Redis not available. Using in-memory cache.")
 
+    print("WARNING: REDIS_URL not configured. Using in-memory cache/channel layer.")
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
@@ -217,22 +227,15 @@ else:
 # DATABASE
 # ======================================================
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    "default": dj_database_url.config(
+        default=os.environ.get("DATABASE_URL"),
+        conn_max_age=600,
+    )
 }
 
 # ======================================================
 # PASSWORD VALIDATION
 # ======================================================
-
-AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
-]
 
 AUTHENTICATION_BACKENDS = [   
     "accounts.backends.EmailBackend",
@@ -255,10 +258,6 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "login": "10/minute",  # 
         "registration": "5/hour",  # 
-        "invitation_lookup": "30/minute",
-        "invitation_contact": "5/minute",
-        "invitation_otp": "10/minute",
-        "invitation_registration": "5/hour",
         "patient_claim": "5/hour",
 
         "family_invitation_create": "20/hour",
@@ -266,6 +265,14 @@ REST_FRAMEWORK = {
 
         "payment_poll": "60/minute",
         "payment_initiate": "10/minute",
+
+        "invitation_lookup": "30/min",
+        "invitation_contact": "5/min",
+        "invitation_otp": "5/min",
+        "invitation_registration": "10/min",
+        "family_invitation_create": "20/hour",
+        "family_member_write": "60/hour",
+        "family_overview": "120/min",
     },
 }
 
@@ -309,6 +316,10 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
+
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.MD5PasswordHasher",
+]
 
 # ======================================================
 # INTERNATIONALIZATION

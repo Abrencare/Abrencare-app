@@ -2,32 +2,55 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from .models import (
-    ServiceVisit,
-    VitalReading,
-    PatientObservation,
-    PatientAlert,
-    CareTask,
-    CareTeamAssignment,
-    Patient,
-    FamilyMember, FamilyProfile,
-    FamilyReading, CarePlanItem, CareVisit,
-    FamilyCareTeamMember, FamilyAttentionFlag,
-    FamilyHistoryEntry,
-    FamilyLabResult,
+    FamilyMembership,
+    FamilyProfile,
+    FamilyMember,
+    FamilyReading,
+    CarePlanItem,
+    CareVisit,
+    FamilyCareTeamMember,
+    FamilyAttentionFlag,
+    FamilyInvitation,
+    InvitationDelivery,
+    FamilyReport,
+    FamilyReportRead,
     FamilyPrescription,
-    FamilyReport
+    FamilyLabResult,
+    FamilyHistoryEntry,
+    FamilyAuditLog,
+    Tone,
+    Severity,
+    Relationship,
 )
 
+
+# ============================================================
+# HELPERS
+# ============================================================
+
 def _format_date_label(dt) -> str:
-    """Portable equivalent of strftime('%-d')/('%#d') — works on Windows too."""
+    """Portable strftime('%-d') / ('%#d') — works on Windows too."""
     return f"{dt:%b} {dt.day}, {dt.year}"
 
 
 def _format_day_label(dt) -> str:
     return str(dt.day)
 
+
+def _initials(full_name: str) -> str:
+    return "".join(part[0].upper() for part in full_name.split()[:2])
+
+class MembershipPermissionUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FamilyMembership
+        fields = [
+            "can_view_readings", "can_view_care_plan", "can_view_visits",
+            "can_view_reports", "can_view_prescriptions", "can_view_lab_results",
+            "can_view_history", "can_view_attention", "can_view_care_team",
+        ]
+        
 # ============================================================
-# INDIVIDUAL SERIALIZERS
+# FAMILY / MEMBER
 # ============================================================
 
 class FamilyMemberSerializer(serializers.ModelSerializer):
@@ -40,11 +63,6 @@ class FamilyMemberSerializer(serializers.ModelSerializer):
     date_of_birth       →  dateOfBirth
     emergency_phone     →  emergencyPhone
     pk                  →  id (as string)
-
-    Input also accepts snake_case where it's natural to do so — DRF's
-    `source=` makes this transparent for reads, and toWire() sends
-    snake_case for date_of_birth / emergency_phone, which `source=` picks
-    up on the way in.
     """
 
     id = serializers.CharField(source="pk", read_only=True)
@@ -55,6 +73,7 @@ class FamilyMemberSerializer(serializers.ModelSerializer):
     emergencyPhone = serializers.CharField(
         source="emergency_phone", allow_blank=True, required=False,
     )
+    is_primary = serializers.BooleanField(required=False)
 
     class Meta:
         model = FamilyMember
@@ -68,6 +87,7 @@ class FamilyMemberSerializer(serializers.ModelSerializer):
             "address",
             "emergencyPhone",
             "notes",
+            "is_primary",
         ]
 
     def validate_name(self, value):
@@ -77,7 +97,7 @@ class FamilyMemberSerializer(serializers.ModelSerializer):
         return value
 
     def validate_relationship(self, value):
-        valid = {c[0] for c in FamilyMember.Relationship.choices}
+        valid = {c[0] for c in Relationship.choices}
         if value not in valid:
             raise serializers.ValidationError("Invalid relationship.")
         return value
@@ -89,9 +109,6 @@ class FamilyProfileSerializer(serializers.ModelSerializer):
 
     Wire shape:
       { "onboarded": bool, "members": [ {...}, ... ] }
-
-    `onboarded` is read-only here — it's owned by UserService and flipped
-    only via POST /family/onboarding/complete/.
     """
 
     onboarded = serializers.SerializerMethodField()
@@ -99,425 +116,172 @@ class FamilyProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = FamilyProfile
-        fields = ["onboarded", "members"]
+        fields = ["id", "name", "onboarded", "members"]
+        read_only_fields = ["id"]
 
     def get_onboarded(self, obj):
-        return bool(obj.user_service.onboarded)
+        return bool(getattr(obj.user_service, "onboarded", False))
 
 
-class FamilyMemberWriteSerializer(serializers.Serializer):
-    """
-    Used by FamilyProfileSerializer.update via `members` write input.
-    Kept separate so read and write concerns don't leak into each other.
-    """
-    # Not strictly necessary if we just re-use FamilyMemberSerializer for
-    # write, but keeping the hook here means swapping to upsert-by-id later
-    # is a one-file change.
-    pass
+# ============================================================
+# READINGS
+# ============================================================
 
-class ServiceVisitSerializer(serializers.ModelSerializer):
-    clinician_name = serializers.SerializerMethodField()
-    status_display = serializers.CharField(
-        source="get_status_display", read_only=True,
-    )
+class FamilyReadingSerializer(serializers.ModelSerializer):
+    kind_display = serializers.CharField(source="get_kind_display", read_only=True)
 
     class Meta:
-        model = ServiceVisit
+        model = FamilyReading
         fields = [
-            "id", "patient", "clinician", "clinician_name",
-            "status", "status_display",
-            "started_at", "ended_at", "summary",
-            "created_at", "updated_at",
+            "id",
+            "kind",
+            "kind_display",
+            "value",
+            "unit",
+            "status",
+            "tone",
+            "note",
+            "recorded_at",
         ]
-        read_only_fields = fields
+        read_only_fields = ["id", "recorded_at"]
+
+
+# ============================================================
+# CARE PLAN
+# ============================================================
+
+class CarePlanItemSerializer(serializers.ModelSerializer):
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = CarePlanItem
+        fields = [
+            "id",
+            "title",
+            "scheduled_time",
+            "status",
+            "status_display",
+            "done",
+            "order",
+            "completed_at",
+            "created_at",
+        ]
+        read_only_fields = ["id", "created_at", "completed_at"]
+
+
+# ============================================================
+# VISITS
+# ============================================================
+
+class CareVisitSerializer(serializers.ModelSerializer):
+    state_display = serializers.CharField(source="get_state_display", read_only=True)
+    clinician_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CareVisit
+        fields = [
+            "id",
+            "clinician",
+            "clinician_name",
+            "nurse_name",
+            "state",
+            "state_display",
+            "scheduled_at",
+            "started_at",
+            "ended_at",
+            "summary",
+            "created_at",
+        ]
+        read_only_fields = ["id", "created_at"]
 
     def get_clinician_name(self, obj):
         if not obj.clinician:
-            return None
-        return obj.clinician.get_full_name() or obj.clinician.username
+            return obj.nurse_name or None
+        return obj.clinician.full_name() or obj.clinician.get_username()
 
 
-class VitalReadingSerializer(serializers.ModelSerializer):
-    kind_display = serializers.CharField(
-        source="get_kind_display", read_only=True,
-    )
-    status_display = serializers.CharField(
-        source="get_status_display", read_only=True,
-    )
-    recorded_by_name = serializers.SerializerMethodField()
+# ============================================================
+# CARE TEAM
+# ============================================================
 
-    class Meta:
-        model = VitalReading
-        fields = [
-            "id", "patient", "kind", "kind_display",
-            "value", "unit", "status", "status_display",
-            "recorded_by", "recorded_by_name",
-            "recorded_at", "created_at",
-        ]
-        read_only_fields = fields
-
-    def get_recorded_by_name(self, obj):
-        if not obj.recorded_by:
-            return None
-        return obj.recorded_by.get_full_name() or obj.recorded_by.username
-
-
-class PatientObservationSerializer(serializers.ModelSerializer):
-    kind_display = serializers.CharField(
-        source="get_kind_display", read_only=True,
-    )
-    status_display = serializers.CharField(
-        source="get_status_display", read_only=True,
-    )
+class FamilyCareTeamMemberSerializer(serializers.ModelSerializer):
+    role_display = serializers.CharField(source="get_role_display", read_only=True)
+    is_active = serializers.BooleanField(read_only=True)
+    profile_picture_url = serializers.SerializerMethodField()
 
     class Meta:
-        model = PatientObservation
+        model = FamilyCareTeamMember
         fields = [
-            "id", "patient", "kind", "kind_display",
-            "label", "status", "status_display", "note",
-            "recorded_by", "recorded_at",
+            "id",
+            "staff",
+            "role",
+            "role_display",
+            "full_name",
+            "phone",
+            "is_primary",
+            "is_active",
+            "available_now",
+            "on_visit",
+            "profile_picture_url",
         ]
-        read_only_fields = fields
+
+    def get_profile_picture_url(self, obj):
+        return getattr(obj.staff, "profile_picture_url", None) if obj.staff else None
 
 
-class PatientAlertSerializer(serializers.ModelSerializer):
+# ============================================================
+# ATTENTION FLAGS
+# ============================================================
+
+class FamilyAttentionFlagSerializer(serializers.ModelSerializer):
     severity_display = serializers.CharField(
         source="get_severity_display", read_only=True,
     )
     is_open = serializers.BooleanField(read_only=True)
 
     class Meta:
-        model = PatientAlert
-        fields = [
-            "id", "patient", "severity", "severity_display",
-            "title", "body", "source",
-            "resolved_at", "is_open", "created_at",
-        ]
-        read_only_fields = fields
-
-
-class CareTaskSerializer(serializers.ModelSerializer):
-    status_display = serializers.CharField(
-        source="get_status_display", read_only=True,
-    )
-    time = serializers.SerializerMethodField()
-
-    class Meta:
-        model = CareTask
-        fields = [
-            "id", "patient", "title",
-            "scheduled_at", "time", "status", "status_display",
-            "completed_by", "completed_at", "created_at",
-        ]
-        read_only_fields = fields
-
-    def get_time(self, obj):
-        # Match the Appointment.time shape (HH:mm, 24h).
-        return timezone.localtime(obj.scheduled_at).strftime("%H:%M")
-
-
-class CareTeamAssignmentSerializer(serializers.ModelSerializer):
-    role_display = serializers.CharField(
-        source="get_role_display", read_only=True,
-    )
-    full_name = serializers.SerializerMethodField()
-    phone_number = serializers.CharField(
-        source="staff.phone_number", read_only=True, default="",
-    )
-    profile_picture_url = serializers.SerializerMethodField()
-    is_active = serializers.BooleanField(read_only=True)
-
-    class Meta:
-        model = CareTeamAssignment
-        fields = [
-            "id", "patient", "staff", "full_name", "phone_number",
-            "profile_picture_url",
-            "role", "role_display", "is_primary", "is_active",
-            "started_at", "ended_at",
-        ]
-        read_only_fields = fields
-
-    def get_full_name(self, obj):
-        return obj.staff.get_full_name() or obj.staff.username
-
-    def get_profile_picture_url(self, obj):
-        return getattr(obj.staff, "profile_picture_url", None)
-
-
-# ============================================================
-# AGGREGATE — ONE CALL FOR THE FAMILY DASHBOARD
-# ============================================================
-
-def _tone_for(status: str) -> str:
-    """Map backend status → frontend Tone union ('good' | 'info' | 'flag')."""
-    return {"good": "good", "info": "info", "flag": "flag"}.get(status, "info")
-
-
-# Order matters — this is the order tiles appear on the screen.
-_DASHBOARD_VITAL_KINDS = [
-    VitalReading.Kind.BLOOD_PRESSURE,
-    VitalReading.Kind.HEART_RATE,
-    VitalReading.Kind.SPO2,
-    VitalReading.Kind.WEIGHT,
-]
-
-
-class PatientSummarySerializer(serializers.ModelSerializer):
-    full_name = serializers.SerializerMethodField()
-    initials = serializers.SerializerMethodField()
-    phone_number = serializers.CharField(source="user.phone_number", default="")
-
-    class Meta:
-        model = Patient
-        fields = ["id", "full_name", "initials", "phone_number"]
-
-    def get_full_name(self, obj):
-        return obj.user.get_full_name() or obj.user.username
-
-    def get_initials(self, obj):
-        name = self.get_full_name(obj)
-        return "".join(p[0].upper() for p in name.split()[:2])
-
-
-class FamilyOverviewSerializer(serializers.Serializer):
-    """
-    Aggregated payload that maps 1:1 to FamilyOverview.tsx.
-    """
-
-    patient = serializers.SerializerMethodField()
-    active_visit = serializers.SerializerMethodField()
-    open_alert = serializers.SerializerMethodField()
-    readings = serializers.SerializerMethodField()
-    care_plan = serializers.SerializerMethodField()
-    care_plan_progress = serializers.SerializerMethodField()
-    care_team = serializers.SerializerMethodField()
-
-    # ---------- patient ----------
-
-    def get_patient(self, patient):
-        user = patient.user
-        full_name = user.get_full_name() or user.username
-        initials = "".join(
-            part[0].upper() for part in full_name.split()[:2]
-        )
-        return {
-            "id": patient.id,
-            "user_id": user.id,
-            "full_name": full_name,
-            "initials": initials,
-            "phone_number": getattr(user, "phone_number", ""),
-        }
-
-    # ---------- live visit ----------
-
-    def get_active_visit(self, patient):
-        visit = (
-            patient.visits
-            .filter(status=ServiceVisit.Status.IN_PROGRESS)
-            .select_related("clinician")
-            .order_by("-started_at")
-            .first()
-        )
-        if not visit:
-            return None
-        return ServiceVisitSerializer(visit).data
-
-    # ---------- top alert ----------
-
-    def get_open_alert(self, patient):
-        # Critical beats warning beats info.
-        severity_rank = {
-            PatientAlert.Severity.CRITICAL: 0,
-            PatientAlert.Severity.WARNING: 1,
-            PatientAlert.Severity.INFO: 2,
-        }
-        open_alerts = list(
-            patient.alerts.filter(resolved_at__isnull=True)
-        )
-        if not open_alerts:
-            return None
-        open_alerts.sort(key=lambda a: severity_rank.get(a.severity, 99))
-        return PatientAlertSerializer(open_alerts[0]).data
-
-    # ---------- readings ----------
-
-    def get_readings(self, patient):
-        rows = []
-
-        for kind in _DASHBOARD_VITAL_KINDS:
-            reading = (
-                patient.vital_readings
-                .filter(kind=kind)
-                .order_by("-recorded_at")
-                .first()
-            )
-            if not reading:
-                continue
-            rows.append({
-                "kind": reading.kind,
-                "label": reading.get_kind_display(),
-                "value": reading.value,
-                "unit": reading.unit,
-                "status": reading.status,
-                "tone": _tone_for(reading.status),
-                "recorded_at": reading.recorded_at,
-            })
-
-        # Latest observation rides along as an extra tile.
-        latest_obs = (
-            patient.observations.order_by("-recorded_at").first()
-        )
-        if latest_obs:
-            rows.append({
-                "kind": latest_obs.kind,
-                "label": latest_obs.get_kind_display(),
-                "value": latest_obs.label,
-                "unit": "",
-                "status": latest_obs.status,
-                "tone": _tone_for(latest_obs.status),
-                "recorded_at": latest_obs.recorded_at,
-            })
-
-        return rows
-
-    # ---------- care plan ----------
-
-    def _todays_tasks(self, patient):
-        today = timezone.localdate()
-        return patient.care_tasks.filter(scheduled_at__date=today)
-
-    def get_care_plan(self, patient):
-        qs = self._todays_tasks(patient).order_by("scheduled_at")
-        return CareTaskSerializer(qs, many=True).data
-
-    def get_care_plan_progress(self, patient):
-        qs = self._todays_tasks(patient)
-        total = qs.count()
-        done = qs.filter(status=CareTask.Status.DONE).count()
-        return {
-            "done": done,
-            "total": total,
-            "percent": round((done / total) * 100) if total else 0,
-        }
-
-    # ---------- care team ----------
-
-    def get_care_team(self, patient):
-        qs = (
-            patient.care_team
-            .filter(ended_at__isnull=True)
-            .select_related("staff")
-        )
-        return CareTeamAssignmentSerializer(qs, many=True).data
-
-
-# ============================================================
-# WRITE SERIALIZERS (staff side — nursing app)
-# ============================================================
-
-class VitalReadingCreateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = VitalReading
-        fields = ["patient", "kind", "value", "unit", "status", "recorded_at"]
-        extra_kwargs = {
-            "recorded_at": {"required": False},
-            "unit": {"required": False},
-            "status": {"required": False},
-        }
-
-
-class CareTaskCreateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CareTask
-        fields = ["patient", "title", "scheduled_at", "status"]
-
-
-class PatientAlertResolveSerializer(serializers.Serializer):
-    resolved = serializers.BooleanField(default=True)
-
-
-class FamilyReadingSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = FamilyReading
-        fields = ["id", "kind", "value", "status", "tone", "recorded_at"]
-        read_only_fields = ["id", "recorded_at"]
-
-
-class CarePlanItemSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CarePlanItem
-        fields = ["id", "title", "scheduled_time", "done", "order", "created_at"]
-        read_only_fields = ["id", "created_at"]
-
-
-class CareVisitSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CareVisit
-        fields = [
-            "id", "nurse_name", "state",
-            "started_at", "ended_at", "created_at",
-        ]
-        read_only_fields = ["id", "created_at"]
-
-
-class FamilyCareTeamMemberSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = FamilyCareTeamMember
-        fields = [
-            "id", "role", "full_name", "phone",
-            "available_now", "on_visit",
-        ]
-
-
-class FamilyAttentionFlagSerializer(serializers.ModelSerializer):
-    class Meta:
         model = FamilyAttentionFlag
         fields = [
-            "id", "label", "title", "body",
-            "tone", "resolved", "created_at",
+            "id",
+            "member",
+            "label",
+            "title",
+            "body",
+            "severity",
+            "severity_display",
+            "tone",
+            "source",
+            "resolved",
+            "is_open",
+            "resolved_at",
+            "created_at",
         ]
+        read_only_fields = ["id", "created_at", "resolved_at"]
 
 
-class FamilyMemberOverviewSerializer(serializers.ModelSerializer):
-    readings = FamilyReadingSerializer(many=True, read_only=True)
-    care_plan_items = CarePlanItemSerializer(many=True, read_only=True)
-    visits = CareVisitSerializer(many=True, read_only=True)
-    care_team = serializers.SerializerMethodField()
-    attention_flags = serializers.SerializerMethodField()
-
-    class Meta:
-        model = FamilyMember
-        fields = [
-            "id", "full_name", "relationship", "date_of_birth",
-            "phone", "city", "address", "emergency_phone", "notes",
-            "readings", "care_plan_items", "visits",
-            "care_team", "attention_flags",
-        ]
-
-    def get_care_team(self, member):
-        qs = FamilyCareTeamMember.objects.filter(
-            family_profile=member.family_profile,
-        )
-        return FamilyCareTeamMemberSerializer(qs, many=True).data
-
-    def get_attention_flags(self, member):
-        qs = FamilyAttentionFlag.objects.filter(
-            family_profile=member.family_profile,
-            resolved=False,
-        )
-        return FamilyAttentionFlagSerializer(qs, many=True).data
-
+# ============================================================
+# REPORTS
+# ============================================================
 
 class FamilyReportSerializer(serializers.ModelSerializer):
     date_label = serializers.SerializerMethodField()
     day_label = serializers.SerializerMethodField()
     description = serializers.CharField(source="summary")
-    tone = serializers.CharField(source="status")   # if you standardize on the same enum
-    is_new = serializers.BooleanField()
+    is_new = serializers.SerializerMethodField()
 
     class Meta:
         model = FamilyReport
-        fields = ["id", "date_label", "day_label", "description", "tone", "is_new"]
+        fields = [
+            "id",
+            "kind",
+            "title",
+            "description",
+            "tone",
+            "date_label",
+            "day_label",
+            "is_new",
+            "published_at",
+        ]
 
     def get_date_label(self, obj):
         return _format_date_label(obj.published_at)
@@ -525,24 +289,60 @@ class FamilyReportSerializer(serializers.ModelSerializer):
     def get_day_label(self, obj):
         return _format_day_label(obj.published_at)
 
+    def get_is_new(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return not FamilyReportRead.objects.filter(
+            report=obj, user=request.user,
+        ).exists()
+
+
+# ============================================================
+# PRESCRIPTIONS / LABS / HISTORY
+# ============================================================
 
 class FamilyPrescriptionSerializer(serializers.ModelSerializer):
     doctor = serializers.CharField(source="prescribed_by")
-    refill = serializers.CharField(source="refill_note")
-    status = serializers.CharField(source="get_status_display", read_only=True)
+    refill = serializers.CharField(source="refill_note", allow_blank=True)
+    status_display = serializers.CharField(
+        source="get_status_display", read_only=True,
+    )
 
     class Meta:
         model = FamilyPrescription
-        fields = ["id", "name", "dose", "doctor", "refill", "status", "tone"]
+        fields = [
+            "id",
+            "name",
+            "dose",
+            "doctor",
+            "refill",
+            "status",
+            "status_display",
+            "tone",
+            "started_at",
+            "ended_at",
+        ]
 
 
 class FamilyLabResultSerializer(serializers.ModelSerializer):
     date = serializers.SerializerMethodField()
-    status = serializers.CharField(source="get_status_display", read_only=True)
+    status_display = serializers.CharField(
+        source="get_status_display", read_only=True,
+    )
 
     class Meta:
         model = FamilyLabResult
-        fields = ["id", "name", "date", "value", "status", "tone"]
+        fields = [
+            "id",
+            "name",
+            "date",
+            "value",
+            "status",
+            "status_display",
+            "tone",
+            "file_url",
+        ]
 
     def get_date(self, obj):
         return _format_date_label(obj.collected_at)
@@ -553,3 +353,237 @@ class FamilyHistoryEntrySerializer(serializers.ModelSerializer):
         model = FamilyHistoryEntry
         fields = ["id", "title", "detail", "year", "icon", "tone"]
 
+
+# ============================================================
+# AGGREGATE — ONE CALL FOR THE FAMILY DASHBOARD
+# ============================================================
+
+class FamilyMemberOverviewSerializer(serializers.ModelSerializer):
+    """
+    Aggregated payload that maps 1:1 to FamilyOverview.tsx for a single member.
+    Everything the dashboard needs is nested here.
+    """
+
+    readings = serializers.SerializerMethodField()
+    care_plan_items = serializers.SerializerMethodField()
+    care_plan_progress = serializers.SerializerMethodField()
+    active_visit = serializers.SerializerMethodField()
+    visits = CareVisitSerializer(many=True, read_only=True)
+    open_attention_flags = serializers.SerializerMethodField()
+    care_team = serializers.SerializerMethodField()
+    prescriptions = FamilyPrescriptionSerializer(many=True, read_only=True)
+    lab_results = FamilyLabResultSerializer(many=True, read_only=True)
+    history = FamilyHistoryEntrySerializer(
+        source="history_entries", many=True, read_only=True,
+    )
+    reports = FamilyReportSerializer(many=True, read_only=True)
+    initials = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FamilyMember
+        fields = [
+            "id",
+            "full_name",
+            "initials",
+            "relationship",
+            "date_of_birth",
+            "phone",
+            "city",
+            "address",
+            "emergency_phone",
+            "notes",
+            "is_primary",
+            "readings",
+            "care_plan_items",
+            "care_plan_progress",
+            "active_visit",
+            "visits",
+            "open_attention_flags",
+            "care_team",
+            "prescriptions",
+            "lab_results",
+            "history",
+            "reports",
+        ]
+
+    def get_initials(self, obj):
+        return _initials(obj.full_name)
+
+    # ---------- readings ----------
+
+    def get_readings(self, obj):
+        """Latest reading per kind, in the dashboard's tile order."""
+        preferred = [
+            FamilyReading.Kind.BP,
+            FamilyReading.Kind.MEDICATION,
+            FamilyReading.Kind.BLOOD_SAMPLE,
+            FamilyReading.Kind.ANKLE_SWELLING,
+            FamilyReading.Kind.HEART_RATE,
+            FamilyReading.Kind.SPO2,
+            FamilyReading.Kind.WEIGHT,
+            FamilyReading.Kind.TEMPERATURE,
+            FamilyReading.Kind.BLOOD_GLUCOSE,
+        ]
+        seen: dict[str, FamilyReading] = {}
+        for reading in obj.readings.all().order_by("-recorded_at"):
+            seen.setdefault(reading.kind, reading)
+
+        rows = []
+        for kind in preferred + [FamilyReading.Kind.OTHER]:
+            reading = seen.get(kind)
+            if not reading:
+                continue
+            rows.append(FamilyReadingSerializer(reading).data)
+        return rows
+
+    # ---------- care plan ----------
+
+    def _todays_items(self, obj):
+        today = timezone.localdate()
+        return obj.care_plan_items.filter(created_at__date=today)
+
+    def get_care_plan_items(self, obj):
+        qs = self._todays_items(obj).order_by("order", "scheduled_time")
+        return CarePlanItemSerializer(qs, many=True).data
+
+    def get_care_plan_progress(self, obj):
+        qs = self._todays_items(obj)
+        total = qs.count()
+        done = qs.filter(done=True).count()
+        return {
+            "done": done,
+            "total": total,
+            "percent": round((done / total) * 100) if total else 0,
+        }
+
+    # ---------- visits ----------
+
+    def get_active_visit(self, obj):
+        visit = (
+            obj.visits
+            .filter(state=CareVisit.State.IN_PROGRESS)
+            .select_related("clinician")
+            .order_by("-started_at")
+            .first()
+        )
+        return CareVisitSerializer(visit).data if visit else None
+
+    # ---------- attention ----------
+
+    def get_open_attention_flags(self, obj):
+        qs = (
+            obj.attention_flags
+            .filter(resolved=False)
+            .order_by("-created_at")
+        )
+        return FamilyAttentionFlagSerializer(qs, many=True).data
+
+    # ---------- care team ----------
+
+    def get_care_team(self, obj):
+        qs = (
+            FamilyCareTeamMember.objects
+            .filter(family=obj.family, ended_at__isnull=True)
+            .select_related("staff")
+            .order_by("-is_primary", "role", "full_name")
+        )
+        return FamilyCareTeamMemberSerializer(qs, many=True).data
+
+
+# ============================================================
+# INVITATIONS (read-only + create)
+# ============================================================
+
+class InvitationDeliverySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InvitationDelivery
+        fields = [
+            "id", "channel", "destination", "status",
+            "provider_message_id", "sent_at", "created_at",
+        ]
+        read_only_fields = fields
+
+
+class FamilyInvitationSerializer(serializers.ModelSerializer):
+    is_expired = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = FamilyInvitation
+        fields = [
+            "id",
+            "family",         # read-only
+            "invited_by",     # read-only
+            "invitation_type",
+            "name", "email", "phone_number",
+            # ... can_view_* fields ...
+            "status",         # read-only
+            "expires_at",     # read-only — computed by the service
+            "is_expired",     # read-only
+            "accepted_by",    # read-only
+            "accepted_at",    # read-only
+            "contact_verified_at",  # read-only
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "family",
+            "invited_by",
+            "status",
+            "expires_at",
+            "is_expired",
+            "accepted_by",
+            "accepted_at",
+            "contact_verified_at",
+            "created_at",
+        ]
+
+    def validate(self, attrs):
+        if not attrs.get("email") and not attrs.get("phone_number"):
+            raise serializers.ValidationError(
+                "Either email or phone_number must be provided."
+            )
+        return attrs
+
+    def create(self, validated_data):
+        from django.utils import timezone
+        from datetime import timedelta
+        from .services.constants import INVITATION_EXPIRY_DAYS
+        validated_data.setdefault(
+            "expires_at",
+            timezone.now() + timedelta(days=INVITATION_EXPIRY_DAYS),
+        )
+        return super().create(validated_data)
+
+
+class FamilyMembershipSerializer(serializers.ModelSerializer):
+    user_full_name = serializers.SerializerMethodField()
+    user_email = serializers.EmailField(source="user.email", read_only=True)
+
+    class Meta:
+        model = FamilyMembership
+        fields = [
+            "id", "family", "user", "user_full_name", "user_email",
+            "role",
+            "can_view_readings", "can_view_care_plan", "can_view_visits",
+            "can_view_reports", "can_view_prescriptions", "can_view_lab_results",
+            "can_view_history", "can_view_attention", "can_view_care_team",
+            "can_write", "joined_at", "revoked_at",
+        ]
+        read_only_fields = ["id", "family", "user", "role", "joined_at", "revoked_at"]
+
+    def get_user_full_name(self, obj):
+        return obj.user.full_name or obj.user.get_username()
+    
+# ============================================================
+# AUDIT LOG (read-only)
+# ============================================================
+
+class FamilyAuditLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FamilyAuditLog
+        fields = [
+            "id", "family", "actor", "action",
+            "invitation", 
+            "metadata", "ip_address", "user_agent", "created_at",
+        ]
+        read_only_fields = fields

@@ -263,15 +263,13 @@ class AppointmentSerializer(serializers.ModelSerializer):
         return bool(
             user
             and obj.doctor_id
-            and hasattr(user, "doctor_profile")
+            and hasattr(user, "doctor")
             and obj.doctor.user_id == user.id
         )
 
     def _user_is_patient_of(self, obj):
         user = self._request_user()
-        return bool(
-            user and hasattr(user, "patient_profile") and obj.patient.id == user.id
-        )
+        return bool(user and obj.patient_id == user.id)
 
     def get_can_cancel(self, obj):
         if obj.status in (
@@ -334,11 +332,11 @@ class AppointmentCreateSerializer(serializers.ModelSerializer):
         validate_fits_doctor_availability(doctor, appointment_date, appointment_time, duration)
         validate_no_overlap(doctor, appointment_date, appointment_time, duration)
 
-        attrs["_duration_minutes"] = duration
+        attrs["duration_minutes"] = duration   # ← consistent key
         return attrs
 
     def create(self, validated_data):
-        validated_data["duration_minutes"] = validated_data.pop("_duration_minutes")
+        validated_data["duration_minutes"] = validated_data.pop("duration_minutes")
         return super().create(validated_data)
 
 

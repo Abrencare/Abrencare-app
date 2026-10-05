@@ -1,29 +1,34 @@
 # consultations/serializers.py
+from datetime import date as date_cls, datetime
+
 from django.utils import timezone
-from rest_framework import serializers
-from datetime import datetime, date as date_cls
 from django.utils.dateparse import parse_date
+from rest_framework import serializers
+
 from doctors.models import Doctor, Specialty
 
 from .models import Consultation, ConsultationProfile, Prescription
 
 
+# ============================================================
+# FLEXIBLE DATE
+# ============================================================
+
 class FlexibleDateField(serializers.DateField):
     """
     Accepts ISO (YYYY-MM-DD) plus common human formats and returns a date.
-    - 1990-05-12
-    - 1990/05/12
-    - 12/05/1990  (DD/MM/YYYY — assumed day-first, see note)
-    - 05/12/1990  (ambiguous)
-    - May 12, 1990
-    - 12 May 1990
+
+    Ambiguity note: for values like "05/12/1990", day-first ("%d/%m/%Y")
+    wins because it is tried before "%m/%d/%Y". If you have US users,
+    prefer unambiguous inputs at the API boundary.
     """
+
     INPUT_FORMATS = [
         "%Y-%m-%d",
         "%Y/%m/%d",
         "%d-%m-%Y",
         "%d/%m/%Y",
-        "%m/%d/%Y",     # fallback if day-first fails
+        "%m/%d/%Y",
         "%d.%m.%Y",
         "%b %d, %Y",
         "%B %d, %Y",
@@ -31,6 +36,10 @@ class FlexibleDateField(serializers.DateField):
         "%d %B %Y",
         "%Y%m%d",
     ]
+
+    default_error_messages = {
+        "invalid": "Date must be a valid date (e.g. 1990-05-12).",
+    }
 
     def to_internal_value(self, data):
         if data in ("", None):
@@ -42,22 +51,19 @@ class FlexibleDateField(serializers.DateField):
         if value == "":
             return None
 
-        # Fast path: ISO
         iso = parse_date(value)
         if iso is not None:
             return iso
 
-        # Try known formats
         for fmt in self.INPUT_FORMATS:
             try:
                 return datetime.strptime(value, fmt).date()
             except ValueError:
                 continue
 
-        raise serializers.ValidationError(
-            "Date must be in YYYY-MM-DD format (e.g. 1990-05-12)."
-        )
-   
+        self.fail("invalid")
+
+
 # ============================================================
 # SPECIALTY
 # ============================================================
@@ -87,6 +93,7 @@ class ConsultationDoctorSerializer(serializers.ModelSerializer):
             "consultation_duration",
             "bio",
         ]
+        read_only_fields = fields
 
 
 class DoctorSummarySerializer(serializers.ModelSerializer):
@@ -98,10 +105,11 @@ class DoctorSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = Doctor
         fields = ["id", "name", "specialty"]
+        read_only_fields = fields
 
 
 # ============================================================
-# AVAILABLE SLOT  (times are "HH:mm" to match the app)
+# AVAILABLE SLOT
 # ============================================================
 
 class ConsultationSlotSerializer(serializers.Serializer):
@@ -110,23 +118,23 @@ class ConsultationSlotSerializer(serializers.Serializer):
 
 
 # ============================================================
-# ONBOARDING PROFILE  (per UserService)
+# ONBOARDING PROFILE
 # ============================================================
 
 class ConsultationProfileSerializer(serializers.ModelSerializer):
     """
     Read shape for onboarding state.
 
-    Mirrors the frontend's camelCase expectations (`dateOfBirth`) and
-    exposes `onboarded` as a real boolean, so `useAuth().isOnboarded('consultation')`
-    has something unambiguous to read.
+    Mirrors the frontend's camelCase (`dateOfBirth`) and exposes
+    `onboarded` as a real boolean so `useAuth().isOnboarded('consultation')`
+    has an unambiguous answer.
     """
 
     dateOfBirth = serializers.DateField(
-        source="date_of_birth", allow_null=True, required=False
+        source="date_of_birth", allow_null=True, required=False,
     )
     gender = serializers.ChoiceField(
-        choices=ConsultationProfile.GENDER_CHOICES,
+        choices=ConsultationProfile.Gender.choices,
         allow_blank=True,
         required=False,
     )
@@ -143,45 +151,49 @@ class ConsultationProfileSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "onboarded", "onboarded_at",
-                            "created_at", "updated_at"]
+        read_only_fields = [
+            "id",
+            "onboarded",
+            "onboarded_at",
+            "created_at",
+            "updated_at",
+        ]
 
 
 class ConsultationOnboardingSerializer(serializers.Serializer):
     """
     POST /api/consultations/onboarding/complete/
 
-    Writes to the current user's ConsultationProfile. First successful
-    call stamps `onboarded_at`; later calls are treated as edits and don't
-    reset it.
+    Writes to the current user's ConsultationProfile. Per the model,
+    `onboarded_at` is `auto_now_add`, so the profile row already has it
+    populated. This serializer is purely an edit path for the fields the
+    user actually controls.
     """
 
     dateOfBirth = FlexibleDateField(
-        source="user_service.user.date_of_birth",
+        source="date_of_birth",
         required=False,
         allow_null=True,
     )
     gender = serializers.ChoiceField(
-        choices=ConsultationProfile.GENDER_CHOICES,
+        choices=ConsultationProfile.Gender.choices,
         required=False,
         allow_blank=True,
     )
 
-    # Frontend currently sends "preferNot" — normalize to the stored value.
-    GENDER_ALIASES = {"preferNot": "prefer_not"}
+    # Frontend sometimes sends "preferNot".
+    GENDER_ALIASES = {
+        "preferNot": ConsultationProfile.Gender.PREFER_NOT,
+        "prefer-not": ConsultationProfile.Gender.PREFER_NOT,
+    }
 
     def to_internal_value(self, data):
-        # Accept the frontend's camelCase `dateOfBirth`.
-        if "dateOfBirth" in data and "date_of_birth" not in data:
-            data = data.copy()
-            data["date_of_birth"] = data["dateOfBirth"]
+        data = data.copy()
 
-        # Normalize gender aliases before ChoiceField validation runs.
         gender = data.get("gender")
         if isinstance(gender, str):
-            normalized = self.GENDER_ALIASES.get(gender)
-            if normalized is not None and normalized != gender:
-                data = data.copy()
+            normalized = self.GENDER_ALIASES.get(gender.strip())
+            if normalized is not None:
                 data["gender"] = normalized
 
         return super().to_internal_value(data)
@@ -193,7 +205,7 @@ class ConsultationOnboardingSerializer(serializers.Serializer):
             )
         return attrs
 
-    def save(self, **kwargs):
+    def _get_profile(self):
         user = self.context["request"].user
         profile = (
             ConsultationProfile.objects
@@ -208,46 +220,47 @@ class ConsultationOnboardingSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "This account is not enrolled in the consultation service."
             )
+        return profile
 
-        changed = []
+    def save(self, **kwargs):
+        profile = self._get_profile()
+
+        update_fields = set()
+
         if "date_of_birth" in self.validated_data:
             profile.date_of_birth = self.validated_data["date_of_birth"]
-            changed.append("date_of_birth")
+            update_fields.add("date_of_birth")
+
         if "gender" in self.validated_data:
             profile.gender = self.validated_data["gender"] or ""
-            changed.append("gender")
+            update_fields.add("gender")
 
-        if "created_by" not in self.validated_data:
-            profile.created_by = user
-            changed.append("created_by")
+        # Track the first writer as the creator, if not already set.
+        if profile.created_by_id is None:
+            profile.created_by = self.context["request"].user
+            update_fields.add("created_by")
 
-        if "onboarded" not in self.validated_data:
-            profile.user_service.onboarded = True
-            
-        if not profile.onboarded_at:
-            profile.onboarded_at = timezone.now()
-            changed.append("onboarded_at")
-
-        if changed:
-            profile.save(update_fields=changed + ["updated_at"])
+        if update_fields:
+            update_fields.add("updated_at")
+            profile.save(update_fields=sorted(update_fields))
 
         return profile
 
 
 # ============================================================
-# BOOKING  (POST /api/consultations/)
+# BOOKING
 # ============================================================
 
 class ConsultationBookingSerializer(serializers.Serializer):
     """
-    Matches the payload the React `ConsultationContext.book()` sends:
+    POST /api/consultations/
 
+    Payload mirrors the React `ConsultationContext.book()`:
         { doctor, appointment_date, appointment_time,
           consultation_type, language, reason_for_visit }
 
-    Accepts the app's current `language` values ("english" / "amharic")
-    as well as the model's canonical codes ("en" / "am"), and the
-    `doctor_id` alias for `doctor`.
+    Accepts `doctor_id` as an alias for `doctor`, and normalizes
+    "english"/"amharic" to the model codes "en"/"am".
     """
 
     doctor = serializers.PrimaryKeyRelatedField(
@@ -258,7 +271,7 @@ class ConsultationBookingSerializer(serializers.Serializer):
     )
     appointment_date = serializers.DateField()
     appointment_time = serializers.TimeField(
-        input_formats=["%H:%M", "%H:%M:%S", "iso-8601"]
+        input_formats=["%H:%M", "%H:%M:%S", "iso-8601"],
     )
     consultation_type = serializers.ChoiceField(
         choices=Consultation.Type.choices,
@@ -283,15 +296,15 @@ class ConsultationBookingSerializer(serializers.Serializer):
     }
 
     def to_internal_value(self, data):
+        data = data.copy()
+
         if "doctor" not in data and "doctor_id" in data:
-            data = data.copy()
-            data["doctor"] = data["doctor_id"]
+            data["doctor"] = data.pop("doctor_id")
 
         lang = data.get("language")
         if isinstance(lang, str):
             normalized = self.LANGUAGE_ALIASES.get(lang.strip().lower())
-            if normalized is not None and normalized != lang:
-                data = data.copy()
+            if normalized is not None:
                 data["language"] = normalized
 
         return super().to_internal_value(data)
@@ -320,7 +333,11 @@ class ConsultationBookingSerializer(serializers.Serializer):
 # ============================================================
 
 class ConsultationCancelSerializer(serializers.Serializer):
-    reason = serializers.CharField(required=False, allow_blank=True, default="")
+    reason = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+    )
 
 
 # ============================================================
@@ -329,44 +346,46 @@ class ConsultationCancelSerializer(serializers.Serializer):
 
 class ConsultationSerializer(serializers.ModelSerializer):
     """
-    Read shape consumed by `ConsultationContext`:
+    Read shape consumed by `ConsultationContext`.
 
-      * `doctor.id` and `doctor_id` both present (see `doctorIdOf`).
-      * `appointment_time` is "HH:mm" — the app string-compares it against
-        the slot picker value in `isSlotTaken`.
-      * `can_join` / `can_cancel` are real booleans so `isJoinable()` takes
-        the server's answer instead of falling back to client-side math.
+      * `doctor.id` and `doctor_id` both present.
+      * `appointment_time` is "HH:mm" (string-compatible with slot picker).
+      * `can_join` / `can_cancel` are booleans sourced from the model.
     """
 
     patient_name = serializers.CharField(
-        source="appointment.patient.user.full_name", read_only=True
+        source="appointment.patient.full_name", read_only=True,
     )
 
-    doctor = DoctorSummarySerializer(source="appointment.doctor", read_only=True)
+    doctor = DoctorSummarySerializer(
+        source="appointment.doctor", read_only=True,
+    )
     doctor_id = serializers.IntegerField(
-        source="appointment.doctor_id", read_only=True
+        source="appointment.doctor_id", read_only=True,
     )
     doctor_name = serializers.CharField(
-        source="appointment.doctor.user.full_name", read_only=True
+        source="appointment.doctor.user.full_name", read_only=True,
     )
     specialty_name = serializers.CharField(
-        source="appointment.doctor.specialty.name", read_only=True
+        source="appointment.doctor.specialty.name", read_only=True,
     )
 
     appointment_date = serializers.DateField(
-        source="appointment.appointment_date", read_only=True
+        source="appointment.appointment_date", read_only=True,
     )
     appointment_time = serializers.TimeField(
-        source="appointment.appointment_time", format="%H:%M", read_only=True
+        source="appointment.appointment_time",
+        format="%H:%M",
+        read_only=True,
     )
     duration_minutes = serializers.IntegerField(
-        source="appointment.duration_minutes", read_only=True
+        source="appointment.duration_minutes", read_only=True,
     )
     appointment_status = serializers.CharField(
-        source="appointment.status", read_only=True
+        source="appointment.status", read_only=True,
     )
     reason_for_visit = serializers.CharField(
-        source="appointment.reason_for_visit", read_only=True
+        source="appointment.reason_for_visit", read_only=True,
     )
 
     starts_at = serializers.DateTimeField(read_only=True)
@@ -411,10 +430,11 @@ class ConsultationSerializer(serializers.ModelSerializer):
 
 class PrescriptionSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(
-        source="consultation.appointment.patient.user.full_name", read_only=True
+        source="appointment.patient.get_full_name", read_only=True,
     )
     doctor_name = serializers.CharField(
-        source="consultation.appointment.doctor.user.full_name", read_only=True
+        source="appointment.doctor.user.get_full_name",
+        read_only=True,
     )
 
     class Meta:
@@ -445,5 +465,10 @@ class PrescriptionSerializer(serializers.ModelSerializer):
 class PrescriptionCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Prescription
-        fields = ["medication", "dosage", "frequency", "duration", "instructions"]
-        
+        fields = [
+            "medication",
+            "dosage",
+            "frequency",
+            "duration",
+            "instructions",
+        ]

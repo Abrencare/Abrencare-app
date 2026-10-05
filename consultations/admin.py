@@ -1,3 +1,4 @@
+# consultations/admin.py
 from django.contrib import admin
 
 from .models import Consultation, ConsultationProfile, Prescription
@@ -10,7 +11,6 @@ from .models import Consultation, ConsultationProfile, Prescription
 class PrescriptionInline(admin.TabularInline):
     model = Prescription
     extra = 0
-
     fields = (
         "medication",
         "dosage",
@@ -20,22 +20,19 @@ class PrescriptionInline(admin.TabularInline):
         "created_at",
         "updated_at",
     )
-
-    readonly_fields = (
-        "created_at",
-        "updated_at",
-    )
+    readonly_fields = ("created_at", "updated_at")
+    show_change_link = True
 
 
 # ============================================================
-# CONSULTATION PROFILE  (onboarding state)
+# CONSULTATION PROFILE
 # ============================================================
 
 @admin.register(ConsultationProfile)
 class ConsultationProfileAdmin(admin.ModelAdmin):
     list_display = (
         "id",
-        "user",
+        "user_display",
         "date_of_birth",
         "gender",
         "is_onboarded",
@@ -45,8 +42,10 @@ class ConsultationProfileAdmin(admin.ModelAdmin):
 
     list_filter = (
         "gender",
-        "onboarded_at",
         "created_at",
+        # `onboarded_at` is effectively always set; filter on `gender` +
+        # `created_at` instead. If you need "recently onboarded", use a
+        # custom `SimpleListFilter` against a date range.
     )
 
     search_fields = (
@@ -56,10 +55,7 @@ class ConsultationProfileAdmin(admin.ModelAdmin):
     )
 
     date_hierarchy = "created_at"
-
-    ordering = (
-        "-created_at",
-    )
+    ordering = ("-created_at",)
 
     readonly_fields = (
         "created_at",
@@ -71,6 +67,7 @@ class ConsultationProfileAdmin(admin.ModelAdmin):
         "user_service",
         "user_service__user",
         "user_service__service",
+        "created_by",
     )
 
     fieldsets = (
@@ -80,7 +77,7 @@ class ConsultationProfileAdmin(admin.ModelAdmin):
                 "fields": (
                     "user_service",
                     "created_by",
-                )
+                ),
             },
         ),
         (
@@ -90,7 +87,7 @@ class ConsultationProfileAdmin(admin.ModelAdmin):
                     "date_of_birth",
                     "gender",
                     "onboarded_at",
-                )
+                ),
             },
         ),
         (
@@ -99,7 +96,7 @@ class ConsultationProfileAdmin(admin.ModelAdmin):
                 "fields": (
                     "created_at",
                     "updated_at",
-                )
+                ),
             },
         ),
     )
@@ -108,7 +105,7 @@ class ConsultationProfileAdmin(admin.ModelAdmin):
         description="User",
         ordering="user_service__user__full_name",
     )
-    def user(self, obj):
+    def user_display(self, obj):
         return obj.user_service.user.full_name
 
     @admin.display(description="Onboarded", boolean=True)
@@ -129,8 +126,7 @@ class ConsultationAdmin(admin.ModelAdmin):
         "consultation_type",
         "language",
         "status",
-        "price",
-        "currency",
+        "price_display",
         "appointment_date",
         "appointment_time",
         "started_at",
@@ -147,18 +143,15 @@ class ConsultationAdmin(admin.ModelAdmin):
     )
 
     search_fields = (
-        "appointment__patient__user__full_name",
-        "appointment__doctor__user__full_name",
-        "appointment__patient__user__email",
-        "appointment__doctor__user__email",
+        "appointment__patient__get__full_name",
+        "appointment__doctor__full_name",
+        "appointment__patient__email",
+        "appointment__doctor__email",
         "meeting_url",
     )
 
     date_hierarchy = "created_at"
-
-    ordering = (
-        "-created_at",
-    )
+    ordering = ("-created_at",)
 
     readonly_fields = (
         "created_at",
@@ -168,18 +161,17 @@ class ConsultationAdmin(admin.ModelAdmin):
     list_select_related = (
         "appointment",
         "appointment__patient",
-        "appointment__patient__user",
+        "appointment__patient",
         "appointment__doctor",
-        "appointment__doctor__user",
+        "appointment__doctor",
+        "appointment__doctor__specialty",
     )
 
     fieldsets = (
         (
             "Appointment",
             {
-                "fields": (
-                    "appointment",
-                )
+                "fields": ("appointment",),
             },
         ),
         (
@@ -189,7 +181,7 @@ class ConsultationAdmin(admin.ModelAdmin):
                     "consultation_type",
                     "language",
                     "status",
-                )
+                ),
             },
         ),
         (
@@ -198,7 +190,7 @@ class ConsultationAdmin(admin.ModelAdmin):
                 "fields": (
                     "price",
                     "currency",
-                )
+                ),
             },
         ),
         (
@@ -208,7 +200,7 @@ class ConsultationAdmin(admin.ModelAdmin):
                     "meeting_url",
                     "started_at",
                     "ended_at",
-                )
+                ),
             },
         ),
         (
@@ -217,21 +209,19 @@ class ConsultationAdmin(admin.ModelAdmin):
                 "fields": (
                     "created_at",
                     "updated_at",
-                )
+                ),
             },
         ),
     )
 
-    inlines = (
-        PrescriptionInline,
-    )
+    inlines = (PrescriptionInline,)
 
     @admin.display(
         description="Patient",
         ordering="appointment__patient__user__full_name",
     )
     def patient_name(self, obj):
-        return obj.appointment.patient.user.full_name
+        return obj.appointment.patient.get_full_name()
 
     @admin.display(
         description="Doctor",
@@ -254,6 +244,10 @@ class ConsultationAdmin(admin.ModelAdmin):
     def appointment_time(self, obj):
         return obj.appointment.appointment_time
 
+    @admin.display(description="Price", ordering="price")
+    def price_display(self, obj):
+        return f"{obj.price} {obj.currency}"
+
 
 # ============================================================
 # PRESCRIPTION
@@ -271,9 +265,7 @@ class PrescriptionAdmin(admin.ModelAdmin):
         "created_at",
     )
 
-    list_filter = (
-        "created_at",
-    )
+    list_filter = ("created_at",)
 
     search_fields = (
         "medication",
@@ -285,15 +277,9 @@ class PrescriptionAdmin(admin.ModelAdmin):
     )
 
     date_hierarchy = "created_at"
+    ordering = ("-created_at",)
 
-    ordering = (
-        "-created_at",
-    )
-
-    readonly_fields = (
-        "created_at",
-        "updated_at",
-    )
+    readonly_fields = ("created_at", "updated_at")
 
     list_select_related = (
         "consultation",
@@ -307,11 +293,7 @@ class PrescriptionAdmin(admin.ModelAdmin):
     fieldsets = (
         (
             "Consultation",
-            {
-                "fields": (
-                    "consultation",
-                )
-            },
+            {"fields": ("consultation",)},
         ),
         (
             "Medication",
@@ -322,7 +304,7 @@ class PrescriptionAdmin(admin.ModelAdmin):
                     "frequency",
                     "duration",
                     "instructions",
-                )
+                ),
             },
         ),
         (
@@ -331,8 +313,7 @@ class PrescriptionAdmin(admin.ModelAdmin):
                 "fields": (
                     "created_at",
                     "updated_at",
-                )
+                ),
             },
         ),
     )
-    

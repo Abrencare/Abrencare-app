@@ -4,8 +4,9 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
 from django.contrib.auth import get_user_model
-from django.db.models import Prefetch, Subquery, OuterRef
+from django.db.models import F, Prefetch, Subquery, OuterRef, Window
 
+from django.db.models.functions import RowNumber
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -40,34 +41,22 @@ def infer_message_type(uploaded_file):
     return "file"
 
 
-def broadcast_message(conversation_id, payload):
-    """
-    Fan a serialized message out to every socket bound to this conversation.
-    Kept as a tiny helper so upload / edit / delete paths stay symmetric.
-    """
+def _broadcast(event_type, conversation_id, payload):
     channel_layer = get_channel_layer()
+    if channel_layer is None:
+        return
     async_to_sync(channel_layer.group_send)(
         f"chat_{conversation_id}",
-        {
-            "type": "chat_message",
-            "message": payload,
-        },
+        {"type": event_type, "message": payload},
     )
+
+
+def broadcast_message(conversation_id, payload):
+    _broadcast("chat_message", conversation_id, payload)
 
 
 def broadcast_message_update(conversation_id, payload):
-    """
-    Separate event type for edits/deletes so clients can distinguish an
-    updated payload from a newly-created one.
-    """
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        f"chat_{conversation_id}",
-        {
-            "type": "message_updated",
-            "message": payload,
-        },
-    )
+    _broadcast("message_updated", conversation_id, payload)
 
 
 # ---------------------------------------------------------------------- #
@@ -127,7 +116,6 @@ class ConversationMessageUploadView(APIView):
             message,
             context={"request": request},
         )
-
         broadcast_message(pk, serializer.data)
 
         return Response(
@@ -144,52 +132,58 @@ class ConversationListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # Fetch the latest message id per conversation via a correlated
-        # subquery, then prefetch just that one row. Avoids loading every
-        # message for every conversation just to show a preview.
-        latest_message_id = (
-            Message.objects
-            .filter(conversation=OuterRef("pk"))
-            .order_by("-created_at")
-            .values("id")[:1]
-        )
-
-        conversations = (
+        conversations = list(
             Conversation.objects
             .filter(participants__user=request.user)
-            .prefetch_related(
-                "participants__user",
-                Prefetch(
-                    "messages",
-                    queryset=(
-                        Message.objects
-                        .filter(id__in=Subquery(latest_message_id))
-                        .select_related("sender")
-                    ),
-                    to_attr="recent_messages",
-                ),
-            )
+            .prefetch_related("participants__user")
             .distinct()
             .order_by("-updated_at")
         )
+
+        if conversations:
+            conversation_ids = [c.id for c in conversations]
+
+            # Rank messages within each conversation, newest first.
+            ranked = (
+                Message.objects
+                .filter(conversation_id__in=conversation_ids)
+                .annotate(
+                    rn=Window(
+                        expression=RowNumber(),
+                        partition_by=[F("conversation_id")],
+                        order_by=[F("created_at").desc(), F("id").desc()],
+                    )
+                )
+            )
+
+            # Fetch only the rank-1 rows.
+            latest_messages = (
+                Message.objects
+                .filter(id__in=ranked.filter(rn=1).values("id"))
+                .select_related("sender")
+            )
+
+            latest_by_conversation = {
+                m.conversation_id: m for m in latest_messages
+            }
+            for conv in conversations:
+                latest = latest_by_conversation.get(conv.id)
+                conv.recent_messages = [latest] if latest else []
 
         serializer = ConversationSerializer(
             conversations,
             many=True,
             context={"request": request},
         )
-
         return Response(serializer.data)
 
     def post(self, request):
         conversation_type = request.data.get(
-            "conversation_type",
-            "private",
+            "conversation_type", "private"
         )
 
         if conversation_type == "private":
             other_user_id = request.data.get("user_id")
-
             if not other_user_id:
                 return Response(
                     {"detail": "user_id is required."},
@@ -206,8 +200,7 @@ class ConversationListCreateView(APIView):
 
             try:
                 conversation = (
-                    ConversationService
-                    .create_private_conversation(
+                    ConversationService.create_private_conversation(
                         user=request.user,
                         other_user=other_user,
                     )
@@ -236,8 +229,7 @@ class ConversationListCreateView(APIView):
 
             try:
                 conversation = (
-                    ConversationService
-                    .create_group_conversation(
+                    ConversationService.create_group_conversation(
                         user=request.user,
                         name=name,
                         participant_ids=participant_ids,
@@ -249,8 +241,6 @@ class ConversationListCreateView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-        # Re-fetch with participants prefetched so the serializer's
-        # `other_user` and `participants` fields don't trigger queries.
         conversation = (
             Conversation.objects
             .prefetch_related("participants__user")
@@ -261,7 +251,6 @@ class ConversationListCreateView(APIView):
             conversation,
             context={"request": request},
         )
-
         return Response(
             serializer.data,
             status=status.HTTP_201_CREATED,
@@ -275,28 +264,22 @@ class ConversationDetailView(APIView):
         return (
             Conversation.objects
             .prefetch_related("participants__user")
-            .filter(
-                id=pk,
-                participants__user=request.user,
-            )
+            .filter(id=pk, participants__user=request.user)
             .distinct()
             .first()
         )
 
     def get(self, request, pk):
         conversation = self.get_conversation(request, pk)
-
         if not conversation:
             return Response(
                 {"detail": "Conversation not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-
         serializer = ConversationSerializer(
             conversation,
             context={"request": request},
         )
-
         return Response(serializer.data)
 
 
@@ -308,14 +291,9 @@ class ConversationMessagesView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
-        is_participant = (
-            ConversationParticipant.objects
-            .filter(
-                conversation_id=pk,
-                user=request.user,
-            )
-            .exists()
-        )
+        is_participant = ConversationParticipant.objects.filter(
+            conversation_id=pk, user=request.user
+        ).exists()
 
         if not is_participant:
             return Response(
@@ -325,50 +303,37 @@ class ConversationMessagesView(APIView):
 
         messages = (
             Message.objects
-            .filter(
-                conversation_id=pk,
-                is_deleted=False,
-            )
+            .filter(conversation_id=pk, is_deleted=False)
             .select_related("sender")
             .order_by("created_at")
         )
-
         serializer = MessageSerializer(
             messages,
             many=True,
             context={"request": request},
         )
-
         return Response(serializer.data)
 
 
 class MessageDetailView(APIView):
-    """
-    PATCH  → edit a text message (sender only)
-    DELETE → soft-delete a message (sender only)
-    """
-
     permission_classes = [IsAuthenticated]
 
     def _get_message_for_user(self, request, pk):
-        message = (
+        return (
             Message.objects
             .select_related("sender", "conversation")
             .filter(id=pk, conversation__participants__user=request.user)
             .distinct()
             .first()
         )
-        return message
 
     def patch(self, request, pk):
         message = self._get_message_for_user(request, pk)
-
         if message is None:
             return Response(
                 {"detail": "Message not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-
         try:
             message = MessageService.update_message(
                 message=message,
@@ -380,25 +345,20 @@ class MessageDetailView(APIView):
                 {"detail": str(exc)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
         serializer = MessageSerializer(
             message,
             context={"request": request},
         )
-
         broadcast_message_update(message.conversation_id, serializer.data)
-
         return Response(serializer.data)
 
     def delete(self, request, pk):
         message = self._get_message_for_user(request, pk)
-
         if message is None:
             return Response(
                 {"detail": "Message not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-
         try:
             MessageService.delete_message(
                 message=message,
@@ -409,13 +369,9 @@ class MessageDetailView(APIView):
                 {"detail": str(exc)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        serializer = MessageSerializer(
+        payload = MessageSerializer(
             message,
             context={"request": request},
-        )
-
-        broadcast_message_update(message.conversation_id, serializer.data)
-
+        ).data
+        broadcast_message_update(message.conversation_id, payload)
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
