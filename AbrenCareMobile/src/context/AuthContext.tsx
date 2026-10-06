@@ -14,6 +14,7 @@ import {
   kindFromRelationship,
   type AuthUser,
   type CareService,
+  type FamilyCareNeed,
   type FamilyMember,
   type FamilyRelationship,
   type Gender,
@@ -61,10 +62,19 @@ function normalizeMember(value: unknown): FamilyMember | null {
     return null;
   }
 
-  const member = value as Partial<FamilyMember>;
+  const member = value as Partial<FamilyMember> & {
+    /** Accounts saved before care needs became multi-select. */
+    careNeed?: FamilyCareNeed | null;
+  };
   if (typeof member.id !== 'string' || typeof member.name !== 'string') {
     return null;
   }
+
+  const careNeeds = Array.isArray(member.careNeeds)
+    ? member.careNeeds
+    : member.careNeed
+      ? [member.careNeed]
+      : [];
 
   const relationship: FamilyRelationship =
     member.relationship === 'mother' ||
@@ -86,12 +96,13 @@ function normalizeMember(value: unknown): FamilyMember | null {
     name: member.name,
     relationship,
     dateOfBirth: typeof member.dateOfBirth === 'string' ? member.dateOfBirth : '',
+    ageYears: typeof member.ageYears === 'number' ? member.ageYears : null,
     phone: typeof member.phone === 'string' ? member.phone : '',
     city: typeof member.city === 'string' ? member.city : '',
     address: typeof member.address === 'string' ? member.address : '',
     emergencyPhone:
       typeof member.emergencyPhone === 'string' ? member.emergencyPhone : '',
-    careNeed: member.careNeed ?? null,
+    careNeeds,
     preferredLanguage:
       member.preferredLanguage === 'en' || member.preferredLanguage === 'am'
         ? member.preferredLanguage

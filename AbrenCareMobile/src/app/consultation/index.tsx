@@ -12,6 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
+import ServiceBackButton from "@/components/navigation/ServiceBackButton";
 import BrandLogo from "@/components/ui/BrandLogo";
 import { useConsultations } from "@/context/ConsultationContext";
 import {
@@ -127,6 +128,8 @@ export default function ConsultationBooking() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <View style={styles.brandRow}>
+          <ServiceBackButton color={BLUE} size={32} style={styles.backButton} />
+
           <BrandLogo size={36} />
           <Text style={styles.headerLabel}>{t.consultation.headerLabel}</Text>
         </View>
@@ -532,6 +535,11 @@ const baseStyles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     marginBottom: 4,
+  },
+
+  backButton: {
+    backgroundColor: "#EDF1F6",
+    borderColor: "#DCE4EC",
   },
 
   headerLabel: {

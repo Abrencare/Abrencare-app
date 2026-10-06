@@ -89,7 +89,7 @@ export function onboardingPath(service: CareService) {
     return '/family-setup';
   }
   if (service === 'executive') {
-    return '/executive-profile';
+    return '/executive-advisor';
   }
   return '/consultation-profile';
 }

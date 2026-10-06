@@ -29,12 +29,14 @@ export default function FamilyLanding() {
         { icon: 'pulse-outline', title: copy.step2Title, body: copy.step2Body },
         { icon: 'chatbubbles-outline', title: copy.step3Title, body: copy.step3Body },
       ]}
-      trust={[
-        { icon: 'earth-outline', label: copy.experienced },
-        { icon: 'time-outline', label: copy.facilities },
-        { icon: 'shield-checkmark-outline', label: copy.confidential },
-        { icon: 'leaf-outline', label: copy.localCare },
-      ]}
+      trust={[]}
+      manifesto={{
+        lead: t.familyManifesto.lead,
+        emphasis: t.familyManifesto.emphasis,
+        lines: [...t.familyManifesto.lines],
+        close: t.familyManifesto.close,
+        cta: t.familyManifesto.cta,
+      }}
     />
   );
 }

@@ -136,6 +136,14 @@ export default function ExecutiveProfileScreen() {
       >
         <Text style={styles.buttonText}>{t.auth.continue}</Text>
       </Pressable>
+      <Pressable
+        onPress={() => router.replace('/executive-advisor')}
+        style={styles.skip}
+      >
+        <Text style={[styles.skipText, { color: theme.muted }]}>
+          {t.executiveSignup.skipForms}
+        </Text>
+      </Pressable>
     </AuthScaffold>
   );
 }
@@ -198,5 +206,13 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.45,
+  },
+  skip: {
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  skipText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

@@ -18,16 +18,23 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+import ServiceBackButton from "@/components/navigation/ServiceBackButton";
 import BrandLogo from "@/components/ui/BrandLogo";
 import { useAuth } from "@/context/AuthContext";
 import { useAppointments } from "@/context/AppointmentsContext";
-import { formatDateKey, reminderLabel } from "@/utilities/familyFormat";
+import { useVisit } from "@/context/VisitContext";
+import {
+  formatClock,
+  formatDateKey,
+  reminderLabel,
+} from "@/utilities/familyFormat";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAppTheme } from "@/context/ThemeContext";
+import { CARE_LINE } from "@/data/contact";
 import { useThemedStyles } from "@/theme/useThemedStyles";
 
 const GREEN = "#8B9A7C";
-const CARE_PHONE = "+251912345678";
+const CARE_PHONE = CARE_LINE;
 
 type Tone = "good" | "info" | "flag";
 
@@ -52,6 +59,7 @@ export default function FamilyOverview() {
   const router = useRouter();
   const { user } = useAuth();
   const { nextAppointment } = useAppointments();
+  const { visit, status: visitStatus, finishedAt } = useVisit();
 
   const pulse = useSharedValue(0);
 
@@ -63,6 +71,26 @@ export default function FamilyOverview() {
     opacity: 0.45 - pulse.value * 0.38,
     transform: [{ scale: 1 + pulse.value * 1.5 }],
   }));
+
+  // Show the member they actually added; fall back to the person on today's
+  // visit while the account is still being set up.
+  const member = user?.familyMembers[0] ?? null;
+  const patientName = member?.name ?? visit.patientName;
+  const patientMeta = member
+    ? [
+        member.ageYears !== null ? String(member.ageYears) : null,
+        member.city || null,
+        t.family.planActiveMeta,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : t.family.patientInfo;
+  const patientInitials = patientName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
 
   const hour = new Date().getHours();
   const greeting =
@@ -166,13 +194,11 @@ export default function FamilyOverview() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.topBar}>
-        <TouchableOpacity
+        <ServiceBackButton
+          color={isDark ? "#A3B0AA" : "#4A5568"}
+          size={32}
           style={styles.backButton}
-          onPress={() => router.replace("/(tabs)")}
-          hitSlop={10}
-        >
-          <Ionicons name="chevron-back" size={22} color={isDark ? "#A3B0AA" : "#4A5568"} />
-        </TouchableOpacity>
+        />
 
         <BrandLogo size={34} />
         <Text style={styles.active}>{t.family.activeService}</Text>
@@ -189,28 +215,86 @@ export default function FamilyOverview() {
       </Text>
       <Text style={styles.subtitle}>{t.family.greetingSubtitle}</Text>
 
-      {/* Live visit */}
-      <View style={styles.visitCard}>
-        <View style={styles.visitTop}>
-          <View style={styles.dotWrap}>
-            <Animated.View style={[styles.halo, haloStyle]} />
-            <View style={styles.liveDot} />
+      {/* Today's visit: live, already finished, or still to come */}
+      {visitStatus === "live" && (
+        <View style={styles.visitCard}>
+          <View style={styles.visitTop}>
+            <View style={styles.dotWrap}>
+              <Animated.View style={[styles.halo, haloStyle]} />
+              <View style={styles.liveDot} />
+            </View>
+
+            <Text style={styles.liveLabel}>{t.family.liveNow}</Text>
           </View>
 
-          <Text style={styles.liveLabel}>{t.family.liveNow}</Text>
+          <Text style={styles.visitTitle}>{t.family.visitInProgress}</Text>
+          <Text style={styles.visitSubtitle}>{t.family.visitSubtitle}</Text>
+
+          <TouchableOpacity
+            style={styles.visitAction}
+            onPress={() => router.push("/family/chat")}
+          >
+            <Ionicons name="chatbubble-ellipses" size={15} color="#FFFFFF" />
+            <Text style={styles.visitActionText}>{t.family.messageNurse}</Text>
+          </TouchableOpacity>
         </View>
+      )}
 
-        <Text style={styles.visitTitle}>{t.family.visitInProgress}</Text>
-        <Text style={styles.visitSubtitle}>{t.family.visitSubtitle}</Text>
-
+      {visitStatus === "complete" && (
         <TouchableOpacity
-          style={styles.visitAction}
-          onPress={() => router.push("/family/chat")}
+          style={styles.visitCard}
+          onPress={() => router.push("/family/reports")}
         >
-          <Ionicons name="chatbubble-ellipses" size={15} color="#FFFFFF" />
-          <Text style={styles.visitActionText}>{t.family.messageNurse}</Text>
+          <View style={styles.visitTop}>
+            <Ionicons name="checkmark-circle" size={13} color={GREEN} />
+            <Text style={styles.liveLabel}>{t.family.visitDoneLabel}</Text>
+          </View>
+
+          <Text style={styles.visitTitle}>
+            {t.family.visitDoneTitle.replace(
+              "{time}",
+              formatClock(finishedAt, t),
+            )}
+          </Text>
+          <Text style={styles.visitSubtitle}>
+            {t.family.visitDoneBody.replace("{nurse}", visit.nurseName)}
+          </Text>
+
+          <View style={styles.visitAction}>
+            <Ionicons name="document-text" size={15} color="#FFFFFF" />
+            <Text style={styles.visitActionText}>
+              {t.family.visitDoneAction}
+            </Text>
+          </View>
         </TouchableOpacity>
-      </View>
+      )}
+
+      {visitStatus === "upcoming" && (
+        <View style={styles.visitCard}>
+          <View style={styles.visitTop}>
+            <Ionicons name="time-outline" size={13} color={GREEN} />
+            <Text style={styles.liveLabel}>{t.family.visitTodayLabel}</Text>
+          </View>
+
+          <Text style={styles.visitTitle}>
+            {t.family.visitTodayTitle.replace(
+              "{time}",
+              formatClock(visit.arrivedAt, t),
+            )}
+          </Text>
+          <Text style={styles.visitSubtitle}>
+            {t.family.visitTodayBody.replace("{nurse}", visit.nurseName)}
+          </Text>
+
+          <TouchableOpacity
+            style={styles.visitAction}
+            onPress={() => router.push("/family/chat")}
+          >
+            <Ionicons name="chatbubble-ellipses" size={15} color="#FFFFFF" />
+            <Text style={styles.visitActionText}>{t.family.messageNurse}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Needs attention */}
       <TouchableOpacity
@@ -264,12 +348,12 @@ export default function FamilyOverview() {
         onPress={() => router.push("/family/profile")}
       >
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>AT</Text>
+          <Text style={styles.avatarText}>{patientInitials}</Text>
         </View>
 
         <View style={styles.patientInfo}>
-          <Text style={styles.name}>Ato Tadesse</Text>
-          <Text style={styles.info}>{t.family.patientInfo}</Text>
+          <Text style={styles.name}>{patientName}</Text>
+          <Text style={styles.info}>{patientMeta}</Text>
         </View>
 
         <Ionicons name="chevron-forward" size={18} color="#C7CCC2" />
@@ -507,7 +591,8 @@ const baseStyles = StyleSheet.create({
   },
 
   backButton: {
-    width: 26,
+    backgroundColor: "#E8EDE4",
+    borderColor: "#D8E0D3",
   },
 
   active: {

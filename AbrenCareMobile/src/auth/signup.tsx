@@ -20,8 +20,11 @@ import AuthField from '@/auth/AuthField';
 import AuthNav from '@/auth/AuthNav';
 import MedicalDecor from '@/auth/MedicalDecor';
 import BrandLogo from '@/components/ui/BrandLogo';
+import PhoneField from '@/components/ui/PhoneField';
 import Replace from '@/components/gates/Replace';
 import { useLanguage } from '@/context/LanguageContext';
+import { isPhoneValueComplete } from '@/data/countries';
+import { saveExecutiveInquiry } from '@/data/executiveInquiry';
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -38,6 +41,7 @@ export default function SignupScreen() {
         ? t.executiveSignup
         : t.consultationSignup;
 
+  const isExecutiveInquiry = service === 'executive';
   const [name, setName] = useState(user?.name ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
   const [phone, setPhone] = useState(user?.phone ?? '');
@@ -46,13 +50,17 @@ export default function SignupScreen() {
   const [agreed, setAgreed] = useState(false);
 
   const passwordsMatch = password.length > 0 && password === confirm;
-  const canSubmit =
-    name.trim().length > 1 &&
-    email.includes('@') &&
-    phone.trim().length >= 8 &&
-    password.length >= 6 &&
-    passwordsMatch &&
-    agreed;
+  const canSubmit = isExecutiveInquiry
+    ? name.trim().length > 1 &&
+      email.includes('@') &&
+      isPhoneValueComplete(phone) &&
+      agreed
+    : name.trim().length > 1 &&
+      email.includes('@') &&
+      isPhoneValueComplete(phone) &&
+      password.length >= 6 &&
+      passwordsMatch &&
+      agreed;
 
   if (user && hasService(service) && !needsOnboarding(service)) {
     return <Replace href={dashboardFor(service)} />;
@@ -90,9 +98,11 @@ export default function SignupScreen() {
           >
             <BrandLogo size={64} style={styles.cardLogo} />
             <Text style={[styles.title, { color: theme.text }]}>{copy.title}</Text>
-            {service === 'family' && (
+            {(service === 'family' || isExecutiveInquiry) && (
               <Text style={[styles.subtitle, { color: theme.muted }]}>
-                {t.familySignup.subtitle}
+                {service === 'family'
+                  ? t.familySignup.subtitle
+                  : t.executiveSignup.formNote}
               </Text>
             )}
 
@@ -114,15 +124,15 @@ export default function SignupScreen() {
               icon="mail-outline"
               keyboardType="email-address"
             />
-            <AuthField
+            <PhoneField
               theme={theme}
-              label={t.auth.phone.toUpperCase()}
+              label={t.auth.phone}
               value={phone}
-              onChangeText={setPhone}
-              placeholder={t.auth.phonePlaceholder}
-              icon="call-outline"
-              keyboardType="phone-pad"
+              onChange={setPhone}
+              placeholder={t.auth.phoneLocalPlaceholder}
             />
+            {!isExecutiveInquiry && (
+              <>
             <AuthField
               theme={theme}
               label={t.auth.password.toUpperCase()}
@@ -144,6 +154,8 @@ export default function SignupScreen() {
 
             {confirm.length > 0 && !passwordsMatch && (
               <Text style={styles.error}>{t.auth.passwordMismatch}</Text>
+            )}
+              </>
             )}
 
             <Pressable
@@ -173,6 +185,11 @@ export default function SignupScreen() {
               ]}
               onPress={() => {
                 if (!canSubmit) {
+                  return;
+                }
+                if (isExecutiveInquiry) {
+                  saveExecutiveInquiry({ name, email, phone });
+                  router.replace('/executive-advisor');
                   return;
                 }
                 signUp({ name, email, phone }, service);

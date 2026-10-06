@@ -5,15 +5,30 @@ import { useRouter } from "expo-router";
 
 import styles from "./BottomNavigation.styles";
 import { useAppTheme } from "@/context/ThemeContext";
+import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { careRoutesFor, primaryServiceOf } from "@/service/careRoutes";
+
+type Tab = {
+  key: string;
+  name: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  activeIcon: keyof typeof Ionicons.glyphMap;
+  active: boolean;
+  route: string;
+};
 
 export default function BottomNavigation() {
   const router = useRouter();
   const { t } = useLanguage();
   const { colors } = useAppTheme();
+  const { user } = useAuth();
 
-  const tabs = [
+  const routes = careRoutesFor(primaryServiceOf(user));
+
+  const tabs: Tab[] = [
     {
+      key: "home",
       name: t.tabs.home,
       icon: "home-outline",
       activeIcon: "home",
@@ -21,32 +36,28 @@ export default function BottomNavigation() {
       route: "/(tabs)",
     },
     {
-      name: t.tabs.family,
-      icon: "people-outline",
-      activeIcon: "people",
+      key: "myCare",
+      name: t.tabs.myCare,
+      icon: "heart-outline",
+      activeIcon: "heart",
       active: false,
-      route: "/family",
+      route: routes.myCare,
     },
     {
-      name: t.tabs.executive,
-      icon: "medkit-outline",
-      activeIcon: "medkit",
+      key: "book",
+      name: t.tabs.book,
+      icon: "calendar-outline",
+      activeIcon: "calendar",
       active: false,
-      route: "/executive",
+      route: routes.book,
     },
     {
-      name: t.tabs.consultation,
-      icon: "chatbubble-outline",
-      activeIcon: "chatbubble",
-      active: false,
-      route: "/consultation",
-    },
-    {
+      key: "profile",
       name: t.tabs.profile,
       icon: "person-outline",
       activeIcon: "person",
       active: false,
-      route: "/family/profile",
+      route: routes.profile,
     },
   ];
 
@@ -59,13 +70,15 @@ export default function BottomNavigation() {
     >
       {tabs.map((tab) => (
         <TouchableOpacity
-          key={tab.name}
+          key={tab.key}
           style={styles.tab}
           activeOpacity={0.8}
-          onPress={() => router.push(tab.route)}
+          onPress={() =>
+            router.push(tab.route as Parameters<typeof router.push>[0])
+          }
         >
           <Ionicons
-            name={(tab.active ? tab.activeIcon : tab.icon) as any}
+            name={tab.active ? tab.activeIcon : tab.icon}
             size={24}
             color={tab.active ? colors.navActive : colors.navInactive}
           />

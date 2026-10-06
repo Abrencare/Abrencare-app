@@ -23,9 +23,9 @@ export default function ExecutiveLanding() {
         { icon: 'medkit-outline', title: copy.physicianTitle, body: copy.physicianBody },
       ]}
       steps={[
-        { icon: 'person-outline', title: copy.step1Title, body: copy.step1Body },
-        { icon: 'pulse-outline', title: copy.step2Title, body: copy.step2Body },
-        { icon: 'shield-checkmark-outline', title: copy.step3Title, body: copy.step3Body },
+        { icon: 'call-outline', title: copy.step1Title, body: copy.step1Body },
+        { icon: 'medkit-outline', title: copy.step2Title, body: copy.step2Body },
+        { icon: 'eye-outline', title: copy.step3Title, body: copy.step3Body },
       ]}
       trust={[
         { icon: 'heart-outline', label: copy.experienced },
@@ -33,6 +33,18 @@ export default function ExecutiveLanding() {
         { icon: 'medkit-outline', label: copy.confidential },
         { icon: 'leaf-outline', label: copy.localCare },
       ]}
+      pitch={{
+        scarcity: copy.scarcity,
+        messageDoctor: copy.messageDoctor,
+        alertCaption: copy.alertCaption,
+        alertKicker: t.executiveAlerts.priorityHigh,
+        alertTitle: t.executiveAlerts.bpTitle,
+        alertBody: t.executiveAlerts.bpBody,
+        alertTime: t.executiveAlerts.bpTime,
+        emergencyTitle: copy.emergencyTitle,
+        emergencyEta: copy.emergencyEta,
+        emergencyBody: copy.emergencyBody,
+      }}
     />
   );
 }

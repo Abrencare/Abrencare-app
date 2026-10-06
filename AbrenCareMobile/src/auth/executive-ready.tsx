@@ -28,6 +28,10 @@ export default function ExecutiveReadyScreen() {
       title={t.executiveSignup.readyTitle}
       subtitle={t.executiveSignup.readySubtitle}
     >
+      <Text style={[styles.social, { color: theme.muted }]}>
+        {t.executiveSignup.socialProof}
+      </Text>
+
       <View style={[styles.card, { borderColor: theme.border }]}>
         <Text style={[styles.cardLabel, { color: theme.muted }]}>
           {t.executiveSignup.careTeam.toUpperCase()}
@@ -67,6 +71,13 @@ export default function ExecutiveReadyScreen() {
 }
 
 const styles = StyleSheet.create({
+  social: {
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+    marginBottom: 16,
+    fontWeight: '600',
+  },
   card: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,

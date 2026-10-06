@@ -49,29 +49,20 @@ export default function FamilyLayout() {
         }}
       />
       <Tabs.Screen
-        name="appointments"
-        options={{
-          title: t.tabs.appointments,
-          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
-            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="reports"
         options={{
-          title: t.tabs.reports,
+          title: t.tabs.myCare,
           tabBarIcon: ({ color, size, focused }: TabIconProps) => (
-            <Ionicons name={focused ? 'stats-chart' : 'stats-chart-outline'} size={size} color={color} />
+            <Ionicons name={focused ? 'heart' : 'heart-outline'} size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="chat"
+        name="appointments"
         options={{
-          title: t.tabs.chat,
+          title: t.tabs.book,
           tabBarIcon: ({ color, size, focused }: TabIconProps) => (
-            <Ionicons name={focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'} size={size} color={color} />
+            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={size} color={color} />
           ),
         }}
       />
@@ -84,6 +75,8 @@ export default function FamilyLayout() {
           ),
         }}
       />
+      {/* Reached from the dashboard, not a destination of its own. */}
+      <Tabs.Screen name="chat" options={{ href: null }} />
       <Tabs.Screen name="call" options={{ href: null }} />
     </Tabs>
     </ServiceAccessGate>

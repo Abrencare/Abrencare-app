@@ -7,6 +7,7 @@ import {
   NativeSyntheticEvent,
   Pressable,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -19,7 +20,7 @@ import { useRouter } from 'expo-router';
 import BrandLogo from '@/components/ui/BrandLogo';
 import Replace from '@/components/gates/Replace';
 import { useAuth } from '@/context/AuthContext';
-import { dashboardFor, onboardingPath } from '@/service/serviceTheme';
+import { dashboardFor, onboardingPath, useServiceTheme } from '@/service/serviceTheme';
 import type { CareService } from '@/types/auth';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useThemedStyles } from '@/theme/useThemedStyles';
@@ -53,6 +54,29 @@ type Item = {
   body?: string;
 };
 
+/** Replaces the generic "why choose us" page with a single plain-spoken claim. */
+export type ManifestoCopy = {
+  lead: string;
+  emphasis: string;
+  lines: string[];
+  close: string;
+  cta: string;
+};
+
+/** Conversation-first proof shown on the Executive intro before any form. */
+export type PitchCopy = {
+  scarcity: string;
+  messageDoctor: string;
+  alertCaption: string;
+  alertKicker: string;
+  alertTitle: string;
+  alertBody: string;
+  alertTime: string;
+  emergencyTitle: string;
+  emergencyEta: string;
+  emergencyBody: string;
+};
+
 type Props = {
   service: CareService;
   copy: LandingCopy;
@@ -61,6 +85,8 @@ type Props = {
   included: Item[];
   steps: Item[];
   trust: Item[];
+  manifesto?: ManifestoCopy;
+  pitch?: PitchCopy;
 };
 
 const THEME = {
@@ -82,15 +108,19 @@ export default function ServiceLanding({
   included,
   steps,
   trust,
+  manifesto,
+  pitch,
 }: Props) {
 
   const styles = useThemedStyles(baseStyles);
   const { colors, isDark } = useAppTheme();
   const router = useRouter();
   const { user, hasService, needsOnboarding } = useAuth();
+  const palette = useServiceTheme(service);
   const ink = isDark ? colors.text : THEME.ink;
-  const accent = isDark ? colors.navActive : THEME.accent;
+  const accent = service === 'executive' ? palette.accent : isDark ? colors.navActive : THEME.accent;
   const line = isDark ? colors.border : THEME.line;
+  const ctaFill = service === 'executive' ? palette.accent : THEME.footer;
   const { width, height } = useWindowDimensions();
   const listRef = useRef<FlatList<number>>(null);
   const [page, setPage] = useState(0);
@@ -117,6 +147,10 @@ export default function ServiceLanding({
 
   function goSignup() {
     router.push({ pathname: '/signup', params: { service } });
+  }
+
+  function goPreviewChat() {
+    router.push('/executive-preview-chat');
   }
 
   function goLogin() {
@@ -178,7 +212,11 @@ export default function ServiceLanding({
         renderItem={({ item }) => (
           <View style={[styles.slide, { width, height: slideHeight }]}>
             {item === 0 && (
-              <View style={styles.page}>
+              <ScrollView
+                style={styles.flex}
+                contentContainerStyle={styles.pageScroll}
+                showsVerticalScrollIndicator={false}
+              >
                 <View>
                   <Text style={styles.kicker}>{copy.kicker}</Text>
                   <View style={styles.heroRow}>
@@ -195,12 +233,26 @@ export default function ServiceLanding({
                     </View>
                   </View>
                   <Text style={styles.description}>{copy.description}</Text>
-                  <Pressable onPress={goSignup} style={styles.heroButton}>
+                  <Pressable
+                    onPress={goSignup}
+                    style={[styles.heroButton, { backgroundColor: ctaFill }]}
+                  >
                     <Text style={styles.heroButtonText}>{copy.createAccount}</Text>
                     <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
                   </Pressable>
+                  {pitch ? (
+                    <>
+                      <Text style={styles.scarcity}>{pitch.scarcity}</Text>
+                      <Pressable onPress={goPreviewChat} style={styles.ghostButton}>
+                        <Ionicons name="chatbubbles-outline" size={16} color={accent} />
+                        <Text style={[styles.ghostButtonText, { color: accent }]}>
+                          {pitch.messageDoctor}
+                        </Text>
+                      </Pressable>
+                    </>
+                  ) : null}
                 </View>
-                <View style={styles.cardGrid}>
+                <View style={[styles.cardGrid, { marginTop: 20 }]}>
                   {heroItems.map((entry) => (
                     <View
                       key={entry.label ?? entry.title}
@@ -216,10 +268,40 @@ export default function ServiceLanding({
                     </View>
                   ))}
                 </View>
-              </View>
+              </ScrollView>
             )}
 
-            {item === 1 && (
+            {item === 1 && pitch && (
+              <ScrollView
+                style={styles.flex}
+                contentContainerStyle={styles.pageScroll}
+                showsVerticalScrollIndicator={false}
+              >
+                <View>
+                  <Text style={styles.proofCaption}>{pitch.alertCaption}</Text>
+                  <View style={styles.alertShot}>
+                    <View style={styles.alertShotTop}>
+                      <View style={styles.alertDot} />
+                      <Text style={styles.alertKicker}>{pitch.alertKicker}</Text>
+                    </View>
+                    <Text style={styles.alertTitle}>{pitch.alertTitle}</Text>
+                    <Text style={styles.alertBody}>{pitch.alertBody}</Text>
+                    <Text style={styles.alertTime}>{pitch.alertTime}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.emergencyCard}>
+                  <View style={styles.emergencyEta}>
+                    <Ionicons name="flash" size={18} color="#FFFFFF" />
+                    <Text style={styles.emergencyEtaText}>{pitch.emergencyEta}</Text>
+                  </View>
+                  <Text style={styles.emergencyTitle}>{pitch.emergencyTitle}</Text>
+                  <Text style={styles.emergencyBody}>{pitch.emergencyBody}</Text>
+                </View>
+              </ScrollView>
+            )}
+
+            {item === 1 && !pitch && (
               <View style={styles.page}>
                 <View>
                   <Text style={styles.sectionTitle}>{copy.howTitle}</Text>
@@ -266,7 +348,80 @@ export default function ServiceLanding({
               </View>
             )}
 
-            {item === 2 && (
+            {item === 2 && pitch && (
+              <View style={styles.page}>
+                <View>
+                  <Text style={styles.sectionTitle}>{copy.howTitle}</Text>
+                  <Text style={styles.sectionSubtitle}>{copy.howSubtitle}</Text>
+                  <View style={styles.stepRow}>
+                    {steps.map((step, index) => (
+                      <View key={step.title} style={styles.stepCol}>
+                        <View style={styles.stepTrack}>
+                          <View style={[styles.stepLine, index === 0 && styles.stepLineHidden]} />
+                          <View style={styles.stepBadge}>
+                            <Text style={styles.stepNumber}>{index + 1}</Text>
+                          </View>
+                          <View
+                            style={[
+                              styles.stepLine,
+                              index === steps.length - 1 && styles.stepLineHidden,
+                            ]}
+                          />
+                        </View>
+                        <View style={styles.iconCircle}>
+                          <Ionicons name={step.icon} size={16} color={accent} />
+                        </View>
+                        <Text style={styles.stepTitle}>{step.title}</Text>
+                        <Text style={styles.stepBody}>{step.body}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+                <View style={[styles.ctaBar, { backgroundColor: palette.text }]}>
+                  <Text style={styles.ctaTitle}>{copy.ctaTitle}</Text>
+                  <Text style={styles.ctaBody}>{copy.ctaBody}</Text>
+                  <Pressable
+                    onPress={goSignup}
+                    style={[styles.ctaButton, { backgroundColor: '#FFFFFF' }]}
+                  >
+                    <Text style={[styles.ctaButtonText, { color: palette.accent }]}>
+                      {copy.createAccount}
+                    </Text>
+                    <Ionicons name="arrow-forward" size={16} color={palette.accent} />
+                  </Pressable>
+                </View>
+              </View>
+            )}
+
+            {item === 2 && manifesto && (
+              <View style={styles.manifestoPage}>
+                <View>
+                  <Text style={styles.manifestoLead}>{manifesto.lead}</Text>
+                  <Text style={styles.manifestoEmphasis}>
+                    {manifesto.emphasis}
+                  </Text>
+
+                  <View style={styles.manifestoLines}>
+                    {manifesto.lines.map((line) => (
+                      <Text key={line} style={styles.manifestoLine}>
+                        {line}
+                      </Text>
+                    ))}
+                  </View>
+
+                  <Text style={styles.manifestoClose}>{manifesto.close}</Text>
+                </View>
+
+                <Pressable onPress={goSignup} style={styles.manifestoButton}>
+                  <Text style={styles.manifestoButtonText}>
+                    {manifesto.cta}
+                  </Text>
+                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                </Pressable>
+              </View>
+            )}
+
+            {item === 2 && !manifesto && !pitch && (
               <View style={styles.page}>
                 <View>
                   <Text style={styles.kicker}>{copy.whyKicker}</Text>
@@ -283,12 +438,12 @@ export default function ServiceLanding({
                     ))}
                   </View>
                 </View>
-                <View style={styles.ctaBar}>
+                <View style={[styles.ctaBar, service === 'executive' && { backgroundColor: palette.text }]}>
                   <Text style={styles.ctaTitle}>{copy.ctaTitle}</Text>
                   <Text style={styles.ctaBody}>{copy.ctaBody}</Text>
-                  <Pressable onPress={goSignup} style={styles.ctaButton}>
-                    <Text style={styles.ctaButtonText}>{copy.createAccount}</Text>
-                    <Ionicons name="arrow-forward" size={16} color={THEME.footer} />
+                  <Pressable onPress={goSignup} style={[styles.ctaButton, service === 'executive' && { backgroundColor: '#FFFFFF' }]}>
+                    <Text style={[styles.ctaButtonText, service === 'executive' && { color: palette.accent }]}>{copy.createAccount}</Text>
+                    <Ionicons name="arrow-forward" size={16} color={service === 'executive' ? palette.accent : THEME.footer} />
                   </Pressable>
                   <Pressable onPress={goLogin} style={styles.loginRow}>
                     <Text style={styles.loginText}>
@@ -341,6 +496,14 @@ const baseStyles = StyleSheet.create({
   slide: {
     backgroundColor: THEME.page,
   },
+  flex: { flex: 1 },
+  pageScroll: {
+    flexGrow: 1,
+    paddingHorizontal: 22,
+    paddingTop: 6,
+    paddingBottom: 28,
+    justifyContent: 'space-between',
+  },
   page: {
     flex: 1,
     paddingHorizontal: 22,
@@ -354,6 +517,55 @@ const baseStyles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1.4,
     marginBottom: 10,
+  },
+  manifestoPage: {
+    flex: 1,
+    paddingHorizontal: 26,
+    paddingTop: 20,
+    paddingBottom: 28,
+    justifyContent: 'space-between',
+  },
+  manifestoLead: {
+    color: THEME.ink,
+    fontSize: 27,
+    fontWeight: '600',
+    lineHeight: 36,
+  },
+  manifestoEmphasis: {
+    color: THEME.accent,
+    fontSize: 27,
+    fontWeight: '700',
+    lineHeight: 36,
+    marginTop: 2,
+  },
+  manifestoLines: {
+    marginTop: 34,
+    gap: 12,
+  },
+  manifestoLine: {
+    color: THEME.muted,
+    fontSize: 17,
+    lineHeight: 25,
+  },
+  manifestoClose: {
+    color: THEME.ink,
+    fontSize: 21,
+    fontWeight: '700',
+    marginTop: 34,
+  },
+  manifestoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: THEME.footer,
+    paddingVertical: 17,
+    borderRadius: 28,
+  },
+  manifestoButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
   heroRow: {
     flexDirection: 'row',
@@ -376,6 +588,112 @@ const baseStyles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     marginBottom: 16,
+  },
+  scarcity: {
+    color: THEME.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 10,
+    maxWidth: 280,
+  },
+  ghostButton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingVertical: 8,
+  },
+  ghostButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  proofCaption: {
+    color: THEME.ink,
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 28,
+    marginBottom: 16,
+  },
+  alertShot: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#F3D8D4',
+    padding: 16,
+    shadowColor: '#2A2622',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 3,
+  },
+  alertShotTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  alertDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#C2453A',
+  },
+  alertKicker: {
+    color: '#C2453A',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+  },
+  alertTitle: {
+    color: THEME.ink,
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  alertBody: {
+    color: THEME.muted,
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  alertTime: {
+    color: '#A79B87',
+    fontSize: 12,
+    marginTop: 12,
+  },
+  emergencyCard: {
+    backgroundColor: '#2B2318',
+    borderRadius: 20,
+    padding: 18,
+    marginTop: 18,
+  },
+  emergencyEta: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 12,
+  },
+  emergencyEtaText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  emergencyTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+    lineHeight: 26,
+    marginBottom: 8,
+  },
+  emergencyBody: {
+    color: 'rgba(243, 232, 208, 0.82)',
+    fontSize: 14,
+    lineHeight: 21,
   },
   heroButton: {
     alignSelf: 'flex-start',

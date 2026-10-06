@@ -21,6 +21,7 @@ import {
   StatusPill,
   type PillTone,
 } from "@/components/executive/ExecutiveUI";
+import ServiceBackButton from "@/components/navigation/ServiceBackButton";
 import BrandLogo from "@/components/ui/BrandLogo";
 import { useAuth } from "@/context/AuthContext";
 import { useExecutiveAlerts } from "@/context/ExecutiveAlertsContext";
@@ -234,6 +235,13 @@ export default function ExecutiveDashboard() {
 
         <View style={styles.heroTopRow}>
           <View style={styles.brandRow}>
+            <ServiceBackButton
+              color={c.heroText}
+              background={c.heroChip}
+              borderColor={c.heroChipBorder}
+              size={32}
+            />
+
             <BrandLogo size={34} />
 
             <View>

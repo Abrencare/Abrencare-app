@@ -47,20 +47,7 @@ export default function ConsultationLayout() {
             title: t.tabs.home,
             tabBarIcon: ({ color, size, focused }: TabIconProps) => (
               <Ionicons
-                name={focused ? 'calendar' : 'calendar-outline'}
-                size={size}
-                color={color}
-              />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="doctors"
-          options={{
-            title: t.tabs.doctors,
-            tabBarIcon: ({ color, size, focused }: TabIconProps) => (
-              <Ionicons
-                name={focused ? 'people' : 'people-outline'}
+                name={focused ? 'home' : 'home-outline'}
                 size={size}
                 color={color}
               />
@@ -74,6 +61,19 @@ export default function ConsultationLayout() {
             tabBarIcon: ({ color, size, focused }: TabIconProps) => (
               <Ionicons
                 name={focused ? 'heart' : 'heart-outline'}
+                size={size}
+                color={color}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="doctors"
+          options={{
+            title: t.tabs.book,
+            tabBarIcon: ({ color, size, focused }: TabIconProps) => (
+              <Ionicons
+                name={focused ? 'calendar' : 'calendar-outline'}
                 size={size}
                 color={color}
               />

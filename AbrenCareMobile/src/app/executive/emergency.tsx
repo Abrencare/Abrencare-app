@@ -20,9 +20,10 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { useLanguage } from "@/context/LanguageContext";
+import { COORDINATOR_LINE } from "@/data/contact";
 import { useThemedStyles } from "@/theme/useThemedStyles";
 
-const COORDINATOR_PHONE = "+251912345678";
+const COORDINATOR_PHONE = COORDINATOR_LINE;
 const EMERGENCY_PHONE = "907";
 
 const RED = "#D94F52";

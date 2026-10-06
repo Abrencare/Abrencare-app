@@ -41,6 +41,16 @@ export function formatDateKey(dateKey: string, t: Copy) {
   }`;
 }
 
+/** "10:48 AM" in the active language. */
+export function formatClock(iso: string, t: Copy) {
+  const date = new Date(iso);
+  const hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const suffix = hours < 12 ? t.common.morning : t.common.afternoon;
+
+  return `${hours % 12 === 0 ? 12 : hours % 12}:${minutes} ${suffix}`;
+}
+
 export function reminderLabel(minutes: number | null, t: Copy) {
   switch (minutes) {
     case 15:

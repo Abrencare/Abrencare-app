@@ -23,12 +23,15 @@ export type FamilyMember = {
   kind: FamilyMemberKind;
   name: string;
   relationship: FamilyRelationship;
+  /** ISO date when a full birth date was given, otherwise empty. */
   dateOfBirth: string;
+  /** Always set once the birth field is accepted; care plans are built on it. */
+  ageYears: number | null;
   phone: string;
   city: string;
   address: string;
   emergencyPhone: string;
-  careNeed: FamilyCareNeed | null;
+  careNeeds: FamilyCareNeed[];
   preferredLanguage: 'en' | 'am' | '';
   notes: string;
   status: 'active' | 'pending';

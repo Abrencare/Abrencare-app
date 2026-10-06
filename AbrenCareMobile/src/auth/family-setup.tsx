@@ -21,17 +21,20 @@ import {
   type FamilyRelationship,
 } from '@/types/auth';
 import Replace from '@/components/gates/Replace';
+import PhoneField from '@/components/ui/PhoneField';
 import { useLanguage } from '@/context/LanguageContext';
+import { isPhoneValueComplete } from '@/data/countries';
+import { parseBirthInput } from '@/utilities/birthInput';
 
 type Draft = {
   name: string;
   relationship: FamilyRelationship | null;
-  dateOfBirth: string;
+  birth: string;
   phone: string;
   city: string;
   address: string;
   emergencyPhone: string;
-  careNeed: FamilyCareNeed | null;
+  careNeeds: FamilyCareNeed[];
   preferredLanguage: 'en' | 'am' | '';
   notes: string;
 };
@@ -39,12 +42,12 @@ type Draft = {
 const emptyDraft = (): Draft => ({
   name: '',
   relationship: null,
-  dateOfBirth: '',
+  birth: '',
   phone: '',
   city: '',
   address: '',
   emergencyPhone: '',
-  careNeed: null,
+  careNeeds: [],
   preferredLanguage: '',
   notes: '',
 });
@@ -62,6 +65,7 @@ export default function FamilySetupScreen() {
   );
   const [step, setStep] = useState<0 | 1 | 2 | 3 | 4>(0);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
+  const [birthTouched, setBirthTouched] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [openMenu, setOpenMenu] = useState<'relationship' | 'language' | null>(
     null,
@@ -89,22 +93,38 @@ export default function FamilySetupScreen() {
     return <Replace href="/signup?service=family" />;
   }
 
-  const canStep1 = draft.name.trim().length > 1 && draft.relationship !== null;
-  const canStep2 = draft.phone.trim().length >= 8 && draft.city.trim().length > 1;
+  const birth = parseBirthInput(draft.birth);
+  const birthError =
+    birthTouched && birth.status === 'invalidDate'
+      ? copy.dobErrorDate
+      : birthTouched && birth.status === 'invalidAge'
+        ? copy.dobErrorAge
+        : null;
+
+  const canStep1 =
+    draft.name.trim().length > 1 &&
+    draft.relationship !== null &&
+    birth.status === 'valid';
+  const canStep2 =
+    isPhoneValueComplete(draft.phone) && draft.city.trim().length > 1;
   const relationshipLabel = relationships.find(
     (item) => item.id === draft.relationship,
   )?.label;
-  const careLabel = careNeeds.find((item) => item.id === draft.careNeed)?.label;
+  const careLabel = careNeeds
+    .filter((item) => draft.careNeeds.includes(item.id))
+    .map((item) => item.label)
+    .join(', ');
 
   function startAdd() {
     setDraft(emptyDraft());
+    setBirthTouched(false);
     setConfirmed(false);
     setOpenMenu(null);
     setStep(1);
   }
 
   function saveMember() {
-    if (!draft.relationship || !confirmed) {
+    if (!draft.relationship || !confirmed || birth.status !== 'valid') {
       return;
     }
 
@@ -113,12 +133,13 @@ export default function FamilySetupScreen() {
       kind: kindFromRelationship(draft.relationship),
       name: draft.name.trim(),
       relationship: draft.relationship,
-      dateOfBirth: draft.dateOfBirth.trim(),
+      dateOfBirth: birth.isoDate,
+      ageYears: birth.ageYears,
       phone: draft.phone.trim(),
       city: draft.city.trim(),
       address: draft.address.trim(),
       emergencyPhone: draft.emergencyPhone.trim(),
-      careNeed: draft.careNeed,
+      careNeeds: draft.careNeeds,
       preferredLanguage: draft.preferredLanguage,
       notes: draft.notes.trim(),
       status: 'active',
@@ -156,6 +177,9 @@ export default function FamilySetupScreen() {
               step={step}
               draft={draft}
               setDraft={setDraft}
+              birthError={birthError}
+              onBirthBlur={() => setBirthTouched(true)}
+              birthAge={birth.status === 'valid' ? birth.ageYears : null}
               confirmed={confirmed}
               setConfirmed={setConfirmed}
               openMenu={openMenu}
@@ -219,32 +243,10 @@ function Overview({
       </View>
 
       {members.length === 0 ? (
-        <>
-          <View style={styles.placeholderCard}>
-            <View style={styles.placeholderLeft}>
-              <View style={[styles.avatar, { backgroundColor: theme.accentSoft }]}>
-                <Ionicons name="person-outline" size={16} color={theme.accent} />
-              </View>
-              <View>
-                <Text style={[styles.memberName, { color: theme.text }]}>
-                  {copy.placeholderName}
-                </Text>
-                <Text style={[styles.memberMeta, { color: theme.muted }]}>
-                  {copy.notAdded}
-                </Text>
-              </View>
-            </View>
-            <View style={[styles.badge, { backgroundColor: theme.accentSoft }]}>
-              <Text style={[styles.badgeText, { color: theme.accent }]}>
-                {copy.newBadge}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.hintRow}>
-            <Ionicons name="heart-outline" size={14} color={theme.accent} />
-            <Text style={[styles.hint, { color: theme.muted }]}>{copy.hint}</Text>
-          </View>
-        </>
+        <View style={styles.hintRow}>
+          <Ionicons name="heart-outline" size={14} color={theme.accent} />
+          <Text style={[styles.hint, { color: theme.muted }]}>{copy.hint}</Text>
+        </View>
       ) : (
         <View style={styles.list}>
           <Text style={[styles.listTitle, { color: theme.text }]}>
@@ -260,8 +262,9 @@ function Overview({
                   {member.name}
                 </Text>
                 <Text style={[styles.memberMeta, { color: theme.muted }]}>
-                  {copy.careProfile} ·{' '}
-                  {member.status === 'active' ? copy.active : copy.notAdded}
+                  {member.status === 'active'
+                    ? `${copy.careProfile} · ${copy.active}`
+                    : `${copy.careProfile} · ${copy.pendingReview}`}
                 </Text>
               </View>
             </View>
@@ -322,6 +325,9 @@ function Wizard({
   step,
   draft,
   setDraft,
+  birthError,
+  onBirthBlur,
+  birthAge,
   confirmed,
   setConfirmed,
   openMenu,
@@ -340,6 +346,9 @@ function Wizard({
   step: 1 | 2 | 3 | 4;
   draft: Draft;
   setDraft: (value: Draft | ((current: Draft) => Draft)) => void;
+  birthError: string | null;
+  onBirthBlur: () => void;
+  birthAge: number | null;
   confirmed: boolean;
   setConfirmed: (value: boolean) => void;
   openMenu: 'relationship' | 'language' | null;
@@ -431,23 +440,32 @@ function Wizard({
           />
           <Field
             label={copy.dob}
-            value={draft.dateOfBirth}
-            onChangeText={(dateOfBirth) =>
-              setDraft((current) => ({ ...current, dateOfBirth }))
+            value={draft.birth}
+            onChangeText={(value) =>
+              setDraft((current) => ({ ...current, birth: value }))
             }
+            onBlur={onBirthBlur}
             placeholder={copy.dobPlaceholder}
+            error={birthError}
+            hint={
+              birthAge !== null
+                ? copy.dobAge.replace('{age}', String(birthAge))
+                : null
+            }
           />
         </View>
       )}
 
       {step === 2 && (
         <View>
-          <Field
+          <PhoneField
+            theme={theme}
             label={copy.phone}
+            labelStyle="plain"
+            radius={24}
             value={draft.phone}
-            onChangeText={(phone) => setDraft((current) => ({ ...current, phone }))}
-            placeholder={copy.phonePlaceholder}
-            keyboardType="phone-pad"
+            onChange={(phone) => setDraft((current) => ({ ...current, phone }))}
+            placeholder={copy.phoneLocalPlaceholder}
           />
           <Field
             label={copy.city}
@@ -464,14 +482,16 @@ function Wizard({
             placeholder={copy.addressPlaceholder}
             multiline
           />
-          <Field
+          <PhoneField
+            theme={theme}
             label={copy.emergency}
+            labelStyle="plain"
+            radius={24}
             value={draft.emergencyPhone}
-            onChangeText={(emergencyPhone) =>
+            onChange={(emergencyPhone) =>
               setDraft((current) => ({ ...current, emergencyPhone }))
             }
-            placeholder={copy.emergencyPlaceholder}
-            keyboardType="phone-pad"
+            placeholder={copy.emergencyLocalPlaceholder}
           />
         </View>
       )}
@@ -479,28 +499,41 @@ function Wizard({
       {step === 3 && (
         <View>
           <Text style={styles.careIntro}>{copy.careSubtitle}</Text>
-          {careNeeds.map((need) => (
-            <Pressable
-              key={need.id}
-              style={styles.radioRow}
-              onPress={() =>
-                setDraft((current) => ({ ...current, careNeed: need.id }))
-              }
-            >
-              <View
-                style={[
-                  styles.radio,
-                  draft.careNeed === need.id && {
-                    borderColor: theme.accent,
-                    backgroundColor: theme.accent,
-                  },
-                ]}
-              />
-              <Text style={[styles.radioLabel, { color: theme.text }]}>
-                {need.label}
-              </Text>
-            </Pressable>
-          ))}
+          {careNeeds.map((need) => {
+            const selected = draft.careNeeds.includes(need.id);
+
+            return (
+              <Pressable
+                key={need.id}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: selected }}
+                style={styles.checkRow}
+                onPress={() =>
+                  setDraft((current) => ({
+                    ...current,
+                    careNeeds: selected
+                      ? current.careNeeds.filter((item) => item !== need.id)
+                      : [...current.careNeeds, need.id],
+                  }))
+                }
+              >
+                <View
+                  style={[
+                    styles.checkBox,
+                    { borderColor: selected ? theme.accent : '#C5CBBE' },
+                    selected && { backgroundColor: theme.accent },
+                  ]}
+                >
+                  {selected && (
+                    <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                  )}
+                </View>
+                <Text style={[styles.checkLabel, { color: theme.text }]}>
+                  {need.label}
+                </Text>
+              </Pressable>
+            );
+          })}
           <Select
             label={copy.language}
             value={languageLabel}
@@ -541,6 +574,12 @@ function Wizard({
               label={copy.reviewRelationship}
               value={relationshipLabel ?? copy.noneSelected}
             />
+            {birthAge !== null && (
+              <ReviewRow
+                label={copy.reviewAge}
+                value={copy.dobAge.replace('{age}', String(birthAge))}
+              />
+            )}
             <ReviewRow label={copy.reviewPhone} value={draft.phone} />
             <ReviewRow
               label={copy.reviewLocation}
@@ -548,7 +587,7 @@ function Wizard({
             />
             <ReviewRow
               label={copy.reviewCare}
-              value={careLabel ?? copy.noneSelected}
+              value={careLabel || copy.noneSelected}
             />
           </View>
 
@@ -603,16 +642,22 @@ function Field({
   label,
   value,
   onChangeText,
+  onBlur,
   placeholder,
   keyboardType,
   multiline,
+  error,
+  hint,
 }: {
   label: string;
   value: string;
   onChangeText: (value: string) => void;
+  onBlur?: () => void;
   placeholder: string;
   keyboardType?: 'phone-pad';
   multiline?: boolean;
+  error?: string | null;
+  hint?: string | null;
 }) {
   return (
     <View style={styles.fieldWrap}>
@@ -620,12 +665,22 @@ function Field({
       <TextInput
         value={value}
         onChangeText={onChangeText}
+        onBlur={onBlur}
         placeholder={placeholder}
         placeholderTextColor="#A8AEB4"
         keyboardType={keyboardType}
         multiline={multiline}
-        style={[styles.input, multiline && styles.textarea]}
+        style={[
+          styles.input,
+          multiline && styles.textarea,
+          Boolean(error) && styles.inputError,
+        ]}
       />
+      {error ? (
+        <Text style={styles.fieldError}>{error}</Text>
+      ) : hint ? (
+        <Text style={styles.fieldHint}>{hint}</Text>
+      ) : null}
     </View>
   );
 }
@@ -725,20 +780,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 12,
   },
-  placeholderCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  placeholderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
   avatar: {
     width: 36,
     height: 36,
@@ -753,15 +794,6 @@ const styles = StyleSheet.create({
   memberMeta: {
     fontSize: 12,
     marginTop: 2,
-  },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: '700',
   },
   hintRow: {
     flexDirection: 'row',
@@ -911,6 +943,20 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     paddingTop: 12,
   },
+  inputError: {
+    borderColor: '#D64545',
+  },
+  fieldError: {
+    color: '#D64545',
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 6,
+  },
+  fieldHint: {
+    color: '#6F6A64',
+    fontSize: 12,
+    marginTop: 6,
+  },
   select: {
     borderWidth: 1,
     borderColor: '#E5E0D6',
@@ -951,20 +997,21 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 12,
   },
-  radioRow: {
+  checkRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 8,
+    gap: 12,
+    paddingVertical: 10,
   },
-  radio: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+  checkBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#C5CBBE',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  radioLabel: {
+  checkLabel: {
     fontSize: 15,
   },
   review: {
