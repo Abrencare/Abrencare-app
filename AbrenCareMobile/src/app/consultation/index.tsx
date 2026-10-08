@@ -36,7 +36,7 @@ export default function ConsultationBooking() {
   const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
   const router = useRouter();
-  const { draft, setDraft, book, isSlotTaken } = useConsultations();
+  const { draft, setDraft, isSlotTaken } = useConsultations();
 
   const [specialty, setSpecialty] = useState<SpecialtyId | null>(null);
   const [query, setQuery] = useState("");
@@ -119,9 +119,31 @@ export default function ConsultationBooking() {
       return;
     }
 
-    book(doctor.id, selectedDate, time);
-    setTime(null);
-    setConfirmed(true);
+    router.push({
+      pathname: "/consultation/pay",
+      params: {
+        doctor: doctor.id,
+        kind: "video",
+        date: selectedDate,
+        time,
+        next: "mycare",
+      },
+    });
+  }
+
+  function startNow(kind: "video" | "message") {
+    if (!doctor) {
+      return;
+    }
+
+    router.push({
+      pathname: "/consultation/pay",
+      params: {
+        doctor: doctor.id,
+        kind,
+        next: kind === "message" ? "chat" : "call",
+      },
+    });
   }
 
   return (
@@ -314,12 +336,7 @@ export default function ConsultationBooking() {
               <View style={styles.consultActions}>
                 <TouchableOpacity
                   style={styles.consultChatButton}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/consultation/chat",
-                      params: { doctor: doctor.id },
-                    })
-                  }
+                  onPress={() => startNow("message")}
                 >
                   <Ionicons
                     name="chatbubble-ellipses-outline"
@@ -333,12 +350,7 @@ export default function ConsultationBooking() {
 
                 <TouchableOpacity
                   style={styles.consultCallButton}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/consultation/call",
-                      params: { doctor: doctor.id },
-                    })
-                  }
+                  onPress={() => startNow("video")}
                 >
                   <Ionicons name="videocam" size={17} color="#FFFFFF" />
                   <Text style={styles.consultCallText}>
@@ -486,7 +498,7 @@ export default function ConsultationBooking() {
         >
           <Ionicons name="videocam" size={17} color="#FFFFFF" />
           <Text style={styles.bookButtonText}>
-            {t.consultation.bookConsultation}
+            {t.consultation.confirm}
           </Text>
         </TouchableOpacity>
 

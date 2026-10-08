@@ -37,7 +37,7 @@ export default function HeroCard() {
 
         <View style={styles.badgeContainer}>
           <View style={[styles.badge, { backgroundColor: colors.chip }]}>
-            <Ionicons name="star" size={13} color={colors.gold} />
+            <Ionicons name="shield-checkmark-outline" size={13} color={colors.navActive} />
             <Text style={[styles.badgeText, { color: colors.text }]}>{t.home.rated}</Text>
           </View>
           <View style={[styles.badge, { backgroundColor: colors.chip }]}>

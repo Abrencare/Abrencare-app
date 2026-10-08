@@ -1,4 +1,5 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 
 import { AuthProvider } from '@/context/AuthContext';
@@ -9,6 +10,7 @@ import { VisitWatcher } from '@/components/watchers/VisitWatcher';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { AppThemeProvider, useAppTheme } from '@/context/ThemeContext';
 import { VisitProvider } from '@/context/VisitContext';
+import { landingFontMap } from '@/theme/loadLandingFonts';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -26,6 +28,8 @@ function ThemedNavigation() {
 }
 
 export default function RootLayout() {
+  useFonts(landingFontMap);
+
   return (
     <LanguageProvider>
       <AppThemeProvider>

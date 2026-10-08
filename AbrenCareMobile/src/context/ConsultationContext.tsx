@@ -9,6 +9,7 @@ import {
 } from 'react';
 
 import { doctorById } from '@/data/doctors';
+import type { VisitKind } from '@/data/consultationPricing';
 import { addDays, fromDateKey, toDateKey } from '@/context/AppointmentsContext';
 import { loadJson, saveJson } from '@/utilities/storage';
 
@@ -21,6 +22,8 @@ export type Consultation = {
   date: string;
   /** 24h clock as HH:mm. */
   time: string;
+  kind: VisitKind;
+  paid: boolean;
   completed: boolean;
 };
 
@@ -38,7 +41,13 @@ type ConsultationContextValue = {
   followUpDate: string | null;
   draft: BookingDraft;
   setDraft: (patch: Partial<BookingDraft>) => void;
-  book: (doctorId: string, date: string, time: string) => Consultation;
+  book: (
+    doctorId: string,
+    date: string,
+    time: string,
+    kind?: VisitKind,
+  ) => Consultation;
+  hasPaidVisit: (doctorId: string) => boolean;
   cancel: (id: string) => void;
   isSlotTaken: (doctorId: string, date: string, time: string) => boolean;
 };
@@ -76,6 +85,8 @@ function seedConsultations(): Consultation[] {
       doctorId: 'abebe',
       date: toDateKey(remaining ? now : addDays(now, 1)),
       time: remaining ?? '10:00',
+      kind: 'video',
+      paid: true,
       completed: false,
     },
     {
@@ -83,6 +94,8 @@ function seedConsultations(): Consultation[] {
       doctorId: 'hana',
       date: toDateKey(addDays(now, -8)),
       time: '09:30',
+      kind: 'video',
+      paid: true,
       completed: true,
     },
   ];
@@ -107,7 +120,13 @@ export function ConsultationProvider({ children }: { children: ReactNode }) {
       if (!active || edited.current || !Array.isArray(stored)) {
         return;
       }
-      setConsultations(stored);
+      setConsultations(
+        stored.map((item) => ({
+          ...item,
+          kind: item.kind === 'message' ? 'message' : 'video',
+          paid: item.paid !== false,
+        })),
+      );
     });
 
     return () => {
@@ -153,17 +172,26 @@ export function ConsultationProvider({ children }: { children: ReactNode }) {
       setDraft: (patch) => {
         setDraftState((current) => ({ ...current, ...patch }));
       },
-      book: (doctorId, date, time) => {
+      book: (doctorId, date, time, kind = 'video') => {
         const created: Consultation = {
           id: `consultation-${Date.now()}`,
           doctorId,
           date,
           time,
+          kind,
+          paid: true,
           completed: false,
         };
         commit([...consultations, created]);
         return created;
       },
+      hasPaidVisit: (doctorId) =>
+        consultations.some(
+          (consultation) =>
+            consultation.doctorId === doctorId &&
+            consultation.paid &&
+            !consultation.completed,
+        ),
       cancel: (id) => {
         commit(
           consultations.filter((consultation) => consultation.id !== id),

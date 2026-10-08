@@ -95,6 +95,7 @@ export default function ConsultationLayout() {
         />
         <Tabs.Screen name="chat" options={{ href: null }} />
         <Tabs.Screen name="call" options={{ href: null }} />
+        <Tabs.Screen name="pay" options={{ href: null }} />
       </Tabs>
     </ConsultationProvider>
     </ServiceAccessGate>

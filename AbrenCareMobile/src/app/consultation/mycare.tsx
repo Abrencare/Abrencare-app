@@ -50,14 +50,20 @@ export default function ConsultationMyCare() {
 
     router.push({
       pathname: "/consultation/call",
-      params: { doctor: consultation.doctorId },
+      params: {
+        doctor: consultation.doctorId,
+        paid: consultation.paid ? "1" : "0",
+      },
     });
   }
 
   function handleMessage(consultation: Consultation) {
     router.push({
       pathname: "/consultation/chat",
-      params: { doctor: consultation.doctorId },
+      params: {
+        doctor: consultation.doctorId,
+        paid: consultation.paid ? "1" : "0",
+      },
     });
   }
 

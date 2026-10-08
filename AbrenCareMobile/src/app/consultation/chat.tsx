@@ -15,6 +15,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
+import ConsultationPaymentGate from "@/components/gates/ConsultationPaymentGate";
 import { useConsultations } from "@/context/ConsultationContext";
 import { doctorById, specialtyLabel } from "@/data/doctors";
 import { useLanguage } from "@/context/LanguageContext";
@@ -51,11 +52,14 @@ export default function ConsultationChat() {
   const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
   const router = useRouter();
-  const params = useLocalSearchParams() as { doctor?: string };
+  const params = useLocalSearchParams();
+  const doctorId =
+    typeof params.doctor === "string" ? params.doctor : undefined;
   const { draft } = useConsultations();
   const scrollRef = useRef<ScrollView>(null);
 
-  const doctor = doctorById(params.doctor ?? draft.doctorId);
+  const doctor = doctorById(doctorId ?? draft.doctorId);
+  const paid = params.paid === "1";
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -135,6 +139,12 @@ export default function ConsultationChat() {
   const initials = doctor?.initials ?? "AC";
 
   return (
+    <ConsultationPaymentGate
+      doctorId={doctor?.id ?? ""}
+      kind="message"
+      next="chat"
+      alreadyPaid={paid}
+    >
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -181,7 +191,9 @@ export default function ConsultationChat() {
           onPress={() =>
             router.push({
               pathname: "/consultation/call",
-              params: doctor ? { doctor: doctor.id } : undefined,
+              params: doctor
+                ? { doctor: doctor.id, paid: paid ? "1" : "0" }
+                : undefined,
             })
           }
           accessibilityLabel={t.consultationChat.videoCall}
@@ -336,6 +348,7 @@ export default function ConsultationChat() {
         </Pressable>
       </Modal>
     </KeyboardAvoidingView>
+    </ConsultationPaymentGate>
   );
 }
 

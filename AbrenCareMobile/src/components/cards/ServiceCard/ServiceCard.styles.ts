@@ -14,17 +14,12 @@ const styles = StyleSheet.create({
   },
 
   headerTitle: {
-    fontSize: 12,
-    fontWeight: "700",
     color: "#6B7280",
-    letterSpacing: 2,
   },
 
   headerHint: {
     marginTop: 4,
-    fontSize: 13,
     color: "#9CA3AF",
-    fontWeight: "500",
   },
 
   swipeCue: {
@@ -100,14 +95,9 @@ const styles = StyleSheet.create({
 
   category: {
     flex: 1,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1.1,
   },
 
   title: {
-    fontSize: 24,
-    fontWeight: "800",
     color: "#1B2230",
     zIndex: 1,
   },
@@ -115,8 +105,6 @@ const styles = StyleSheet.create({
   description: {
     marginTop: 8,
     color: "#6B7280",
-    fontSize: 14,
-    lineHeight: 21,
     zIndex: 1,
   },
 
@@ -133,9 +121,7 @@ const styles = StyleSheet.create({
 
   featureText: {
     marginLeft: 8,
-    fontSize: 13,
     color: "#374151",
-    fontWeight: "500",
   },
 
   tags: {
@@ -153,10 +139,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
 
-  tagText: {
-    fontSize: 10,
-    fontWeight: "600",
-  },
+  tagText: {},
 
   chooseButton: {
     marginTop: 18,
@@ -176,8 +159,6 @@ const styles = StyleSheet.create({
 
   chooseButtonText: {
     color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "700",
   },
 
   dotsRow: {
@@ -209,16 +190,12 @@ const styles = StyleSheet.create({
   },
 
   statNumber: {
-    fontSize: 20,
-    fontWeight: "800",
     color: "#1B2230",
   },
 
   statLabel: {
-    fontSize: 11,
     color: "#6B7280",
     marginTop: 2,
-    fontWeight: "500",
   },
 
   statDivider: {
@@ -236,9 +213,7 @@ const styles = StyleSheet.create({
   },
 
   footerText: {
-    fontSize: 12,
     color: "#9CA3AF",
-    fontWeight: "500",
     textAlign: "center",
   },
 });

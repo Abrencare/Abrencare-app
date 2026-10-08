@@ -4,6 +4,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
+import ConsultationPaymentGate from "@/components/gates/ConsultationPaymentGate";
 import { initialsFor, useAuth } from "@/context/AuthContext";
 import { useConsultations } from "@/context/ConsultationContext";
 import { doctorById, specialtyLabel } from "@/data/doctors";
@@ -16,16 +17,45 @@ function formatDuration(seconds: number) {
   return `${minutes}:${rest}`;
 }
 
+type ControlButtonProps = {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  active?: boolean;
+  onPress: () => void;
+};
+
+function ControlButton({ icon, label, active, onPress }: ControlButtonProps) {
+  const styles = useThemedStyles(baseStyles);
+  return (
+    <View style={styles.control}>
+      <TouchableOpacity
+        style={[styles.controlCircle, active && styles.controlCircleActive]}
+        onPress={onPress}
+      >
+        <Ionicons
+          name={icon}
+          size={20}
+          color={active ? "#1B2735" : "#FFFFFF"}
+        />
+      </TouchableOpacity>
+
+      <Text style={styles.controlLabel}>{label}</Text>
+    </View>
+  );
+}
+
 export default function ConsultationCall() {
 
   const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const { t } = useLanguage();
   const { user } = useAuth();
-  const params = useLocalSearchParams() as { doctor?: string };
+  const params = useLocalSearchParams();
   const { draft } = useConsultations();
-
-  const doctor = doctorById(params.doctor ?? draft.doctorId);
+  const doctorId =
+    typeof params.doctor === "string" ? params.doctor : undefined;
+  const doctor = doctorById(doctorId ?? draft.doctorId);
+  const paid = params.paid === "1";
 
   const [connected, setConnected] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -50,6 +80,12 @@ export default function ConsultationCall() {
   }, [connected]);
 
   return (
+    <ConsultationPaymentGate
+      doctorId={doctor?.id ?? ""}
+      kind="video"
+      next="call"
+      alreadyPaid={paid}
+    >
     <View style={styles.container}>
       <View style={styles.stage}>
         <View style={styles.remoteAvatar}>
@@ -90,7 +126,9 @@ export default function ConsultationCall() {
           onPress={() =>
             router.replace({
               pathname: "/consultation/chat",
-              params: doctor ? { doctor: doctor.id } : undefined,
+              params: doctor
+                ? { doctor: doctor.id, paid: paid ? "1" : "0" }
+                : undefined,
             })
           }
           accessibilityLabel={t.consultationChat.startChat}
@@ -144,36 +182,7 @@ export default function ConsultationCall() {
         </View>
       </View>
     </View>
-  );
-}
-
-function ControlButton({
-  icon,
-  label,
-  active,
-  onPress,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  active?: boolean;
-  onPress: () => void;
-}) {
-  const styles = useThemedStyles(baseStyles);
-  return (
-    <View style={styles.control}>
-      <TouchableOpacity
-        style={[styles.controlCircle, active && styles.controlCircleActive]}
-        onPress={onPress}
-      >
-        <Ionicons
-          name={icon}
-          size={20}
-          color={active ? "#1B2735" : "#FFFFFF"}
-        />
-      </TouchableOpacity>
-
-      <Text style={styles.controlLabel}>{label}</Text>
-    </View>
+    </ConsultationPaymentGate>
   );
 }
 

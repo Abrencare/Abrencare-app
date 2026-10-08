@@ -3,6 +3,7 @@ import { dashboardFor, getServiceTheme, onboardingPath } from "@/service/service
 import type { CareService } from "@/types/auth";
 import { useAppTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useLandingType } from "@/theme/landingType";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -60,6 +61,7 @@ export default function ServiceCard({ services }: Props) {
   const router = useRouter();
   const { t } = useLanguage();
   const { colors, isDark } = useAppTheme();
+  const homeType = useLandingType("family");
   const { hasService, needsOnboarding } = useAuth();
   const familyTheme = getServiceTheme("family", isDark);
   const executiveTheme = getServiceTheme("executive", isDark);
@@ -150,8 +152,8 @@ export default function ServiceCard({ services }: Props) {
     >
       <View style={styles.header}>
         <View>
-          <Text style={[styles.headerTitle, { color: colors.muted }]}>{t.home.ourServices}</Text>
-          <Text style={[styles.headerHint, { color: colors.muted }]}>{t.home.swipeHint}</Text>
+          <Text style={[styles.headerTitle, homeType.kicker, { color: colors.muted }]}>{t.home.ourServices}</Text>
+          <Text style={[styles.headerHint, homeType.caption, { color: colors.muted }]}>{t.home.swipeHint}</Text>
         </View>
         <View style={[styles.swipeCue, { backgroundColor: colors.card }]}>
           <Ionicons name="swap-horizontal" size={16} color={colors.iconMuted} />
@@ -216,28 +218,28 @@ export default function ServiceCard({ services }: Props) {
 
       <View style={[styles.statsContainer, { backgroundColor: colors.card }]}>
         <View style={styles.statItem}>
-          <Text style={[styles.statNumber, { color: colors.text }]}>+500</Text>
-          <Text style={[styles.statLabel, { color: colors.muted }]}>{t.home.familiesServed}</Text>
+          <Text style={[styles.statNumber, homeType.section, { color: colors.text }]}>+500</Text>
+          <Text style={[styles.statLabel, homeType.caption, { color: colors.muted }]}>{t.home.familiesServed}</Text>
         </View>
 
         <View style={[styles.statDivider, { backgroundColor: colors.divider }]} />
 
         <View style={styles.statItem}>
-          <Text style={[styles.statNumber, { color: colors.text }]}>24/7</Text>
-          <Text style={[styles.statLabel, { color: colors.muted }]}>{t.home.supportAvailable}</Text>
+          <Text style={[styles.statNumber, homeType.section, { color: colors.text }]}>24/7</Text>
+          <Text style={[styles.statLabel, homeType.caption, { color: colors.muted }]}>{t.home.supportAvailable}</Text>
         </View>
 
         <View style={[styles.statDivider, { backgroundColor: colors.divider }]} />
 
         <View style={styles.statItem}>
-          <Text style={[styles.statNumber, { color: colors.text }]}>16yr</Text>
-          <Text style={[styles.statLabel, { color: colors.muted }]}>{t.home.gapClosing}</Text>
+          <Text style={[styles.statNumber, homeType.section, { color: colors.text }]}>16yr</Text>
+          <Text style={[styles.statLabel, homeType.caption, { color: colors.muted }]}>{t.home.gapClosing}</Text>
         </View>
       </View>
 
       <View style={styles.footer}>
         <Ionicons name="shield-checkmark-outline" size={17} color={colors.iconMuted} />
-        <Text style={[styles.footerText, { color: colors.muted }]}>{t.home.footer}</Text>
+        <Text style={[styles.footerText, homeType.caption, { color: colors.muted }]}>{t.home.footer}</Text>
       </View>
     </View>
   );
@@ -264,6 +266,7 @@ function ServiceSlide({
   featureColor: string;
   onChoose: () => void;
 }) {
+  const type = useLandingType(item.id as CareService);
   const step = cardWidth + CARD_GAP;
 
   const cardStyle = useAnimatedStyle(() => {
@@ -364,13 +367,13 @@ function ServiceSlide({
             <Ionicons name={item.icon} size={28} color="#FFFFFF" />
           </Animated.View>
 
-          <Text style={[styles.category, { color: item.accentColor }]}>
+          <Text style={[styles.category, type.kicker, { color: item.accentColor }]}>
             {item.category}
           </Text>
         </View>
 
-        <Text style={[styles.title, { color: titleColor }]}>{item.title}</Text>
-        <Text style={[styles.description, { color: bodyColor }]}>{item.description}</Text>
+        <Text style={[styles.title, type.cardTitle, { color: titleColor }]}>{item.title}</Text>
+        <Text style={[styles.description, type.body, { color: bodyColor }]}>{item.description}</Text>
 
         <View style={styles.features}>
           {item.features.map((feature, featureIndex) => (
@@ -383,7 +386,7 @@ function ServiceSlide({
                 size={16}
                 color={item.accentColor}
               />
-              <Text style={[styles.featureText, { color: featureColor }]}>{feature}</Text>
+              <Text style={[styles.featureText, type.bodySmall, { color: featureColor }]}>{feature}</Text>
             </View>
           ))}
         </View>
@@ -398,7 +401,7 @@ function ServiceSlide({
                   { backgroundColor: `${item.accentColor}22` },
                 ]}
               >
-                <Text style={[styles.tagText, { color: item.accentColor }]}>
+                <Text style={[styles.tagText, type.kicker, { color: item.accentColor }]}>
                   {tag}
                 </Text>
               </View>
@@ -409,7 +412,7 @@ function ServiceSlide({
         <View
           style={[styles.chooseButton, { backgroundColor: item.accentColor }]}
         >
-          <Text style={styles.chooseButtonText}>{chooseLabel}</Text>
+          <Text style={[styles.chooseButtonText, type.button]}>{chooseLabel}</Text>
           <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
         </View>
         </View>

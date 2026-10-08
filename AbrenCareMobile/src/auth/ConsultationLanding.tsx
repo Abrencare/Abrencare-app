@@ -33,6 +33,16 @@ export default function ConsultationLanding() {
         { icon: 'calendar-outline', label: copy.confidential },
         { icon: 'location-outline', label: copy.localCare },
       ]}
+      offer={{
+        priceKicker: copy.priceKicker,
+        priceTitle: copy.priceTitle,
+        priceSubtitle: copy.priceSubtitle,
+        videoTitle: copy.videoTitle,
+        videoMeta: copy.videoMeta,
+        messageTitle: copy.messageTitle,
+        messageMeta: copy.messageMeta,
+        priceNote: copy.priceNote,
+      }}
     />
   );
 }

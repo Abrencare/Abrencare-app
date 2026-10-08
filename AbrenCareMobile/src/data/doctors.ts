@@ -15,7 +15,6 @@ export type Doctor = {
   name: string;
   initials: string;
   specialty: SpecialtyId;
-  rating: number;
   years: number;
   online: boolean;
   /** Bookable start times as HH:mm. */
@@ -37,7 +36,6 @@ export const DOCTORS: Doctor[] = [
     name: 'Dr. Abebe Kebede',
     initials: 'AK',
     specialty: 'cardiology',
-    rating: 4.9,
     years: 15,
     online: true,
     slots: ['09:00', '09:30', '10:00', '10:30', '14:00', '14:30'],
@@ -47,7 +45,6 @@ export const DOCTORS: Doctor[] = [
     name: 'Dr. Hana Tesfaye',
     initials: 'HT',
     specialty: 'generalMedicine',
-    rating: 4.8,
     years: 10,
     online: true,
     slots: ['11:30', '12:00', '15:00', '15:30', '16:00'],
@@ -57,7 +54,6 @@ export const DOCTORS: Doctor[] = [
     name: 'Dr. Selam Girma',
     initials: 'SG',
     specialty: 'pediatrics',
-    rating: 4.7,
     years: 8,
     online: true,
     slots: ['09:30', '10:00', '13:00', '13:30', '16:30'],
@@ -67,7 +63,6 @@ export const DOCTORS: Doctor[] = [
     name: 'Dr. Marta Alemu',
     initials: 'MA',
     specialty: 'dermatology',
-    rating: 4.9,
     years: 9,
     online: true,
     slots: ['10:30', '11:00', '13:00', '15:30'],
@@ -77,7 +72,6 @@ export const DOCTORS: Doctor[] = [
     name: 'Dr. Yonas Desta',
     initials: 'YD',
     specialty: 'orthopedics',
-    rating: 4.8,
     years: 12,
     online: false,
     slots: ['14:00', '14:30', '16:00', '16:30'],
@@ -87,7 +81,6 @@ export const DOCTORS: Doctor[] = [
     name: 'Dr. Haile Bekele',
     initials: 'HB',
     specialty: 'neurology',
-    rating: 4.9,
     years: 20,
     online: false,
     slots: ['15:30', '16:00', '17:00'],

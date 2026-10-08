@@ -54,8 +54,8 @@ export default function ConsultationDoctors() {
   function messageDoctor(doctor: Doctor) {
     setDraft({ doctorId: doctor.id });
     router.push({
-      pathname: "/consultation/chat",
-      params: { doctor: doctor.id },
+      pathname: "/consultation/pay",
+      params: { doctor: doctor.id, kind: "message", next: "chat" },
     });
   }
 
@@ -271,13 +271,9 @@ function DoctorCard({
         </View>
       </View>
 
-      <View style={styles.ratingRow}>
-        <Stars rating={doctor.rating} />
-        <Text style={styles.ratingText}>{doctor.rating.toFixed(1)}</Text>
-        <Text style={styles.experience}>
-          {doctor.years}+ {t.doctorsPage.yearsExperience}
-        </Text>
-      </View>
+      <Text style={styles.experience}>
+        {doctor.years}+ {t.doctorsPage.yearsExperience}
+      </Text>
 
       <View style={styles.doctorFooter}>
         <View style={styles.nextRow}>
@@ -306,28 +302,6 @@ function DoctorCard({
           </TouchableOpacity>
         </View>
       </View>
-    </View>
-  );
-}
-
-function Stars({ rating }: { rating: number }) {
-  const styles = useThemedStyles(baseStyles);
-  return (
-    <View style={styles.stars}>
-      {[1, 2, 3, 4, 5].map((step) => (
-        <Ionicons
-          key={step}
-          name={
-            rating >= step
-              ? "star"
-              : rating >= step - 0.5
-                ? "star-half"
-                : "star-outline"
-          }
-          size={12}
-          color="#E3A73B"
-        />
-      ))}
     </View>
   );
 }
@@ -512,26 +486,8 @@ const baseStyles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  ratingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    marginTop: 13,
-  },
-
-  stars: {
-    flexDirection: "row",
-    gap: 1,
-  },
-
-  ratingText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#26394C",
-  },
-
   experience: {
-    flex: 1,
+    marginTop: 13,
     fontSize: 12,
     color: "#8D9297",
   },

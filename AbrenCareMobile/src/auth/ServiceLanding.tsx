@@ -23,6 +23,7 @@ import { useAuth } from '@/context/AuthContext';
 import { dashboardFor, onboardingPath, useServiceTheme } from '@/service/serviceTheme';
 import type { CareService } from '@/types/auth';
 import { useAppTheme } from '@/context/ThemeContext';
+import { useLandingType } from '@/theme/landingType';
 import { useThemedStyles } from '@/theme/useThemedStyles';
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -77,6 +78,18 @@ export type PitchCopy = {
   emergencyBody: string;
 };
 
+/** Pricing and visit types shown on the Consultation intro before signup. */
+export type OfferCopy = {
+  priceKicker: string;
+  priceTitle: string;
+  priceSubtitle: string;
+  videoTitle: string;
+  videoMeta: string;
+  messageTitle: string;
+  messageMeta: string;
+  priceNote: string;
+};
+
 type Props = {
   service: CareService;
   copy: LandingCopy;
@@ -87,6 +100,7 @@ type Props = {
   trust: Item[];
   manifesto?: ManifestoCopy;
   pitch?: PitchCopy;
+  offer?: OfferCopy;
 };
 
 const THEME = {
@@ -110,9 +124,11 @@ export default function ServiceLanding({
   trust,
   manifesto,
   pitch,
+  offer,
 }: Props) {
 
   const styles = useThemedStyles(baseStyles);
+  const type = useLandingType(service);
   const { colors, isDark } = useAppTheme();
   const router = useRouter();
   const { user, hasService, needsOnboarding } = useAuth();
@@ -120,7 +136,10 @@ export default function ServiceLanding({
   const ink = isDark ? colors.text : THEME.ink;
   const accent = service === 'executive' ? palette.accent : isDark ? colors.navActive : THEME.accent;
   const line = isDark ? colors.border : THEME.line;
-  const ctaFill = service === 'executive' ? palette.accent : THEME.footer;
+  const ctaFill =
+    service === 'executive' || service === 'consultation'
+      ? palette.accent
+      : THEME.footer;
   const { width, height } = useWindowDimensions();
   const listRef = useRef<FlatList<number>>(null);
   const [page, setPage] = useState(0);
@@ -218,10 +237,10 @@ export default function ServiceLanding({
                 showsVerticalScrollIndicator={false}
               >
                 <View>
-                  <Text style={styles.kicker}>{copy.kicker}</Text>
+                  <Text style={[styles.kicker, type.kicker]}>{copy.kicker}</Text>
                   <View style={styles.heroRow}>
                     <View style={styles.heroCopy}>
-                      <Text style={styles.headline}>{copy.headline}</Text>
+                      <Text style={[styles.headline, type.headline]}>{copy.headline}</Text>
                     </View>
                     <View
                       style={[
@@ -232,24 +251,37 @@ export default function ServiceLanding({
                       <Image source={heroPhoto} style={styles.heroPhoto} resizeMode="cover" />
                     </View>
                   </View>
-                  <Text style={styles.description}>{copy.description}</Text>
+                  <Text style={[styles.description, type.body]}>{copy.description}</Text>
                   <Pressable
                     onPress={goSignup}
                     style={[styles.heroButton, { backgroundColor: ctaFill }]}
                   >
-                    <Text style={styles.heroButtonText}>{copy.createAccount}</Text>
+                    <Text style={[styles.heroButtonText, type.button]}>{copy.createAccount}</Text>
                     <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
                   </Pressable>
                   {pitch ? (
                     <>
-                      <Text style={styles.scarcity}>{pitch.scarcity}</Text>
+                      <Text style={[styles.scarcity, type.caption]}>{pitch.scarcity}</Text>
                       <Pressable onPress={goPreviewChat} style={styles.ghostButton}>
                         <Ionicons name="chatbubbles-outline" size={16} color={accent} />
-                        <Text style={[styles.ghostButtonText, { color: accent }]}>
+                        <Text style={[styles.ghostButtonText, type.button, { color: accent }]}>
                           {pitch.messageDoctor}
                         </Text>
                       </Pressable>
                     </>
+                  ) : null}
+                  {offer ? (
+                    <View style={styles.priceStrip}>
+                      <Text style={[styles.priceStripKicker, type.kicker]}>
+                        {offer.priceKicker}
+                      </Text>
+                      <Text style={[styles.priceStripTitle, type.label]}>
+                        {offer.videoMeta}
+                      </Text>
+                      <Text style={[styles.priceStripMeta, type.caption]}>
+                        {offer.messageMeta}
+                      </Text>
+                    </View>
                   ) : null}
                 </View>
                 <View style={[styles.cardGrid, { marginTop: 20 }]}>
@@ -261,9 +293,9 @@ export default function ServiceLanding({
                       <View style={styles.iconCircle}>
                         <Ionicons name={entry.icon} size={18} color={accent} />
                       </View>
-                      <Text style={styles.serviceTitle}>{entry.title ?? entry.label}</Text>
+                      <Text style={[styles.serviceTitle, type.label]}>{entry.title ?? entry.label}</Text>
                       {entry.body ? (
-                        <Text style={styles.serviceBody}>{entry.body}</Text>
+                        <Text style={[styles.serviceBody, type.caption]}>{entry.body}</Text>
                       ) : null}
                     </View>
                   ))}
@@ -278,41 +310,75 @@ export default function ServiceLanding({
                 showsVerticalScrollIndicator={false}
               >
                 <View>
-                  <Text style={styles.proofCaption}>{pitch.alertCaption}</Text>
+                  <Text style={[styles.proofCaption, type.section]}>{pitch.alertCaption}</Text>
                   <View style={styles.alertShot}>
                     <View style={styles.alertShotTop}>
                       <View style={styles.alertDot} />
-                      <Text style={styles.alertKicker}>{pitch.alertKicker}</Text>
+                      <Text style={[styles.alertKicker, type.kicker]}>{pitch.alertKicker}</Text>
                     </View>
-                    <Text style={styles.alertTitle}>{pitch.alertTitle}</Text>
-                    <Text style={styles.alertBody}>{pitch.alertBody}</Text>
-                    <Text style={styles.alertTime}>{pitch.alertTime}</Text>
+                    <Text style={[styles.alertTitle, type.label]}>{pitch.alertTitle}</Text>
+                    <Text style={[styles.alertBody, type.bodySmall]}>{pitch.alertBody}</Text>
+                    <Text style={[styles.alertTime, type.caption]}>{pitch.alertTime}</Text>
                   </View>
                 </View>
 
                 <View style={styles.emergencyCard}>
                   <View style={styles.emergencyEta}>
                     <Ionicons name="flash" size={18} color="#FFFFFF" />
-                    <Text style={styles.emergencyEtaText}>{pitch.emergencyEta}</Text>
+                    <Text style={[styles.emergencyEtaText, type.kicker]}>{pitch.emergencyEta}</Text>
                   </View>
-                  <Text style={styles.emergencyTitle}>{pitch.emergencyTitle}</Text>
-                  <Text style={styles.emergencyBody}>{pitch.emergencyBody}</Text>
+                  <Text style={[styles.emergencyTitle, type.section]}>{pitch.emergencyTitle}</Text>
+                  <Text style={[styles.emergencyBody, type.bodySmall]}>{pitch.emergencyBody}</Text>
                 </View>
               </ScrollView>
             )}
 
-            {item === 1 && !pitch && (
+            {item === 1 && offer && !pitch && (
+              <ScrollView
+                style={styles.flex}
+                contentContainerStyle={styles.pageScroll}
+                showsVerticalScrollIndicator={false}
+              >
+                <View>
+                  <Text style={[styles.kicker, type.kicker]}>{offer.priceKicker}</Text>
+                  <Text style={[styles.sectionTitle, type.section]}>{offer.priceTitle}</Text>
+                  <Text style={[styles.sectionSubtitle, type.bodySmall]}>
+                    {offer.priceSubtitle}
+                  </Text>
+
+                  <View style={[styles.offerCard, { borderColor: line }]}>
+                    <View style={[styles.iconCircle, { backgroundColor: palette.accentSoft }]}>
+                      <Ionicons name="videocam-outline" size={18} color={accent} />
+                    </View>
+                    <Text style={[styles.offerTitle, type.label]}>{offer.videoTitle}</Text>
+                    <Text style={[styles.offerMeta, type.bodySmall]}>{offer.videoMeta}</Text>
+                  </View>
+
+                  <View style={[styles.offerCard, { borderColor: line }]}>
+                    <View style={[styles.iconCircle, { backgroundColor: palette.accentSoft }]}>
+                      <Ionicons name="chatbubbles-outline" size={18} color={accent} />
+                    </View>
+                    <Text style={[styles.offerTitle, type.label]}>{offer.messageTitle}</Text>
+                    <Text style={[styles.offerMeta, type.bodySmall]}>{offer.messageMeta}</Text>
+                  </View>
+                </View>
+
+                <Text style={[styles.offerNote, type.caption]}>{offer.priceNote}</Text>
+              </ScrollView>
+            )}
+
+            {item === 1 && !pitch && !offer && (
               <View style={styles.page}>
                 <View>
-                  <Text style={styles.sectionTitle}>{copy.howTitle}</Text>
-                  <Text style={styles.sectionSubtitle}>{copy.howSubtitle}</Text>
+                  <Text style={[styles.sectionTitle, type.section]}>{copy.howTitle}</Text>
+                  <Text style={[styles.sectionSubtitle, type.bodySmall]}>{copy.howSubtitle}</Text>
                   <View style={styles.stepRow}>
                     {steps.map((step, index) => (
                       <View key={step.title} style={styles.stepCol}>
                         <View style={styles.stepTrack}>
                           <View style={[styles.stepLine, index === 0 && styles.stepLineHidden]} />
                           <View style={styles.stepBadge}>
-                            <Text style={styles.stepNumber}>{index + 1}</Text>
+                            <Text style={[styles.stepNumber, type.caption]}>{index + 1}</Text>
                           </View>
                           <View
                             style={[
@@ -324,23 +390,23 @@ export default function ServiceLanding({
                         <View style={styles.iconCircle}>
                           <Ionicons name={step.icon} size={16} color={accent} />
                         </View>
-                        <Text style={styles.stepTitle}>{step.title}</Text>
-                        <Text style={styles.stepBody}>{step.body}</Text>
+                        <Text style={[styles.stepTitle, type.label]}>{step.title}</Text>
+                        <Text style={[styles.stepBody, type.caption]}>{step.body}</Text>
                       </View>
                     ))}
                   </View>
                 </View>
                 <View>
-                  <Text style={styles.sectionTitle}>{copy.includedTitle}</Text>
-                  <Text style={styles.sectionSubtitle}>{copy.includedSubtitle}</Text>
+                  <Text style={[styles.sectionTitle, type.section]}>{copy.includedTitle}</Text>
+                  <Text style={[styles.sectionSubtitle, type.bodySmall]}>{copy.includedSubtitle}</Text>
                   <View style={styles.cardGrid}>
                     {included.map((entry) => (
                       <View key={entry.title} style={[styles.serviceCard, { width: cardWidth }]}>
                         <View style={styles.iconCircle}>
                           <Ionicons name={entry.icon} size={18} color={accent} />
                         </View>
-                        <Text style={styles.serviceTitle}>{entry.title}</Text>
-                        <Text style={styles.serviceBody}>{entry.body}</Text>
+                        <Text style={[styles.serviceTitle, type.label]}>{entry.title}</Text>
+                        <Text style={[styles.serviceBody, type.caption]}>{entry.body}</Text>
                       </View>
                     ))}
                   </View>
@@ -351,15 +417,15 @@ export default function ServiceLanding({
             {item === 2 && pitch && (
               <View style={styles.page}>
                 <View>
-                  <Text style={styles.sectionTitle}>{copy.howTitle}</Text>
-                  <Text style={styles.sectionSubtitle}>{copy.howSubtitle}</Text>
+                  <Text style={[styles.sectionTitle, type.section]}>{copy.howTitle}</Text>
+                  <Text style={[styles.sectionSubtitle, type.bodySmall]}>{copy.howSubtitle}</Text>
                   <View style={styles.stepRow}>
                     {steps.map((step, index) => (
                       <View key={step.title} style={styles.stepCol}>
                         <View style={styles.stepTrack}>
                           <View style={[styles.stepLine, index === 0 && styles.stepLineHidden]} />
                           <View style={styles.stepBadge}>
-                            <Text style={styles.stepNumber}>{index + 1}</Text>
+                            <Text style={[styles.stepNumber, type.caption]}>{index + 1}</Text>
                           </View>
                           <View
                             style={[
@@ -371,20 +437,20 @@ export default function ServiceLanding({
                         <View style={styles.iconCircle}>
                           <Ionicons name={step.icon} size={16} color={accent} />
                         </View>
-                        <Text style={styles.stepTitle}>{step.title}</Text>
-                        <Text style={styles.stepBody}>{step.body}</Text>
+                        <Text style={[styles.stepTitle, type.label]}>{step.title}</Text>
+                        <Text style={[styles.stepBody, type.caption]}>{step.body}</Text>
                       </View>
                     ))}
                   </View>
                 </View>
                 <View style={[styles.ctaBar, { backgroundColor: palette.text }]}>
-                  <Text style={styles.ctaTitle}>{copy.ctaTitle}</Text>
-                  <Text style={styles.ctaBody}>{copy.ctaBody}</Text>
+                  <Text style={[styles.ctaTitle, type.section]}>{copy.ctaTitle}</Text>
+                  <Text style={[styles.ctaBody, type.bodySmall]}>{copy.ctaBody}</Text>
                   <Pressable
                     onPress={goSignup}
                     style={[styles.ctaButton, { backgroundColor: '#FFFFFF' }]}
                   >
-                    <Text style={[styles.ctaButtonText, { color: palette.accent }]}>
+                    <Text style={[styles.ctaButtonText, type.button, { color: palette.accent }]}>
                       {copy.createAccount}
                     </Text>
                     <Ionicons name="arrow-forward" size={16} color={palette.accent} />
@@ -396,24 +462,24 @@ export default function ServiceLanding({
             {item === 2 && manifesto && (
               <View style={styles.manifestoPage}>
                 <View>
-                  <Text style={styles.manifestoLead}>{manifesto.lead}</Text>
-                  <Text style={styles.manifestoEmphasis}>
+                  <Text style={[styles.manifestoLead, type.headline]}>{manifesto.lead}</Text>
+                  <Text style={[styles.manifestoEmphasis, type.headline]}>
                     {manifesto.emphasis}
                   </Text>
 
                   <View style={styles.manifestoLines}>
                     {manifesto.lines.map((line) => (
-                      <Text key={line} style={styles.manifestoLine}>
+                      <Text key={line} style={[styles.manifestoLine, type.body]}>
                         {line}
                       </Text>
                     ))}
                   </View>
 
-                  <Text style={styles.manifestoClose}>{manifesto.close}</Text>
+                  <Text style={[styles.manifestoClose, type.section]}>{manifesto.close}</Text>
                 </View>
 
                 <Pressable onPress={goSignup} style={styles.manifestoButton}>
-                  <Text style={styles.manifestoButtonText}>
+                  <Text style={[styles.manifestoButtonText, type.button]}>
                     {manifesto.cta}
                   </Text>
                   <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
@@ -424,29 +490,29 @@ export default function ServiceLanding({
             {item === 2 && !manifesto && !pitch && (
               <View style={styles.page}>
                 <View>
-                  <Text style={styles.kicker}>{copy.whyKicker}</Text>
-                  <Text style={styles.sectionTitle}>{copy.whyTitle}</Text>
-                  <Text style={styles.description}>{copy.whyBody}</Text>
+                  <Text style={[styles.kicker, type.kicker]}>{copy.whyKicker}</Text>
+                  <Text style={[styles.sectionTitle, type.section]}>{copy.whyTitle}</Text>
+                  <Text style={[styles.description, type.body]}>{copy.whyBody}</Text>
                   <View style={styles.cardGrid}>
                     {trust.map((entry) => (
                       <View key={entry.label} style={[styles.whyCard, { width: cardWidth }]}>
                         <View style={styles.iconCircle}>
                           <Ionicons name={entry.icon} size={16} color={accent} />
                         </View>
-                        <Text style={styles.whyLabel}>{entry.label}</Text>
+                        <Text style={[styles.whyLabel, type.label]}>{entry.label}</Text>
                       </View>
                     ))}
                   </View>
                 </View>
                 <View style={[styles.ctaBar, service === 'executive' && { backgroundColor: palette.text }]}>
-                  <Text style={styles.ctaTitle}>{copy.ctaTitle}</Text>
-                  <Text style={styles.ctaBody}>{copy.ctaBody}</Text>
+                  <Text style={[styles.ctaTitle, type.section]}>{copy.ctaTitle}</Text>
+                  <Text style={[styles.ctaBody, type.bodySmall]}>{copy.ctaBody}</Text>
                   <Pressable onPress={goSignup} style={[styles.ctaButton, service === 'executive' && { backgroundColor: '#FFFFFF' }]}>
-                    <Text style={[styles.ctaButtonText, service === 'executive' && { color: palette.accent }]}>{copy.createAccount}</Text>
+                    <Text style={[styles.ctaButtonText, type.button, service === 'executive' && { color: palette.accent }]}>{copy.createAccount}</Text>
                     <Ionicons name="arrow-forward" size={16} color={service === 'executive' ? palette.accent : THEME.footer} />
                   </Pressable>
                   <Pressable onPress={goLogin} style={styles.loginRow}>
-                    <Text style={styles.loginText}>
+                    <Text style={[styles.loginText, type.caption]}>
                       {copy.alreadyAccount} {copy.logIn} →
                     </Text>
                   </Pressable>
@@ -513,9 +579,6 @@ const baseStyles = StyleSheet.create({
   },
   kicker: {
     color: THEME.accent,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.4,
     marginBottom: 10,
   },
   manifestoPage: {
@@ -527,15 +590,9 @@ const baseStyles = StyleSheet.create({
   },
   manifestoLead: {
     color: THEME.ink,
-    fontSize: 27,
-    fontWeight: '600',
-    lineHeight: 36,
   },
   manifestoEmphasis: {
     color: THEME.accent,
-    fontSize: 27,
-    fontWeight: '700',
-    lineHeight: 36,
     marginTop: 2,
   },
   manifestoLines: {
@@ -544,13 +601,9 @@ const baseStyles = StyleSheet.create({
   },
   manifestoLine: {
     color: THEME.muted,
-    fontSize: 17,
-    lineHeight: 25,
   },
   manifestoClose: {
     color: THEME.ink,
-    fontSize: 21,
-    fontWeight: '700',
     marginTop: 34,
   },
   manifestoButton: {
@@ -564,8 +617,6 @@ const baseStyles = StyleSheet.create({
   },
   manifestoButtonText: {
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
   },
   heroRow: {
     flexDirection: 'row',
@@ -579,20 +630,13 @@ const baseStyles = StyleSheet.create({
   },
   headline: {
     color: THEME.ink,
-    fontSize: 28,
-    fontWeight: '700',
-    lineHeight: 34,
   },
   description: {
     color: THEME.muted,
-    fontSize: 14,
-    lineHeight: 21,
     marginBottom: 16,
   },
   scarcity: {
     color: THEME.muted,
-    fontSize: 12,
-    lineHeight: 18,
     marginTop: 10,
     maxWidth: 280,
   },
@@ -604,15 +648,9 @@ const baseStyles = StyleSheet.create({
     marginTop: 12,
     paddingVertical: 8,
   },
-  ghostButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
+  ghostButtonText: {},
   proofCaption: {
     color: THEME.ink,
-    fontSize: 22,
-    fontWeight: '700',
-    lineHeight: 28,
     marginBottom: 16,
   },
   alertShot: {
@@ -641,24 +679,16 @@ const baseStyles = StyleSheet.create({
   },
   alertKicker: {
     color: '#C2453A',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.2,
   },
   alertTitle: {
     color: THEME.ink,
-    fontSize: 18,
-    fontWeight: '700',
     marginBottom: 6,
   },
   alertBody: {
     color: THEME.muted,
-    fontSize: 14,
-    lineHeight: 21,
   },
   alertTime: {
     color: '#A79B87',
-    fontSize: 12,
     marginTop: 12,
   },
   emergencyCard: {
@@ -680,20 +710,13 @@ const baseStyles = StyleSheet.create({
   },
   emergencyEtaText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
   },
   emergencyTitle: {
     color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '700',
-    lineHeight: 26,
     marginBottom: 8,
   },
   emergencyBody: {
     color: 'rgba(243, 232, 208, 0.82)',
-    fontSize: 14,
-    lineHeight: 21,
   },
   heroButton: {
     alignSelf: 'flex-start',
@@ -707,8 +730,6 @@ const baseStyles = StyleSheet.create({
   },
   heroButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
   },
   heroPhotoWrap: {
     overflow: 'hidden',
@@ -728,14 +749,10 @@ const baseStyles = StyleSheet.create({
   },
   sectionTitle: {
     color: THEME.ink,
-    fontSize: 24,
-    fontWeight: '700',
     marginBottom: 6,
   },
   sectionSubtitle: {
     color: THEME.muted,
-    fontSize: 14,
-    lineHeight: 20,
     marginBottom: 16,
   },
   stepRow: {
@@ -772,21 +789,15 @@ const baseStyles = StyleSheet.create({
   },
   stepNumber: {
     color: THEME.accent,
-    fontSize: 11,
-    fontWeight: '700',
   },
   stepTitle: {
     color: THEME.ink,
-    fontSize: 13,
-    fontWeight: '700',
     textAlign: 'center',
     marginTop: 8,
     marginBottom: 4,
   },
   stepBody: {
     color: THEME.muted,
-    fontSize: 11,
-    lineHeight: 15,
     textAlign: 'center',
   },
   cardGrid: {
@@ -804,15 +815,11 @@ const baseStyles = StyleSheet.create({
   },
   serviceTitle: {
     color: THEME.ink,
-    fontSize: 13,
-    fontWeight: '700',
     marginTop: 8,
     marginBottom: 4,
   },
   serviceBody: {
     color: THEME.muted,
-    fontSize: 11,
-    lineHeight: 16,
   },
   whyCard: {
     backgroundColor: THEME.soft,
@@ -822,8 +829,6 @@ const baseStyles = StyleSheet.create({
   },
   whyLabel: {
     color: THEME.ink,
-    fontSize: 12,
-    fontWeight: '600',
   },
   ctaBar: {
     backgroundColor: THEME.footer,
@@ -832,14 +837,10 @@ const baseStyles = StyleSheet.create({
   },
   ctaTitle: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
     marginBottom: 6,
   },
   ctaBody: {
     color: '#C9D4CE',
-    fontSize: 13,
-    lineHeight: 19,
     marginBottom: 14,
   },
   ctaButton: {
@@ -854,8 +855,6 @@ const baseStyles = StyleSheet.create({
   },
   ctaButtonText: {
     color: THEME.footer,
-    fontSize: 14,
-    fontWeight: '700',
   },
   loginRow: {
     marginTop: 12,
@@ -863,6 +862,41 @@ const baseStyles = StyleSheet.create({
   },
   loginText: {
     color: '#C9D4CE',
-    fontSize: 13,
+  },
+  priceStrip: {
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: THEME.line,
+  },
+  priceStripKicker: {
+    color: THEME.accent,
+    marginBottom: 6,
+  },
+  priceStripTitle: {
+    color: THEME.ink,
+    marginBottom: 4,
+  },
+  priceStripMeta: {
+    color: THEME.muted,
+  },
+  offerCard: {
+    backgroundColor: THEME.card,
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 12,
+  },
+  offerTitle: {
+    color: THEME.ink,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  offerMeta: {
+    color: THEME.muted,
+  },
+  offerNote: {
+    color: THEME.muted,
+    marginTop: 8,
   },
 });
