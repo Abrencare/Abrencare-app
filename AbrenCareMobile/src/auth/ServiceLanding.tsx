@@ -252,13 +252,31 @@ export default function ServiceLanding({
                     </View>
                   </View>
                   <Text style={[styles.description, type.body]}>{copy.description}</Text>
-                  <Pressable
-                    onPress={goSignup}
-                    style={[styles.heroButton, { backgroundColor: ctaFill }]}
-                  >
-                    <Text style={[styles.heroButtonText, type.button]}>{copy.createAccount}</Text>
-                    <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
-                  </Pressable>
+                  <View style={styles.heroActions}>
+                    <Pressable
+                      onPress={goSignup}
+                      style={[styles.heroButton, { backgroundColor: ctaFill }]}
+                    >
+                      <Text style={[styles.heroButtonText, type.button]}>
+                        {copy.createAccount}
+                      </Text>
+                      <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                    </Pressable>
+                    <Pressable
+                      onPress={goLogin}
+                      style={[
+                        styles.heroButton,
+                        styles.heroButtonOutline,
+                        { borderColor: ctaFill },
+                      ]}
+                    >
+                      <Text
+                        style={[styles.heroButtonText, type.button, { color: ctaFill }]}
+                      >
+                        {copy.logIn}
+                      </Text>
+                    </Pressable>
+                  </View>
                   {pitch ? (
                     <>
                       <Text style={[styles.scarcity, type.caption]}>{pitch.scarcity}</Text>
@@ -455,6 +473,14 @@ export default function ServiceLanding({
                     </Text>
                     <Ionicons name="arrow-forward" size={16} color={palette.accent} />
                   </Pressable>
+                  <Pressable
+                    onPress={goLogin}
+                    style={[styles.ctaButton, styles.ctaButtonOutline]}
+                  >
+                    <Text style={[styles.ctaButtonText, type.button, { color: '#FFFFFF' }]}>
+                      {copy.logIn}
+                    </Text>
+                  </Pressable>
                 </View>
               </View>
             )}
@@ -478,12 +504,28 @@ export default function ServiceLanding({
                   <Text style={[styles.manifestoClose, type.section]}>{manifesto.close}</Text>
                 </View>
 
-                <Pressable onPress={goSignup} style={styles.manifestoButton}>
-                  <Text style={[styles.manifestoButtonText, type.button]}>
-                    {manifesto.cta}
-                  </Text>
-                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-                </Pressable>
+                <View>
+                  <Pressable onPress={goSignup} style={styles.manifestoButton}>
+                    <Text style={[styles.manifestoButtonText, type.button]}>
+                      {manifesto.cta}
+                    </Text>
+                    <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                  </Pressable>
+                  <Pressable
+                    onPress={goLogin}
+                    style={[styles.manifestoButton, styles.manifestoButtonOutline]}
+                  >
+                    <Text
+                      style={[
+                        styles.manifestoButtonText,
+                        type.button,
+                        { color: THEME.footer },
+                      ]}
+                    >
+                      {copy.logIn}
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
             )}
 
@@ -511,9 +553,12 @@ export default function ServiceLanding({
                     <Text style={[styles.ctaButtonText, type.button, service === 'executive' && { color: palette.accent }]}>{copy.createAccount}</Text>
                     <Ionicons name="arrow-forward" size={16} color={service === 'executive' ? palette.accent : THEME.footer} />
                   </Pressable>
-                  <Pressable onPress={goLogin} style={styles.loginRow}>
-                    <Text style={[styles.loginText, type.caption]}>
-                      {copy.alreadyAccount} {copy.logIn} →
+                  <Pressable
+                    onPress={goLogin}
+                    style={[styles.ctaButton, styles.ctaButtonOutline]}
+                  >
+                    <Text style={[styles.ctaButtonText, type.button, { color: '#FFFFFF' }]}>
+                      {copy.logIn}
                     </Text>
                   </Pressable>
                 </View>
@@ -549,6 +594,23 @@ const baseStyles = StyleSheet.create({
   },
   topSpacer: {
     width: 40,
+  },
+  topRight: {
+    alignItems: 'flex-end',
+    gap: 6,
+    minWidth: 40,
+  },
+  langToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  langText: {
+    fontSize: 11,
+    letterSpacing: 0.3,
+  },
+  langDot: {
+    marginHorizontal: 5,
+    fontSize: 11,
   },
   dots: {
     flexDirection: 'row',
@@ -614,6 +676,12 @@ const baseStyles = StyleSheet.create({
     backgroundColor: THEME.footer,
     paddingVertical: 17,
     borderRadius: 28,
+  },
+  manifestoButtonOutline: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: THEME.footer,
+    marginTop: 10,
   },
   manifestoButtonText: {
     color: '#FFFFFF',
@@ -718,6 +786,16 @@ const baseStyles = StyleSheet.create({
   emergencyBody: {
     color: 'rgba(243, 232, 208, 0.82)',
   },
+  heroActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 10,
+  },
+  heroActionsStack: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
   heroButton: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
@@ -728,8 +806,29 @@ const baseStyles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 24,
   },
+  heroButtonWide: {
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+    paddingVertical: 15,
+  },
+  heroButtonOutline: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+  },
+  requestNote: {
+    color: THEME.muted,
+    marginTop: 14,
+    textAlign: 'center',
+  },
   heroButtonText: {
     color: '#FFFFFF',
+  },
+  heroBanner: {
+    overflow: 'hidden',
+    backgroundColor: THEME.soft,
+    borderRadius: 22,
+    height: 210,
+    marginBottom: 18,
   },
   heroPhotoWrap: {
     overflow: 'hidden',
@@ -853,15 +952,14 @@ const baseStyles = StyleSheet.create({
     paddingVertical: 13,
     borderRadius: 24,
   },
+  ctaButtonOutline: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.55)',
+    marginTop: 10,
+  },
   ctaButtonText: {
     color: THEME.footer,
-  },
-  loginRow: {
-    marginTop: 12,
-    alignItems: 'center',
-  },
-  loginText: {
-    color: '#C9D4CE',
   },
   priceStrip: {
     marginTop: 16,

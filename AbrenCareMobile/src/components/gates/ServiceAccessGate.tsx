@@ -10,12 +10,16 @@ type Props = {
 };
 
 export default function ServiceAccessGate({ service, children }: Props) {
-  const { isSignedIn, hasService, needsOnboarding } = useAuth();
+  const { isSignedIn, hasService, needsOnboarding, user } = useAuth();
 
   if (!isSignedIn || !hasService(service)) {
     return (
       <Replace href={`/service?service=${service}`} />
     );
+  }
+
+  if (service === 'family' && user && !user.emailVerified) {
+    return <Replace href="/verify-email" />;
   }
 
   if (needsOnboarding(service)) {

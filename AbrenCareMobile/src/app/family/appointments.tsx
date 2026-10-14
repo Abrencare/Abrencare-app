@@ -26,13 +26,17 @@ import {
   reminderLabel,
   typeIcons,
 } from '@/utilities/familyFormat';
+import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { activeFamilyMember } from '@/utilities/familyMember';
 import { useThemedStyles } from '@/theme/useThemedStyles';
 
 export default function FamilyAppointments() {
 
   const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const memberName = activeFamilyMember(user)?.name ?? '';
   const {
     appointments,
     bookAppointment,
@@ -127,7 +131,9 @@ export default function FamilyAppointments() {
     >
       <Text style={styles.headerLabel}>{t.familyAppointments.headerLabel}</Text>
       <Text style={styles.title}>{t.familyAppointments.title}</Text>
-      <Text style={styles.subtitle}>{t.familyAppointments.subtitle}</Text>
+      <Text style={styles.subtitle}>
+        {t.familyAppointments.subtitle.replace('{name}', memberName)}
+      </Text>
 
       {confirmation && (
         <View style={styles.confirmBanner}>

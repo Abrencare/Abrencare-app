@@ -55,6 +55,8 @@ export type AuthUser = {
   phone: string;
   services: CareService[];
   familyMembers: FamilyMember[];
+  /** The person whose Family Care dashboard is currently open. */
+  activeFamilyMemberId: string | null;
   familyOnboarded: boolean;
   dateOfBirth: string;
   gender: Gender | null;
@@ -64,6 +66,8 @@ export type AuthUser = {
   frequency: MonitorFrequency;
   executiveOnboarded: boolean;
   consultationOnboarded: boolean;
+  /** Required before Family Care can show private health information. */
+  emailVerified: boolean;
 };
 
 export const DEFAULT_MONITORING: MonitorMetric[] = [
@@ -80,6 +84,7 @@ export function emptyUser(partial: Pick<AuthUser, 'name' | 'email'> & Partial<Au
     phone: '',
     services: [],
     familyMembers: [],
+    activeFamilyMemberId: null,
     familyOnboarded: false,
     dateOfBirth: '',
     gender: null,
@@ -89,6 +94,7 @@ export function emptyUser(partial: Pick<AuthUser, 'name' | 'email'> & Partial<Au
     frequency: 'managed',
     executiveOnboarded: false,
     consultationOnboarded: false,
+    emailVerified: true,
     ...partial,
   };
 }

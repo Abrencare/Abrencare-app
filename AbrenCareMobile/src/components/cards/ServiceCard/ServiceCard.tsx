@@ -191,7 +191,9 @@ export default function ServiceCard({ services }: Props) {
             index={index}
             cardWidth={cardWidth}
             scrollX={scrollX}
-            chooseLabel={t.home.chooseService}
+            chooseLabel={
+              item.id === 'family' ? t.home.familyCta : t.home.chooseService
+            }
             titleColor={colors.text}
             bodyColor={colors.muted}
             featureColor={colors.text}

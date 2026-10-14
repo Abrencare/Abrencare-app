@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 
+import FamilyMemberGate from '@/components/gates/FamilyMemberGate';
 import ServiceAccessGate from '@/components/gates/ServiceAccessGate';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -14,6 +15,7 @@ export default function FamilyLayout() {
 
   return (
     <ServiceAccessGate service="family">
+    <FamilyMemberGate>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -79,6 +81,7 @@ export default function FamilyLayout() {
       <Tabs.Screen name="chat" options={{ href: null }} />
       <Tabs.Screen name="call" options={{ href: null }} />
     </Tabs>
+    </FamilyMemberGate>
     </ServiceAccessGate>
   );
 }

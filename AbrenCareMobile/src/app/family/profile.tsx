@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  Switch,
   TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -11,7 +12,12 @@ import { useRouter } from "expo-router";
 
 import { initialsFor, useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAppTheme } from "@/context/ThemeContext";
 import { useThemedStyles } from "@/theme/useThemedStyles";
+import {
+  activeFamilyMember,
+  memberInitials,
+} from "@/utilities/familyMember";
 
 export default function ConsultationProfile() {
 
@@ -19,6 +25,15 @@ export default function ConsultationProfile() {
   const { t } = useLanguage();
   const router = useRouter();
   const { user, signOut } = useAuth();
+  const { isDark, toggleTheme } = useAppTheme();
+  const member = activeFamilyMember(user);
+  const memberName = member?.name ?? user?.name ?? "";
+  const memberAge =
+    member?.ageYears !== null && member?.ageYears !== undefined
+      ? t.familyAdd.dobAge.replace("{age}", String(member.ageYears))
+      : t.profile.ageValue;
+  const memberCity = member?.city || t.profile.addressValue;
+  const memberPhone = member?.phone || t.familyAdd.noneSelected;
 
   return (
     <ScrollView
@@ -40,10 +55,10 @@ export default function ConsultationProfile() {
       {/* User Card */}
       <View style={styles.profileCard}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>AT</Text>
+          <Text style={styles.avatarText}>{memberInitials(memberName)}</Text>
         </View>
 
-        <Text style={styles.name}>Ato Tadesse</Text>
+        <Text style={styles.name}>{memberName}</Text>
 
         <Text style={styles.subtitle}>
           {t.profile.member}
@@ -62,7 +77,7 @@ export default function ConsultationProfile() {
           <Ionicons name="person-outline" size={20} color="#8B9A7C" />
           <View style={styles.info}>
             <Text style={styles.label}>{t.profile.fullName}</Text>
-            <Text style={styles.value}>Ato Tadesse</Text>
+            <Text style={styles.value}>{memberName}</Text>
           </View>
         </View>
 
@@ -72,7 +87,7 @@ export default function ConsultationProfile() {
           <Ionicons name="calendar-outline" size={20} color="#8B9A7C" />
           <View style={styles.info}>
             <Text style={styles.label}>{t.profile.age}</Text>
-            <Text style={styles.value}>{t.profile.ageValue}</Text>
+            <Text style={styles.value}>{memberAge}</Text>
           </View>
         </View>
 
@@ -82,7 +97,7 @@ export default function ConsultationProfile() {
           <Ionicons name="location-outline" size={20} color="#8B9A7C" />
           <View style={styles.info}>
             <Text style={styles.label}>{t.profile.address}</Text>
-            <Text style={styles.value}>{t.profile.addressValue}</Text>
+            <Text style={styles.value}>{memberCity}</Text>
           </View>
         </View>
 
@@ -92,7 +107,7 @@ export default function ConsultationProfile() {
           <Ionicons name="call-outline" size={20} color="#8B9A7C" />
           <View style={styles.info}>
             <Text style={styles.label}>{t.profile.phone}</Text>
-            <Text style={styles.value}>+251 91 234 5678</Text>
+            <Text style={styles.value}>{memberPhone}</Text>
           </View>
         </View>
       </View>
@@ -136,13 +151,42 @@ export default function ConsultationProfile() {
         </View>
       </View>
 
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t.settings.title}</Text>
+
+        <View style={styles.row}>
+          <Ionicons
+            name={isDark ? "moon" : "moon-outline"}
+            size={20}
+            color="#8B9A7C"
+          />
+          <View style={styles.info}>
+            <Text style={styles.label}>{t.header.darkTheme}</Text>
+            <Text style={styles.value}>
+              {isDark
+                ? t.profile.notificationsOn
+                : t.profile.notificationsOff}
+            </Text>
+          </View>
+          <Switch
+            value={isDark}
+            onValueChange={toggleTheme}
+            trackColor={{ false: "#E2E0DB", true: "#8B9A7C" }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
+      </View>
+
       {/* Buttons */}
       <TouchableOpacity style={styles.primaryButton}>
         <Text style={styles.primaryText}>{t.profile.editProfile}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.secondaryButton}>
-        <Text style={styles.secondaryText}>{t.profile.manageAccount}</Text>
+      <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={() => router.push('/family-inbox')}
+      >
+        <Text style={styles.secondaryText}>{t.familyRequest.inboxTitle}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity

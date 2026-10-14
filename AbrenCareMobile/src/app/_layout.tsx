@@ -5,6 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider } from '@/context/AuthContext';
 import { AnimatedSplashOverlay } from '@/components/ui/animated-icon';
 import { AppointmentsProvider } from '@/context/AppointmentsContext';
+import { ConsultationProvider } from '@/context/ConsultationContext';
 import { ReminderWatcher } from '@/components/watchers/ReminderWatcher';
 import { VisitWatcher } from '@/components/watchers/VisitWatcher';
 import { LanguageProvider } from '@/context/LanguageContext';
@@ -36,7 +37,9 @@ export default function RootLayout() {
         <AuthProvider>
           <AppointmentsProvider>
             <VisitProvider>
-              <ThemedNavigation />
+              <ConsultationProvider>
+                <ThemedNavigation />
+              </ConsultationProvider>
             </VisitProvider>
           </AppointmentsProvider>
         </AuthProvider>

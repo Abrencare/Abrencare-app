@@ -15,6 +15,7 @@ import { useRouter } from "expo-router";
 
 import { initialsFor, useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAppTheme } from "@/context/ThemeContext";
 import { useThemedStyles } from "@/theme/useThemedStyles";
 
 const BLUE = "#7E93A8";
@@ -25,6 +26,7 @@ export default function ConsultationProfile() {
   const { t, language, setLanguage } = useLanguage();
   const router = useRouter();
   const { user, isSignedIn, signOut } = useAuth();
+  const { isDark, toggleTheme } = useAppTheme();
 
   const [notifications, setNotifications] = useState(true);
 
@@ -159,6 +161,31 @@ export default function ConsultationProfile() {
               onValueChange={setNotifications}
               trackColor={{ false: "#E2E0DB", true: "#B7C6DC" }}
               thumbColor={notifications ? BLUE : "#FFFFFF"}
+            />
+          </View>
+
+          <View style={[styles.settingRow, styles.divider]}>
+            <View style={styles.settingIcon}>
+              <Ionicons
+                name={isDark ? "moon" : "moon-outline"}
+                size={18}
+                color={BLUE}
+              />
+            </View>
+
+            <Text style={styles.settingLabel}>{t.header.darkTheme}</Text>
+
+            <Text style={styles.settingValue}>
+              {isDark
+                ? t.profile.notificationsOn
+                : t.profile.notificationsOff}
+            </Text>
+
+            <Switch
+              value={isDark}
+              onValueChange={toggleTheme}
+              trackColor={{ false: "#E2E0DB", true: "#B7C6DC" }}
+              thumbColor={isDark ? BLUE : "#FFFFFF"}
             />
           </View>
 

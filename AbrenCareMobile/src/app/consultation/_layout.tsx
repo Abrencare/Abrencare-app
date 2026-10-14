@@ -2,7 +2,6 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 
-import { ConsultationProvider } from '@/context/ConsultationContext';
 import ServiceAccessGate from '@/components/gates/ServiceAccessGate';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -15,7 +14,6 @@ export default function ConsultationLayout() {
 
   return (
     <ServiceAccessGate service="consultation">
-    <ConsultationProvider>
       <Tabs
         screenOptions={{
           headerShown: false,
@@ -97,7 +95,6 @@ export default function ConsultationLayout() {
         <Tabs.Screen name="call" options={{ href: null }} />
         <Tabs.Screen name="pay" options={{ href: null }} />
       </Tabs>
-    </ConsultationProvider>
     </ServiceAccessGate>
   );
 }

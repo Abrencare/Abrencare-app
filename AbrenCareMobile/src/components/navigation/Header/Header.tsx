@@ -1,15 +1,27 @@
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 import BrandLogo from '@/components/ui/BrandLogo';
+import { useAuth } from '@/context/AuthContext';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { useHomeNotifications } from '@/hooks/useHomeNotifications';
 
 export default function Header() {
+  const router = useRouter();
   const { t, language, setLanguage } = useLanguage();
   const { colors, isDark, toggleTheme } = useAppTheme();
+  const { isSignedIn, user } = useAuth();
+  const notices = useHomeNotifications();
   const [menuOpen, setMenuOpen] = useState(false);
+  const hasDot = notices.length > 0;
+
+  function openNotice(href: string) {
+    setMenuOpen(false);
+    router.push(href as Parameters<typeof router.push>[0]);
+  }
 
   return (
     <View style={styles.container}>
@@ -37,6 +49,21 @@ export default function Header() {
           </Text>
         </Pressable>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t.header.darkTheme}
+          onPress={toggleTheme}
+          style={[
+            styles.iconButton,
+            { backgroundColor: colors.button, borderColor: colors.buttonBorder },
+          ]}
+        >
+          <Ionicons
+            name={isDark ? 'sunny-outline' : 'moon-outline'}
+            size={18}
+            color={colors.icon}
+          />
+        </Pressable>
+        <Pressable
           onPress={() => setMenuOpen(true)}
           style={[
             styles.iconButton,
@@ -44,7 +71,9 @@ export default function Header() {
           ]}
         >
           <Ionicons name="notifications-outline" size={18} color={colors.icon} />
-          <View style={[styles.notificationDot, { borderColor: colors.button }]} />
+          {hasDot ? (
+            <View style={[styles.notificationDot, { borderColor: colors.button }]} />
+          ) : null}
         </Pressable>
       </View>
 
@@ -69,55 +98,45 @@ export default function Header() {
               {t.header.notifications}
             </Text>
 
-            <View style={styles.menuItem}>
-              <View style={[styles.menuIcon, { backgroundColor: colors.chip }]}>
-                <Ionicons name="calendar-outline" size={16} color={colors.gold} />
-              </View>
-              <View style={styles.menuCopy}>
-                <Text style={[styles.menuItemTitle, { color: colors.text }]}>
-                  {t.header.appointmentTitle}
+            {notices.length === 0 ? (
+              <View style={styles.emptyWrap}>
+                <Ionicons name="notifications-off-outline" size={22} color={colors.muted} />
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>
+                  {t.header.caughtUp}
                 </Text>
-                <Text style={[styles.menuItemBody, { color: colors.muted }]}>
-                  {t.header.appointmentBody}
-                </Text>
+                {!isSignedIn || !user?.services.length ? (
+                  <Text style={[styles.emptyBody, { color: colors.muted }]}>
+                    {t.header.emptyHint}
+                  </Text>
+                ) : null}
               </View>
-            </View>
-
-            <View style={styles.menuItem}>
-              <View style={[styles.menuIcon, { backgroundColor: colors.chip }]}>
-                <Ionicons name="heart-outline" size={16} color={colors.navActive} />
-              </View>
-              <View style={styles.menuCopy}>
-                <Text style={[styles.menuItemTitle, { color: colors.text }]}>
-                  {t.header.careTitle}
-                </Text>
-                <Text style={[styles.menuItemBody, { color: colors.muted }]}>
-                  {t.header.careBody}
-                </Text>
-              </View>
-            </View>
-
-            <View style={[styles.divider, { backgroundColor: colors.divider }]} />
-
-            <Pressable style={styles.toggleRow} onPress={toggleTheme}>
-              <View style={[styles.menuIcon, { backgroundColor: colors.chip }]}>
-                <Ionicons
-                  name={isDark ? 'moon' : 'moon-outline'}
-                  size={16}
-                  color={colors.icon}
-                />
-              </View>
-              <Text style={[styles.toggleLabel, { color: colors.text }]}>
-                {t.header.darkTheme}
-              </Text>
-              <Switch
-                value={isDark}
-                style={{ pointerEvents: 'none' }}
-                trackColor={{ false: '#D5DDD8', true: '#1A4A42' }}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor="#D5DDD8"
-              />
-            </Pressable>
+            ) : (
+              <ScrollView
+                style={styles.noticeList}
+                showsVerticalScrollIndicator={false}
+              >
+                {notices.map((notice) => (
+                  <Pressable
+                    key={notice.id}
+                    style={styles.menuItem}
+                    onPress={() => openNotice(notice.href)}
+                  >
+                    <View style={[styles.menuIcon, { backgroundColor: colors.chip }]}>
+                      <Ionicons name={notice.icon} size={16} color={notice.color} />
+                    </View>
+                    <View style={styles.menuCopy}>
+                      <Text style={[styles.menuItemTitle, { color: colors.text }]}>
+                        {notice.title}
+                      </Text>
+                      <Text style={[styles.menuItemBody, { color: colors.muted }]}>
+                        {notice.body}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={14} color={colors.muted} />
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
           </Pressable>
         </Pressable>
       </Modal>
@@ -190,6 +209,7 @@ const styles = StyleSheet.create({
   },
   dropdown: {
     width: 292,
+    maxHeight: 420,
     borderRadius: 20,
     borderWidth: 1,
     padding: 14,
@@ -206,6 +226,25 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: 10,
     paddingHorizontal: 4,
+  },
+  noticeList: {
+    maxHeight: 340,
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  emptyTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  emptyBody: {
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: 'center',
   },
   menuItem: {
     flexDirection: 'row',
@@ -232,21 +271,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     marginTop: 2,
-  },
-  divider: {
-    height: 1,
-    marginVertical: 8,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-  },
-  toggleLabel: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '700',
   },
 });

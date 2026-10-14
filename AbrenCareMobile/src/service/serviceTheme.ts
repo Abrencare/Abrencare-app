@@ -76,7 +76,7 @@ export function useServiceTheme(service: CareService): ServiceTheme {
 
 export function dashboardFor(service: CareService) {
   if (service === 'family') {
-    return '/family';
+    return '/family-home';
   }
   if (service === 'executive') {
     return '/executive';

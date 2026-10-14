@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Pressable,
   SafeAreaView,
@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { useAuth } from '@/context/AuthContext';
 import { useServiceTheme, type ServiceTheme } from '@/service/serviceTheme';
@@ -24,6 +24,7 @@ import Replace from '@/components/gates/Replace';
 import PhoneField from '@/components/ui/PhoneField';
 import { useLanguage } from '@/context/LanguageContext';
 import { isPhoneValueComplete } from '@/data/countries';
+import { activateFamilyCare, markFamilySetupStarted } from '@/data/familyInquiry';
 import { parseBirthInput } from '@/utilities/birthInput';
 
 type Draft = {
@@ -54,8 +55,10 @@ const emptyDraft = (): Draft => ({
 
 export default function FamilySetupScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const adding = params.add === '1';
   const { t } = useLanguage();
-  const { user, hasService, setFamilyMembers, completeFamilyOnboarding } =
+  const { user, hasService, completeFamilyOnboarding } =
     useAuth();
   const theme = useServiceTheme('family');
   const copy = t.familyAdd;
@@ -63,13 +66,17 @@ export default function FamilySetupScreen() {
   const [members, setMembers] = useState<FamilyMember[]>(
     user?.familyMembers ?? [],
   );
-  const [step, setStep] = useState<0 | 1 | 2 | 3 | 4>(0);
+  const [step, setStep] = useState<0 | 1 | 2 | 3 | 4>(adding ? 1 : 0);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [birthTouched, setBirthTouched] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [openMenu, setOpenMenu] = useState<'relationship' | 'language' | null>(
     null,
   );
+
+  useEffect(() => {
+    markFamilySetupStarted();
+  }, []);
 
   const relationships: { id: FamilyRelationship; label: string }[] = [
     { id: 'mother', label: copy.mother },
@@ -91,6 +98,14 @@ export default function FamilySetupScreen() {
 
   if (!user || !hasService('family')) {
     return <Replace href="/signup?service=family" />;
+  }
+
+  if (!user.emailVerified) {
+    return <Replace href="/verify-email" />;
+  }
+
+  if (members.length > 0 && step === 0 && !adding) {
+    return <Replace href="/family-home" />;
   }
 
   const birth = parseBirthInput(draft.birth);
@@ -147,13 +162,9 @@ export default function FamilySetupScreen() {
 
     const next = [...members, created];
     setMembers(next);
-    setFamilyMembers(next);
-    setStep(0);
-  }
-
-  function goDashboard() {
-    completeFamilyOnboarding(members);
-    router.replace('/family');
+    completeFamilyOnboarding(next);
+    activateFamilyCare();
+    router.replace('/family-home');
   }
 
   return (
@@ -170,7 +181,6 @@ export default function FamilySetupScreen() {
               copy={copy}
               theme={theme}
               onAdd={startAdd}
-              onContinue={goDashboard}
             />
           ) : (
             <Wizard
@@ -194,6 +204,10 @@ export default function FamilySetupScreen() {
               theme={theme}
               onBack={() => {
                 if (step === 1) {
+                  if (members.length > 0) {
+                    router.replace('/family-home');
+                    return;
+                  }
                   setStep(0);
                   return;
                 }
@@ -219,13 +233,11 @@ function Overview({
   copy,
   theme,
   onAdd,
-  onContinue,
 }: {
   members: FamilyMember[];
   copy: ReturnType<typeof useLanguage>['t']['familyAdd'];
   theme: ServiceTheme;
   onAdd: () => void;
-  onContinue: () => void;
 }) {
   return (
     <View>
@@ -305,18 +317,6 @@ function Overview({
         </Text>
       </View>
 
-      {members.length > 0 && (
-        <Pressable
-          style={({ pressed }) => [
-            styles.continue,
-            { backgroundColor: theme.accent },
-            pressed && styles.pressed,
-          ]}
-          onPress={onContinue}
-        >
-          <Text style={styles.addButtonText}>{copy.continue}</Text>
-        </Pressable>
-      )}
     </View>
   );
 }

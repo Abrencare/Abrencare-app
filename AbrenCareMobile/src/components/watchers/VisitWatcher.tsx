@@ -10,6 +10,7 @@ import {
   sendVisitNotification,
 } from '@/notifications/visitNotifications';
 import { formatClock } from '@/utilities/familyFormat';
+import { activeFamilyMember } from '@/utilities/familyMember';
 
 /** Past this, a completed visit is history and must not re-notify. */
 const FRESH_MS = 10 * 60_000;
@@ -62,7 +63,10 @@ export function VisitWatcher() {
     }
 
     const copy = t.family;
-    const patient = user?.familyMembers[0]?.name ?? visit.patientName;
+    const patient =
+      activeFamilyMember(user)?.name ??
+      user?.familyMembers[0]?.name ??
+      visit.patientName;
 
     sendVisitNotification({
       title: copy.pushVisitTitle

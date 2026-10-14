@@ -13,6 +13,7 @@ type Props = {
   borderColor?: string;
   size?: number;
   style?: StyleProp<ViewStyle>;
+  href?: string;
 };
 
 /**
@@ -25,6 +26,7 @@ export default function ServiceBackButton({
   borderColor,
   size = 34,
   style,
+  href = '/(tabs)',
 }: Props) {
   const router = useRouter();
   const { t } = useLanguage();
@@ -34,7 +36,7 @@ export default function ServiceBackButton({
       accessibilityRole="button"
       accessibilityLabel={t.common.back}
       hitSlop={8}
-      onPress={() => router.replace('/(tabs)')}
+      onPress={() => router.replace(href)}
       style={[
         styles.button,
         {

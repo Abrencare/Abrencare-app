@@ -35,7 +35,9 @@ type AuthContextValue = {
     input: { name: string; email: string; phone: string },
     service: CareService,
   ) => AuthUser;
+  verifyEmail: () => void;
   setFamilyMembers: (members: FamilyMember[]) => void;
+  selectFamilyMember: (id: string) => void;
   completeFamilyOnboarding: (members: FamilyMember[]) => void;
   saveExecutiveProfile: (input: {
     dateOfBirth: string;
@@ -148,6 +150,10 @@ function normalizeUser(parsed: unknown): AuthUser | null {
           .map(normalizeMember)
           .filter((member): member is FamilyMember => member !== null)
       : [],
+    activeFamilyMemberId:
+      typeof value.activeFamilyMemberId === 'string'
+        ? value.activeFamilyMemberId
+        : null,
     familyOnboarded: Boolean(value.familyOnboarded),
     dateOfBirth: typeof value.dateOfBirth === 'string' ? value.dateOfBirth : '',
     gender: value.gender ?? null,
@@ -159,6 +165,8 @@ function normalizeUser(parsed: unknown): AuthUser | null {
     frequency: value.frequency ?? 'managed',
     executiveOnboarded: Boolean(value.executiveOnboarded),
     consultationOnboarded: Boolean(value.consultationOnboarded),
+    emailVerified:
+      typeof value.emailVerified === 'boolean' ? value.emailVerified : true,
   });
 }
 
@@ -197,7 +205,7 @@ function withService(user: AuthUser, service: CareService): AuthUser {
 
 function onboarded(user: AuthUser, service: CareService) {
   if (service === 'family') {
-    return user.familyOnboarded;
+    return user.familyOnboarded || user.familyMembers.length > 0;
   }
   if (service === 'executive') {
     return user.executiveOnboarded;
@@ -258,12 +266,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               name: input.name.trim() || nameFromEmail(input.email),
               email: input.email.trim(),
               phone: input.phone.trim(),
+              emailVerified: service !== 'family',
             });
 
         return commit(withService(current, service));
       },
+      verifyEmail: () => {
+        if (!user) {
+          throw new Error('Not signed in');
+        }
+        return commit({ ...user, emailVerified: true });
+      },
       setFamilyMembers: (members) => {
-        patch((current) => ({ ...current, familyMembers: members }));
+        patch((current) => ({
+          ...current,
+          familyMembers: members,
+          activeFamilyMemberId: members.some(
+            (member) => member.id === current.activeFamilyMemberId,
+          )
+            ? current.activeFamilyMemberId
+            : null,
+        }));
+      },
+      selectFamilyMember: (id) => {
+        patch((current) => ({
+          ...current,
+          activeFamilyMemberId: id,
+          familyOnboarded: true,
+        }));
       },
       completeFamilyOnboarding: (members) => {
         patch((current) => ({

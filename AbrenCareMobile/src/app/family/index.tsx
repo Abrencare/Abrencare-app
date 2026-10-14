@@ -21,6 +21,10 @@ import Animated, {
 import ServiceBackButton from "@/components/navigation/ServiceBackButton";
 import BrandLogo from "@/components/ui/BrandLogo";
 import { useAuth } from "@/context/AuthContext";
+import {
+  activeFamilyMember,
+  memberInitials,
+} from "@/utilities/familyMember";
 import { useAppointments } from "@/context/AppointmentsContext";
 import { useVisit } from "@/context/VisitContext";
 import {
@@ -72,9 +76,7 @@ export default function FamilyOverview() {
     transform: [{ scale: 1 + pulse.value * 1.5 }],
   }));
 
-  // Show the member they actually added; fall back to the person on today's
-  // visit while the account is still being set up.
-  const member = user?.familyMembers[0] ?? null;
+  const member = activeFamilyMember(user);
   const patientName = member?.name ?? visit.patientName;
   const patientMeta = member
     ? [
@@ -85,12 +87,7 @@ export default function FamilyOverview() {
         .filter(Boolean)
         .join(" · ")
     : t.family.patientInfo;
-  const patientInitials = patientName
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("");
+  const patientInitials = memberInitials(patientName);
 
   const hour = new Date().getHours();
   const greeting =
@@ -198,6 +195,7 @@ export default function FamilyOverview() {
           color={isDark ? "#A3B0AA" : "#4A5568"}
           size={32}
           style={styles.backButton}
+          href="/family-home"
         />
 
         <BrandLogo size={34} />

@@ -25,6 +25,7 @@ import Replace from '@/components/gates/Replace';
 import { useLanguage } from '@/context/LanguageContext';
 import { isPhoneValueComplete } from '@/data/countries';
 import { saveExecutiveInquiry } from '@/data/executiveInquiry';
+import { markFamilySetupStarted } from '@/data/familyInquiry';
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -158,23 +159,40 @@ export default function SignupScreen() {
               </>
             )}
 
-            <Pressable
-              style={styles.termsRow}
-              onPress={() => setAgreed((current) => !current)}
-            >
-              <View
-                style={[
-                  styles.checkbox,
-                  { borderColor: theme.accent },
-                  agreed && { backgroundColor: theme.accent },
-                ]}
-              >
-                {agreed && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
-              </View>
+            <View style={styles.termsRow}>
+              <Pressable onPress={() => setAgreed((current) => !current)}>
+                <View
+                  style={[
+                    styles.checkbox,
+                    { borderColor: theme.accent },
+                    agreed && { backgroundColor: theme.accent },
+                  ]}
+                >
+                  {agreed && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+                </View>
+              </Pressable>
               <Text style={[styles.termsText, { color: theme.muted }]}>
-                {t.auth.terms}
+                {t.auth.termsAgree}{' '}
+                <Text
+                  style={[styles.termsLink, { color: theme.accent }]}
+                  onPress={() =>
+                    router.push({ pathname: '/legal', params: { doc: 'terms' } })
+                  }
+                >
+                  {t.auth.termsLink}
+                </Text>
+                {' '}
+                {t.auth.termsAnd}{' '}
+                <Text
+                  style={[styles.termsLink, { color: theme.accent }]}
+                  onPress={() =>
+                    router.push({ pathname: '/legal', params: { doc: 'privacy' } })
+                  }
+                >
+                  {t.auth.privacyLink}
+                </Text>
               </Text>
-            </Pressable>
+            </View>
 
             <Pressable
               style={({ pressed }) => [
@@ -193,6 +211,11 @@ export default function SignupScreen() {
                   return;
                 }
                 signUp({ name, email, phone }, service);
+                if (service === 'family') {
+                  markFamilySetupStarted();
+                  router.replace('/verify-email');
+                  return;
+                }
                 router.replace(onboardingPath(service));
               }}
               disabled={!canSubmit}
@@ -284,6 +307,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 1,
+  },
+  termsLink: {
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   termsText: {
     flex: 1,

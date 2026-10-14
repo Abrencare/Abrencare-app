@@ -115,7 +115,7 @@ export default function LoginScreen() {
                 const next = signIn(email, service);
                 const onboarded =
                   service === 'family'
-                    ? next.familyOnboarded
+                    ? next.familyOnboarded || next.familyMembers.length > 0
                     : service === 'executive'
                       ? next.executiveOnboarded
                       : next.consultationOnboarded;
