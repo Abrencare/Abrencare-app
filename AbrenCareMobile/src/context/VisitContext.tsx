@@ -17,6 +17,15 @@ const TICK_MS = 30_000;
 
 export type VisitStatus = 'upcoming' | 'live' | 'complete';
 
+/** A concern stays pending until a clinician is actually notified or has reviewed it. */
+export type ConcernReview = 'pending' | 'notified' | 'reviewed';
+
+export type VisitConcern = {
+  id: 'ankle';
+  review: ConcernReview;
+  reviewerName: string | null;
+};
+
 export type Visit = {
   id: string;
   /** Calendar day as YYYY-MM-DD. */
@@ -31,6 +40,7 @@ export type Visit = {
   bloodPressure: string;
   medicationConfirmed: boolean;
   noteCount: number;
+  concern: VisitConcern | null;
 };
 
 type VisitContextValue = {
@@ -64,6 +74,25 @@ function seedVisit(now: Date): Visit {
     bloodPressure: '128/82',
     medicationConfirmed: true,
     noteCount: 1,
+    concern: {
+      id: 'ankle',
+      review: 'pending',
+      reviewerName: null,
+    },
+  };
+}
+
+function normalizeVisit(visit: Visit): Visit {
+  const review = visit.concern?.review;
+  return {
+    ...visit,
+    concern: {
+      id: 'ankle',
+      review:
+        review === 'notified' || review === 'reviewed' || review === 'pending' ? review : 'pending',
+      reviewerName:
+        typeof visit.concern?.reviewerName === 'string' ? visit.concern.reviewerName : null,
+    },
   };
 }
 
@@ -98,7 +127,7 @@ export function VisitProvider({ children }: { children: ReactNode }) {
 
       // A stored visit from an earlier day is history; today gets a fresh one.
       if (stored.dateKey === toDateKey(new Date())) {
-        setVisit(stored);
+        setVisit(normalizeVisit(stored));
       }
     });
 

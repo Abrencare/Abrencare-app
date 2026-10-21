@@ -22,6 +22,8 @@ const backgrounds: Record<string, string> = {
   '#f8f4ec': PAGE,
   '#f4f6f8': PAGE,
   '#f7f8f6': PAGE,
+  '#f4f6f3': PAGE,
+  '#fbfcfb': PAGE,
   '#f4f0e8': PAGE,
   '#f6f0e3': PAGE,
   '#eef2f6': PAGE,

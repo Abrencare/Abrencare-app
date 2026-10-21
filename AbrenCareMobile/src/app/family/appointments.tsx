@@ -26,10 +26,21 @@ import {
   reminderLabel,
   typeIcons,
 } from '@/utilities/familyFormat';
+import FamilyMemberHeader from '@/components/family/FamilyMemberHeader';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { activeFamilyMember } from '@/utilities/familyMember';
 import { useThemedStyles } from '@/theme/useThemedStyles';
+
+function timeRange(time: string) {
+  const [hours, minutes] = time.split(':').map(Number);
+  if (Number.isNaN(hours)) {
+    return time;
+  }
+  const endHour = (hours + 1) % 24;
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${pad(hours)}:${pad(minutes || 0)} - ${pad(endHour)}:${pad(minutes || 0)}`;
+}
 
 export default function FamilyAppointments() {
 
@@ -129,6 +140,7 @@ export default function FamilyAppointments() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
+      <FamilyMemberHeader />
       <Text style={styles.headerLabel}>{t.familyAppointments.headerLabel}</Text>
       <Text style={styles.title}>{t.familyAppointments.title}</Text>
       <Text style={styles.subtitle}>
@@ -145,43 +157,56 @@ export default function FamilyAppointments() {
       )}
 
       {/* Upcoming appointments */}
-      <Text style={styles.sectionTitle}>{t.familyAppointments.upcoming}</Text>
+      <Text style={styles.sectionTitle}>{t.familyAppointments.upcomingTitle}</Text>
+      <Text style={styles.upcomingSub}>{t.familyAppointments.upcomingSub}</Text>
 
-      <View style={styles.card}>
-        <View style={styles.greenLine} />
-
+      <View>
         {appointments.length === 0 ? (
-          <Text style={styles.empty}>{t.familyAppointments.empty}</Text>
+          <View style={styles.card}>
+            <Text style={styles.empty}>{t.familyAppointments.empty}</Text>
+          </View>
         ) : (
-          appointments.map((appointment, index) => (
-            <View
-              key={appointment.id}
-              style={[
-                styles.appointmentRow,
-                index !== appointments.length - 1 && styles.separator,
-              ]}
-            >
+          appointments.map((appointment) => {
+            const when = fromDateKey(appointment.date);
+            const extra = appointment.type === 'labSample';
+            return (
+            <View key={appointment.id} style={[styles.card, styles.visitCard]}>
               <View style={styles.dateBox}>
-                <Text style={styles.dateBoxDay}>
-                  {fromDateKey(appointment.date).getDate()}
-                </Text>
+                <Text style={styles.dateBoxDay}>{when.getDate()}</Text>
                 <Text style={styles.dateBoxMonth}>
-                  {t.calendar.months[
-                    fromDateKey(appointment.date).getMonth()
-                  ].slice(0, 3)}
+                  {t.calendar.months[when.getMonth()].slice(0, 3)}
                 </Text>
               </View>
 
               <View style={styles.appointmentInfo}>
+                <View
+                  style={[
+                    styles.statusChip,
+                    extra ? styles.statusExtra : styles.statusConfirmed,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusChipText,
+                      extra ? styles.statusExtraText : styles.statusConfirmedText,
+                    ]}
+                  >
+                    {extra
+                      ? t.familyAppointments.statusExtra
+                      : t.familyAppointments.statusConfirmed}
+                  </Text>
+                </View>
                 <Text style={styles.appointmentType}>
                   {t.familyAppointments.types[appointment.type]}
                 </Text>
                 <Text style={styles.appointmentMeta}>
-                  {formatDateKey(appointment.date, t)} · {appointment.time}
+                  {formatDateKey(appointment.date, t)} · {timeRange(appointment.time)}
                 </Text>
-                <Text style={styles.appointmentMeta}>
-                  {t.familyAppointments.withLabel} {appointment.withName}
-                </Text>
+                {extra ? (
+                  <Text style={styles.extraNote}>{t.familyAppointments.extraNote}</Text>
+                ) : (
+                  <Text style={styles.appointmentMeta}>{appointment.withName}</Text>
+                )}
 
                 <View style={styles.appointmentActions}>
                   <TouchableOpacity
@@ -197,15 +222,11 @@ export default function FamilyAppointments() {
                     <Ionicons
                       name={
                         appointment.reminderMinutes !== null
-                          ? 'notifications'
+                          ? 'notifications-outline'
                           : 'notifications-off-outline'
                       }
                       size={12}
-                      color={
-                        appointment.reminderMinutes !== null
-                          ? '#8B9A7C'
-                          : '#9AA3AF'
-                      }
+                      color="#5E7A62"
                     />
                     <Text
                       style={[
@@ -235,7 +256,8 @@ export default function FamilyAppointments() {
                 </View>
               </View>
             </View>
-          ))
+            );
+          })
         )}
       </View>
 
@@ -258,7 +280,7 @@ export default function FamilyAppointments() {
                 <Ionicons
                   name={typeIcons[type]}
                   size={14}
-                  color={active ? '#FFFFFF' : '#8B9A7C'}
+                  color={active ? '#FFFFFF' : '#5E7A62'}
                 />
                 <Text
                   style={[
@@ -440,13 +462,13 @@ export default function FamilyAppointments() {
 const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F6F2EA',
+    backgroundColor: '#F4F6F3',
   },
 
   content: {
     paddingHorizontal: 18,
     paddingTop: 55,
-    paddingBottom: 34,
+    paddingBottom: 48,
   },
 
   headerLabel: {
@@ -501,6 +523,46 @@ const baseStyles = StyleSheet.create({
     borderRadius: 18,
     padding: 16,
     marginBottom: 20,
+  },
+  upcomingSub: {
+    marginTop: -8,
+    marginBottom: 12,
+    fontSize: 13,
+    color: '#5C6B65',
+  },
+  visitCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  statusChip: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginBottom: 6,
+  },
+  statusConfirmed: {
+    backgroundColor: '#EAF6EA',
+  },
+  statusExtra: {
+    backgroundColor: '#F3F3F1',
+  },
+  statusChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  statusConfirmedText: {
+    color: '#2F9E6B',
+  },
+  statusExtraText: {
+    color: '#5C6B65',
+  },
+  extraNote: {
+    marginTop: 6,
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#5C6B65',
   },
 
   greenLine: {

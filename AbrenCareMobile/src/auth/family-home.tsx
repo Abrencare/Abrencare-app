@@ -3,16 +3,14 @@ import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
+import FamilyProfilePhoto from '@/components/family/FamilyProfilePhoto';
 import Replace from '@/components/gates/Replace';
 import ServiceBackButton from '@/components/navigation/ServiceBackButton';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useServiceTheme } from '@/service/serviceTheme';
 import type { FamilyMember } from '@/types/auth';
-import {
-  memberInitials,
-  memberSummary,
-} from '@/utilities/familyMember';
+import { memberSummary } from '@/utilities/familyMember';
 
 export default function FamilyHomeScreen() {
   const router = useRouter();
@@ -72,13 +70,7 @@ export default function FamilyHomeScreen() {
                 pressed && styles.pressed,
               ]}
             >
-              <View
-                style={[styles.avatar, { backgroundColor: theme.accentSoft }]}
-              >
-                <Text style={[styles.avatarText, { color: theme.accent }]}>
-                  {memberInitials(member.name)}
-                </Text>
-              </View>
+              <FamilyProfilePhoto size={48} />
               <View style={styles.cardCopy}>
                 <Text style={[styles.name, { color: theme.text }]}>
                   {member.name}
@@ -165,17 +157,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   pressed: { opacity: 0.88 },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
   cardCopy: {
     flex: 1,
   },

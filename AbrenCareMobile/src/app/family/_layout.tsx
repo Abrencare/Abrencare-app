@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import FamilyMemberGate from '@/components/gates/FamilyMemberGate';
@@ -9,9 +10,39 @@ import { useLanguage } from '@/context/LanguageContext';
 
 type TabIconProps = { color: string; size: number; focused: boolean };
 
+function TabIcon({
+  color,
+  size,
+  focused,
+  name,
+  focusedName,
+}: TabIconProps & {
+  name: keyof typeof Ionicons.glyphMap;
+  focusedName: keyof typeof Ionicons.glyphMap;
+}) {
+  return (
+    <View style={tabIconStyles.wrap}>
+      <Ionicons name={focused ? focusedName : name} size={size} color={color} />
+      {focused ? <View style={[tabIconStyles.underline, { backgroundColor: color }]} /> : null}
+    </View>
+  );
+}
+
+const tabIconStyles = StyleSheet.create({
+  wrap: {
+    alignItems: 'center',
+  },
+  underline: {
+    marginTop: 4,
+    width: 18,
+    height: 2,
+    borderRadius: 1,
+  },
+});
+
 export default function FamilyLayout() {
   const { t } = useLanguage();
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
 
   return (
     <ServiceAccessGate service="family">
@@ -19,20 +50,14 @@ export default function FamilyLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#8B9A7C',
+        tabBarActiveTintColor: '#5E7A62',
         tabBarInactiveTintColor: colors.navInactive,
         tabBarStyle: {
-          height: 70,
-          paddingTop: 8,
-          paddingBottom: 8,
-          backgroundColor: colors.nav,
-          borderTopWidth: 1,
-          borderTopColor: colors.navBorder,
-          elevation: 8,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.08,
-          shadowRadius: 10,
+          paddingTop: 6,
+          backgroundColor: isDark ? colors.nav : '#FBFCFB',
+          borderTopWidth: 0,
+          elevation: 0,
+          shadowOpacity: 0,
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -45,8 +70,8 @@ export default function FamilyLayout() {
         name="index"
         options={{
           title: t.tabs.home,
-          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
+          tabBarIcon: (props: TabIconProps) => (
+            <TabIcon {...props} name="home-outline" focusedName="home" />
           ),
         }}
       />
@@ -54,8 +79,8 @@ export default function FamilyLayout() {
         name="reports"
         options={{
           title: t.tabs.myCare,
-          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
-            <Ionicons name={focused ? 'heart' : 'heart-outline'} size={size} color={color} />
+          tabBarIcon: (props: TabIconProps) => (
+            <TabIcon {...props} name="heart-outline" focusedName="heart" />
           ),
         }}
       />
@@ -63,8 +88,8 @@ export default function FamilyLayout() {
         name="appointments"
         options={{
           title: t.tabs.book,
-          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
-            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={size} color={color} />
+          tabBarIcon: (props: TabIconProps) => (
+            <TabIcon {...props} name="calendar-outline" focusedName="calendar" />
           ),
         }}
       />
@@ -72,8 +97,8 @@ export default function FamilyLayout() {
         name="profile"
         options={{
           title: t.tabs.profile,
-          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
+          tabBarIcon: (props: TabIconProps) => (
+            <TabIcon {...props} name="person-outline" focusedName="person" />
           ),
         }}
       />

@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 
 import FamilyRequestChrome from '@/auth/FamilyRequestChrome';
+import FamilyIconWell from '@/components/family/FamilyIconWell';
+import FamilyProfilePhoto from '@/components/family/FamilyProfilePhoto';
 import Replace from '@/components/gates/Replace';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -12,12 +14,19 @@ import { useAppTheme } from '@/context/ThemeContext';
 import { CARE_LINE } from '@/data/contact';
 import {
   acceptFamilyProposal,
-  journeyStageIndex,
   loadFamilyInquiry,
   type FamilyInquiry,
 } from '@/data/familyInquiry';
 import { dashboardFor, onboardingPath } from '@/service/serviceTheme';
 import { useLandingType } from '@/theme/landingType';
+import { activeFamilyMember } from '@/utilities/familyMember';
+
+const SERVICE_ICONS = [
+  'home-outline',
+  'heart-outline',
+  'people-outline',
+  'document-text-outline',
+] as const;
 
 export default function FamilyCarePlanScreen() {
   const router = useRouter();
@@ -51,15 +60,21 @@ export default function FamilyCarePlanScreen() {
     return <Replace href="/family-request" />;
   }
 
-  const stages = [
-    copy.stepReceived,
-    copy.stepContacted,
-    copy.stepProposed,
-    copy.stepSetup,
-    copy.stepActive,
-  ];
-  const currentStage = journeyStageIndex(inquiry.status);
   const proposal = inquiry.proposal;
+  const member = activeFamilyMember(user);
+  const careName = member?.name || proposal?.recipient || '';
+  const personMeta = [
+    member?.ageYears != null ? t.familyAdd.dobAge.replace('{age}', String(member.ageYears)) : null,
+    member?.city || null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const services = [
+    { title: copy.serviceNurse, detail: proposal?.visitFrequency || copy.serviceNurseDetail },
+    { title: copy.serviceCheck, detail: copy.serviceCheckDetail },
+    { title: copy.serviceFollow, detail: copy.serviceFollowDetail },
+    { title: copy.serviceReport, detail: copy.serviceReportDetail },
+  ];
   const canAccept = inquiry.status === 'proposed' && !!proposal && !accepting;
   const canContinueSetup = inquiry.status === 'accepted' || inquiry.status === 'setup';
 
@@ -105,117 +120,71 @@ export default function FamilyCarePlanScreen() {
 
   return (
     <FamilyRequestChrome>
-      <View style={styles.kickerRow}>
-        <Text style={[styles.kicker, type.kicker, { color: colors.muted }]}>{copy.kicker}</Text>
-        <Ionicons name="lock-closed" size={14} color={colors.muted} />
-      </View>
-
-      <View style={styles.tracker}>
-        {stages.map((label, index) => {
-          const done = index < currentStage;
-          const current = index === currentStage;
-          const isLast = index === stages.length - 1;
-          return (
-            <View key={label} style={styles.stage}>
-              <View style={styles.stageTop}>
-                <View
-                  style={[
-                    styles.connector,
-                    { backgroundColor: colors.border },
-                    index === 0 && styles.connectorHidden,
-                    index <= currentStage && { backgroundColor: colors.continue },
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.dotWrap,
-                    current && { backgroundColor: isDark ? colors.continue : '#E7EEEA' },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.dot,
-                      { backgroundColor: colors.card, borderColor: colors.border },
-                      (done || current) && { backgroundColor: colors.continue, borderColor: colors.continue },
-                    ]}
-                  >
-                    {done ? <Ionicons name="checkmark" size={11} color="#FFFFFF" /> : null}
-                  </View>
-                </View>
-                <View
-                  style={[
-                    styles.connector,
-                    { backgroundColor: colors.border },
-                    isLast && styles.connectorHidden,
-                    index < currentStage && { backgroundColor: colors.continue },
-                  ]}
-                />
-              </View>
-              <Text
-                style={[
-                  styles.stageLabel,
-                  type.caption,
-                  { color: colors.muted },
-                  current && { color: colors.text, fontFamily: type.sansSemi },
-                ]}
-              >
-                {label}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
+      <Text style={[styles.kicker, type.kicker, { color: colors.muted }]}>{copy.kicker}</Text>
 
       {proposal ? (
-        <View style={[styles.proposal, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.title, type.headline, { color: colors.text }]}>{copy.title}</Text>
+        <View>
+          <Text style={[styles.title, type.headline, { color: colors.text }]}>
+            {copy.planFor.replace('{name}', careName)}
+          </Text>
           <Text style={[styles.subtitle, type.body, { color: colors.muted }]}>{copy.subtitle}</Text>
 
-          <View style={[styles.rule, { backgroundColor: colors.divider }]} />
-          <Text style={[styles.sectionLabel, type.label, { color: colors.text }]}>
-            {copy.careFor}: {proposal.recipient}
-          </Text>
+          <View style={[styles.personCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <FamilyProfilePhoto size={64} />
+            <View style={styles.personCopy}>
+              <Text style={[styles.personName, type.section, { color: colors.text }]}>
+                {careName}
+              </Text>
+              {personMeta ? (
+                <Text style={[styles.personMeta, type.bodySmall, { color: colors.muted }]}>{personMeta}</Text>
+              ) : null}
+            </View>
+          </View>
 
-          <View style={[styles.rule, { backgroundColor: colors.divider }]} />
-          <Text style={[styles.sectionLabel, type.label, { color: colors.text }]}>{copy.servicesTitle}</Text>
-          <Text style={[styles.sectionBody, type.bodySmall, { color: colors.muted }]}>{proposal.services}</Text>
+          <View style={[styles.block, { backgroundColor: colors.card, borderColor: isDark ? colors.border : '#D5E3DC' }]}>
+            <View style={[styles.priceHead, { backgroundColor: isDark ? colors.continue : '#E7EEEA' }]}>
+              <Ionicons name="list-outline" size={16} color={isDark ? '#C9E4D8' : '#5E7A62'} />
+              <Text style={[styles.priceHeadText, type.label, { color: isDark ? '#E7EEEA' : '#1A3A32' }]}>
+                {copy.includedTitle}
+              </Text>
+            </View>
+            <View style={styles.serviceBody}>
+              {services.map((service, index) => (
+                <View key={service.title} style={styles.serviceRow}>
+                  <FamilyIconWell name={SERVICE_ICONS[index]} />
+                  <View style={styles.serviceCopy}>
+                    <Text style={[styles.serviceText, type.bodySmall, { color: colors.text }]}>{service.title}</Text>
+                    <Text style={[styles.serviceDetail, type.caption, { color: colors.muted }]}>{service.detail}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
 
-          <View style={[styles.rule, { backgroundColor: colors.divider }]} />
-          <Text style={[styles.sectionLabel, type.label, { color: colors.text }]}>{copy.frequencyTitle}</Text>
-          <Text style={[styles.sectionBody, type.bodySmall, { color: colors.muted }]}>
-            {proposal.visitFrequency}
-          </Text>
-          <Text style={[styles.sectionLabel, type.label, { color: colors.text, marginTop: 12 }]}>
-            {copy.durationTitle}
-          </Text>
-          <Text style={[styles.sectionBody, type.bodySmall, { color: colors.muted }]}>
-            {proposal.planDuration}
-          </Text>
-
-          <View style={[styles.rule, { backgroundColor: colors.divider }]} />
-          <Text style={[styles.sectionLabel, type.label, { color: colors.text }]}>{copy.quoteTitle}</Text>
-          <Text style={[styles.quoteAmount, type.section, { color: colors.text }]}>
-            {proposal.quoteAmount} {proposal.quoteCurrency}
-          </Text>
-          <Text style={[styles.sectionBody, type.bodySmall, { color: colors.muted }]}>
-            {copy.billing}: {proposal.billingPeriod}
-          </Text>
-          <Text style={[styles.quoteMeta, type.label, { color: colors.text }]}>{copy.exclusionsTitle}</Text>
-          <Text style={[styles.sectionBody, type.bodySmall, { color: colors.muted }]}>
-            {proposal.exclusions}
-          </Text>
-          <Text style={[styles.quoteMeta, type.label, { color: colors.text }]}>{copy.paymentTitle}</Text>
-          <Text style={[styles.sectionBody, type.bodySmall, { color: colors.muted }]}>
-            {proposal.paymentTerms}
-          </Text>
-          <Text style={[styles.quoteMeta, type.label, { color: colors.text }]}>{copy.cancelTitle}</Text>
-          <Text style={[styles.sectionBody, type.bodySmall, { color: colors.muted }]}>
-            {proposal.cancellationTerms}
-          </Text>
-
-          <View style={[styles.nextBox, { backgroundColor: isDark ? colors.continue : '#E7EEEA' }]}>
-            <Text style={[styles.nextTitle, type.label, { color: colors.text }]}>{copy.nextTitle}</Text>
-            <Text style={[styles.nextBody, type.bodySmall, { color: colors.muted }]}>{copy.nextBody}</Text>
+          <View style={[styles.priceCard, { backgroundColor: colors.card, borderColor: isDark ? colors.border : '#D5E3DC' }]}>
+            <View style={[styles.priceHead, { backgroundColor: isDark ? colors.continue : '#E7EEEA' }]}>
+              <Ionicons name="pricetag-outline" size={16} color={isDark ? '#C9E4D8' : '#5E7A62'} />
+              <Text style={[styles.priceHeadText, type.label, { color: isDark ? '#E7EEEA' : '#1A3A32' }]}>
+                {copy.priceTitle}
+              </Text>
+            </View>
+            <View style={styles.priceBody}>
+              <Text style={[styles.feeLabel, type.caption, { color: colors.muted }]}>{copy.monthlyFee}</Text>
+              <View style={styles.amountRow}>
+                <Text style={[styles.quoteAmount, { color: colors.text }]}>{proposal.quoteAmount}</Text>
+                <View style={[styles.currencyChip, { backgroundColor: isDark ? colors.continue : '#1A3A32' }]}>
+                  <Text style={styles.currencyText}>{proposal.quoteCurrency}</Text>
+                </View>
+              </View>
+              <Text style={[styles.sectionBody, type.bodySmall, { color: colors.muted }]}>{proposal.billingPeriod}</Text>
+              <Text style={[styles.sectionBody, type.bodySmall, { color: colors.muted }]}>
+                {proposal.cancellationTerms}
+              </Text>
+              <Pressable style={styles.termsRow} onPress={() => router.push('/legal?doc=terms')}>
+                <Text style={[styles.termsLink, type.bodySmall]}>{copy.termsLink}</Text>
+                <Ionicons name="chevron-forward" size={14} color="#3D7A9A" />
+              </Pressable>
+            </View>
           </View>
         </View>
       ) : waiting ? (
@@ -223,10 +192,6 @@ export default function FamilyCarePlanScreen() {
           <Text style={[styles.title, type.headline, { color: colors.text }]}>{waiting.title}</Text>
           <Text style={[type.body, { color: colors.muted }]}>{waiting.body}</Text>
         </View>
-      ) : null}
-
-      {waiting && proposal ? (
-        <Text style={[styles.statusNote, type.bodySmall, { color: colors.muted }]}>{waiting.body}</Text>
       ) : null}
 
       {canAccept ? (
@@ -273,55 +238,8 @@ export default function FamilyCarePlanScreen() {
 }
 
 const styles = StyleSheet.create({
-  kickerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
   kicker: {
-    flex: 1,
-    paddingRight: 12,
-  },
-  tracker: {
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
-  stage: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  stageTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'stretch',
-    marginBottom: 8,
-  },
-  connector: {
-    flex: 1,
-    height: 2,
-  },
-  connectorHidden: {
-    backgroundColor: 'transparent',
-  },
-  dotWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dot: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stageLabel: {
-    textAlign: 'center',
-    paddingHorizontal: 1,
+    marginBottom: 16,
   },
   proposal: {
     borderRadius: 22,
@@ -339,38 +257,114 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   subtitle: {
-    marginBottom: 4,
+    marginBottom: 16,
   },
-  rule: {
-    height: 1,
-    marginVertical: 16,
+  personCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 12,
   },
-  sectionLabel: {
-    marginBottom: 6,
+  personCopy: {
+    flex: 1,
+  },
+  personName: {
+    fontSize: 16,
+  },
+  personMeta: {
+    marginTop: 2,
+  },
+  block: {
+    borderRadius: 22,
+    borderWidth: 1,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  serviceBody: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 16,
+  },
+  serviceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 14,
+  },
+  serviceCopy: {
+    flex: 1,
+  },
+  serviceText: {
+    lineHeight: 20,
+  },
+  serviceDetail: {
+    marginTop: 2,
+  },
+  priceCard: {
+    borderRadius: 22,
+    borderWidth: 1,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  priceHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  priceHeadText: {
+    flex: 1,
+  },
+  priceBody: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 16,
+  },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 10,
+  },
+  currencyChip: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  currencyText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  feeLabel: {
+    letterSpacing: 0.2,
+  },
+  termsRow: {
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  termsLink: {
+    color: '#3D7A9A',
+    fontWeight: '600',
   },
   sectionBody: {
     lineHeight: 20,
   },
   quoteAmount: {
-    marginBottom: 4,
+    fontSize: 32,
+    lineHeight: 38,
+    fontWeight: '700',
   },
   quoteMeta: {
     marginTop: 12,
     marginBottom: 4,
-  },
-  nextBox: {
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 20,
-  },
-  nextTitle: {
-    marginBottom: 6,
-  },
-  nextBody: {
-    lineHeight: 20,
-  },
-  statusNote: {
-    marginBottom: 16,
   },
   primary: {
     minHeight: 54,

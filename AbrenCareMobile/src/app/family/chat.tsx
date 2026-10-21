@@ -321,7 +321,7 @@ function FileCard({
 const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F6F2EA',
+    backgroundColor: '#F4F6F3',
   },
 
   header: {

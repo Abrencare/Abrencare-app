@@ -8,16 +8,17 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 
+import FamilyIconWell from "@/components/family/FamilyIconWell";
+import FamilyProfilePhoto from "@/components/family/FamilyProfilePhoto";
 import { initialsFor, useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAppTheme } from "@/context/ThemeContext";
+import { useFamilyJourney } from "@/hooks/useFamilyJourney";
 import { useThemedStyles } from "@/theme/useThemedStyles";
-import {
-  activeFamilyMember,
-  memberInitials,
-} from "@/utilities/familyMember";
+import { activeFamilyMember } from "@/utilities/familyMember";
 
 export default function ConsultationProfile() {
 
@@ -26,6 +27,7 @@ export default function ConsultationProfile() {
   const router = useRouter();
   const { user, signOut } = useAuth();
   const { isDark, toggleTheme } = useAppTheme();
+  const { serviceStarted } = useFamilyJourney();
   const member = activeFamilyMember(user);
   const memberName = member?.name ?? user?.name ?? "";
   const memberAge =
@@ -38,6 +40,7 @@ export default function ConsultationProfile() {
   return (
     <ScrollView
       style={styles.container}
+      contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
@@ -54,9 +57,7 @@ export default function ConsultationProfile() {
 
       {/* User Card */}
       <View style={styles.profileCard}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{memberInitials(memberName)}</Text>
-        </View>
+        <FamilyProfilePhoto size={84} />
 
         <Text style={styles.name}>{memberName}</Text>
 
@@ -64,9 +65,18 @@ export default function ConsultationProfile() {
           {t.profile.member}
         </Text>
 
-        <View style={styles.statusBadge}>
-          <Text style={styles.statusText}>{t.profile.activePlan}</Text>
-        </View>
+        {serviceStarted ? (
+          <LinearGradient
+            colors={isDark ? ["#3A5246", "#2A3B33"] : ["#FFFFFF", "#E3EFE8"]}
+            start={{ x: 0.1, y: 0 }}
+            end={{ x: 0.9, y: 1 }}
+            style={styles.statusBadge}
+          >
+            <Text style={[styles.statusText, isDark && styles.statusTextDark]}>
+              {t.profile.activePlan}
+            </Text>
+          </LinearGradient>
+        ) : null}
       </View>
 
       {/* Personal Information */}
@@ -74,7 +84,7 @@ export default function ConsultationProfile() {
         <Text style={styles.sectionTitle}>{t.profile.personalInformation}</Text>
 
         <View style={styles.row}>
-          <Ionicons name="person-outline" size={20} color="#8B9A7C" />
+          <FamilyIconWell name="person-outline" box={34} size={16} />
           <View style={styles.info}>
             <Text style={styles.label}>{t.profile.fullName}</Text>
             <Text style={styles.value}>{memberName}</Text>
@@ -84,7 +94,7 @@ export default function ConsultationProfile() {
         <View style={styles.separator} />
 
         <View style={styles.row}>
-          <Ionicons name="calendar-outline" size={20} color="#8B9A7C" />
+          <FamilyIconWell name="calendar-outline" box={34} size={16} />
           <View style={styles.info}>
             <Text style={styles.label}>{t.profile.age}</Text>
             <Text style={styles.value}>{memberAge}</Text>
@@ -94,7 +104,7 @@ export default function ConsultationProfile() {
         <View style={styles.separator} />
 
         <View style={styles.row}>
-          <Ionicons name="location-outline" size={20} color="#8B9A7C" />
+          <FamilyIconWell name="location-outline" box={34} size={16} />
           <View style={styles.info}>
             <Text style={styles.label}>{t.profile.address}</Text>
             <Text style={styles.value}>{memberCity}</Text>
@@ -104,7 +114,7 @@ export default function ConsultationProfile() {
         <View style={styles.separator} />
 
         <View style={styles.row}>
-          <Ionicons name="call-outline" size={20} color="#8B9A7C" />
+          <FamilyIconWell name="call-outline" box={34} size={16} />
           <View style={styles.info}>
             <Text style={styles.label}>{t.profile.phone}</Text>
             <Text style={styles.value}>{memberPhone}</Text>
@@ -117,7 +127,7 @@ export default function ConsultationProfile() {
         <Text style={styles.sectionTitle}>{t.profile.emergencyContact}</Text>
 
         <View style={styles.row}>
-          <Ionicons name="people-outline" size={20} color="#8B9A7C" />
+          <FamilyIconWell name="people-outline" box={34} size={16} />
           <View style={styles.info}>
             <Text style={styles.label}>{t.profile.coordinator}</Text>
             <Text style={styles.value}>Marta Tesfaye</Text>
@@ -127,7 +137,7 @@ export default function ConsultationProfile() {
         <View style={styles.separator} />
 
         <View style={styles.row}>
-          <Ionicons name="medkit-outline" size={20} color="#8B9A7C" />
+          <FamilyIconWell name="medkit-outline" box={34} size={16} />
           <View style={styles.info}>
             <Text style={styles.label}>{t.profile.assignedNurse}</Text>
             <Text style={styles.value}>Meron Girma</Text>
@@ -140,9 +150,16 @@ export default function ConsultationProfile() {
         <Text style={styles.sectionTitle}>{t.profile.signedInAs}</Text>
 
         <View style={styles.row}>
-          <View style={styles.accountAvatar}>
-            <Text style={styles.accountAvatarText}>{initialsFor(user)}</Text>
-          </View>
+          <LinearGradient
+            colors={isDark ? ["#3A5246", "#2A3B33"] : ["#FFFFFF", "#E3EFE8"]}
+            start={{ x: 0.1, y: 0 }}
+            end={{ x: 0.9, y: 1 }}
+            style={styles.accountAvatar}
+          >
+            <Text style={[styles.accountAvatarText, isDark && styles.statusTextDark]}>
+              {initialsFor(user)}
+            </Text>
+          </LinearGradient>
           <View style={styles.info}>
             <Text style={styles.label}>{t.profile.accountEmail}</Text>
             <Text style={styles.value}>{user?.name}</Text>
@@ -155,11 +172,7 @@ export default function ConsultationProfile() {
         <Text style={styles.sectionTitle}>{t.settings.title}</Text>
 
         <View style={styles.row}>
-          <Ionicons
-            name={isDark ? "moon" : "moon-outline"}
-            size={20}
-            color="#8B9A7C"
-          />
+          <FamilyIconWell name={isDark ? "moon" : "moon-outline"} box={34} size={16} />
           <View style={styles.info}>
             <Text style={styles.label}>{t.header.darkTheme}</Text>
             <Text style={styles.value}>
@@ -206,8 +219,11 @@ export default function ConsultationProfile() {
 const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F6F2EA",
+    backgroundColor: "#F4F6F3",
+  },
+  scrollContent: {
     padding: 18,
+    paddingBottom: 40,
   },
 
   backButton: {
@@ -236,21 +252,6 @@ const baseStyles = StyleSheet.create({
     marginBottom: 18,
   },
 
-  avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 18,
-    backgroundColor: "#222",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  avatarText: {
-    color: "#9BE38C",
-    fontWeight: "700",
-    fontSize: 22,
-  },
-
   name: {
     marginTop: 14,
     fontSize: 22,
@@ -265,16 +266,22 @@ const baseStyles = StyleSheet.create({
 
   statusBadge: {
     marginTop: 14,
-    backgroundColor: "#E8EDE4",
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#D7E6DC",
+    overflow: "hidden",
   },
 
   statusText: {
-    color: "#8B9A7C",
+    color: "#4F7A62",
     fontWeight: "600",
     fontSize: 12,
+  },
+
+  statusTextDark: {
+    color: "#E7F3EC",
   },
 
   section: {
@@ -355,13 +362,15 @@ const baseStyles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "#E8EDE4",
+    borderWidth: 1,
+    borderColor: "#D7E6DC",
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
   },
 
   accountAvatarText: {
-    color: "#8B9A7C",
+    color: "#4F7A62",
     fontWeight: "700",
     fontSize: 13,
   },

@@ -1,69 +1,97 @@
-import React, { useEffect } from "react";
+import React, { useEffect } from 'react';
 import {
   Alert,
   Linking,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
-} from "react-native";
+} from 'react-native';
 
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withTiming,
-} from "react-native-reanimated";
+} from 'react-native-reanimated';
 
-import ServiceBackButton from "@/components/navigation/ServiceBackButton";
-import BrandLogo from "@/components/ui/BrandLogo";
-import { useAuth } from "@/context/AuthContext";
-import {
-  activeFamilyMember,
-  memberInitials,
-} from "@/utilities/familyMember";
-import { useAppointments } from "@/context/AppointmentsContext";
-import { useVisit } from "@/context/VisitContext";
-import {
-  formatClock,
-  formatDateKey,
-  reminderLabel,
-} from "@/utilities/familyFormat";
-import { useLanguage } from "@/context/LanguageContext";
-import { useAppTheme } from "@/context/ThemeContext";
-import { CARE_LINE } from "@/data/contact";
-import { useThemedStyles } from "@/theme/useThemedStyles";
+import FamilyIconWell from '@/components/family/FamilyIconWell';
+import FamilyProfilePhoto from '@/components/family/FamilyProfilePhoto';
+import ServiceBackButton from '@/components/navigation/ServiceBackButton';
+import BrandLogo from '@/components/ui/BrandLogo';
+import { useAppointments } from '@/context/AppointmentsContext';
+import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
+import { useAppTheme } from '@/context/ThemeContext';
+import { useVisit } from '@/context/VisitContext';
+import { CARE_LINE } from '@/data/contact';
+import type { FamilyInquiry } from '@/data/familyInquiry';
+import { useFamilyJourney } from '@/hooks/useFamilyJourney';
+import { useLandingType } from '@/theme/landingType';
+import { useThemedStyles } from '@/theme/useThemedStyles';
+import { formatClock, formatDateKey } from '@/utilities/familyFormat';
+import { activeFamilyMember } from '@/utilities/familyMember';
+import type { FamilyMember } from '@/types/auth';
 
-const GREEN = "#8B9A7C";
+const GREEN = '#5E7A62';
 const CARE_PHONE = CARE_LINE;
 
-type Tone = "good" | "info" | "flag";
+function shortNurse(name: string) {
+  const first = name.replace(/^Nurse\s+/i, '').split(' ').filter(Boolean)[0];
+  if (!first) {
+    return name;
+  }
+  return /^nurse\b/i.test(name) ? `Nurse ${first}` : first;
+}
 
-const lightTones: Record<Tone, { text: string; bg: string }> = {
-  good: { text: "#8B9A7C", bg: "#E8EDE4" },
-  info: { text: "#556CD6", bg: "#E8EEFF" },
-  flag: { text: "#D64545", bg: "#FFE8E8" },
-};
-
-const darkTones: Record<Tone, { text: string; bg: string }> = {
-  good: { text: "#8B9A7C", bg: "#243028" },
-  info: { text: "#8FA3FF", bg: "#1E2433" },
-  flag: { text: "#E07070", bg: "#2A1C1C" },
-};
+function glanceFor(
+  member: FamilyMember | null,
+  copy: {
+    greetingSubtitle: string;
+    glanceMother: string;
+    glanceFather: string;
+    glanceParent: string;
+    glanceSpouse: string;
+    glanceChild: string;
+    glanceNamed: string;
+  },
+) {
+  if (!member) {
+    return copy.greetingSubtitle;
+  }
+  switch (member.relationship) {
+    case 'mother':
+      return copy.glanceMother;
+    case 'father':
+      return copy.glanceFather;
+    case 'parent':
+      return copy.glanceParent;
+    case 'spouse':
+      return copy.glanceSpouse;
+    case 'child':
+      return copy.glanceChild;
+    default:
+      return copy.glanceNamed.replace('{name}', member.name);
+  }
+}
 
 export default function FamilyOverview() {
-
   const styles = useThemedStyles(baseStyles);
+  const { width } = useWindowDimensions();
+  const showVisitArt = width >= 390;
   const { isDark } = useAppTheme();
-  const tones = isDark ? darkTones : lightTones;
   const { t } = useLanguage();
+  const type = useLandingType('family');
   const router = useRouter();
   const { user } = useAuth();
   const { nextAppointment } = useAppointments();
   const { visit, status: visitStatus, finishedAt } = useVisit();
+  const { inquiry, loading, serviceStarted } = useFamilyJourney();
 
   const pulse = useSharedValue(0);
 
@@ -77,18 +105,6 @@ export default function FamilyOverview() {
   }));
 
   const member = activeFamilyMember(user);
-  const patientName = member?.name ?? visit.patientName;
-  const patientMeta = member
-    ? [
-        member.ageYears !== null ? String(member.ageYears) : null,
-        member.city || null,
-        t.family.planActiveMeta,
-      ]
-        .filter(Boolean)
-        .join(" · ")
-    : t.family.patientInfo;
-  const patientInitials = memberInitials(patientName);
-
   const hour = new Date().getHours();
   const greeting =
     hour < 12
@@ -96,14 +112,14 @@ export default function FamilyOverview() {
       : hour < 18
         ? t.family.greetingAfternoon
         : t.family.greetingEvening;
-  const firstName = user?.name.split(" ")[0];
+  const careName = member?.name ?? '';
+  const glance = glanceFor(member, t.family);
 
   async function dial() {
     const url = `tel:${CARE_PHONE}`;
-
     try {
       if (!(await Linking.canOpenURL(url))) {
-        throw new Error("unsupported");
+        throw new Error('unsupported');
       }
       await Linking.openURL(url);
     } catch {
@@ -111,1012 +127,619 @@ export default function FamilyOverview() {
     }
   }
 
-  const readings: {
-    label: string;
-    value: string;
-    status: string;
-    tone: Tone;
-    icon: keyof typeof Ionicons.glyphMap;
-  }[] = [
-    {
-      label: t.family.bloodPressure,
-      value: "128/82",
-      status: t.family.good,
-      tone: "good",
-      icon: "heart-outline",
+  const nurse = shortNurse(visit.nurseName);
+  const visitAction = {
+    complete: {
+      label: t.family.visitDoneAction,
+      icon: 'document-text-outline' as const,
+      onPress: () => router.push('/family/reports'),
     },
-    {
-      label: t.family.medication,
-      value: t.family.morningDose,
-      status: t.family.confirmed,
-      tone: "good",
-      icon: "medkit-outline",
+    live: {
+      label: t.family.messageNurse,
+      icon: 'chatbubble-ellipses-outline' as const,
+      onPress: () => router.push('/family/chat'),
     },
-    {
-      label: t.family.bloodSample,
-      value: t.family.taken,
-      status: t.family.sentToLab,
-      tone: "info",
-      icon: "flask-outline",
+    upcoming: {
+      label: t.family.messageNurse,
+      icon: 'chatbubble-ellipses-outline' as const,
+      onPress: () => router.push('/family/chat'),
     },
-    {
-      label: t.family.ankleSwelling,
-      value: t.family.leftFoot,
-      status: t.family.flagged,
-      tone: "flag",
-      icon: "alert-circle-outline",
-    },
-  ];
+  }[visitStatus];
 
-  const quickActions: {
-    label: string;
-    icon: keyof typeof Ionicons.glyphMap;
-    onPress: () => void;
-  }[] = [
-    {
-      label: t.family.actionChat,
-      icon: "chatbubble-ellipses-outline",
-      onPress: () => router.push("/family/chat"),
-    },
-    {
-      label: t.family.actionBook,
-      icon: "calendar-outline",
-      onPress: () => router.push("/family/appointments"),
-    },
-    {
-      label: t.family.actionCall,
-      icon: "videocam-outline",
-      onPress: () => router.push("/family/call"),
-    },
-    {
-      label: t.family.actionReports,
-      icon: "document-text-outline",
-      onPress: () => router.push("/family/reports"),
-    },
-  ];
+  const visitCopy =
+    visitStatus === 'complete'
+      ? {
+          kicker: t.family.visitDoneLabel,
+          title: t.family.visitDoneTitle,
+          body: t.family.visitDoneBody
+            .replace('{nurse}', nurse)
+            .replace('{time}', formatClock(finishedAt, t)),
+        }
+      : visitStatus === 'live'
+        ? {
+            kicker: t.family.liveNow,
+            title: t.family.visitInProgress,
+            body: t.family.visitSubtitle,
+          }
+        : {
+            kicker: t.family.visitTodayLabel,
+            title: t.family.visitTodayTitle.replace('{time}', formatClock(visit.arrivedAt, t)),
+            body: t.family.visitTodayBody.replace('{nurse}', nurse),
+          };
 
-  // The first three tasks are reflected by today's readings; the evening
-  // dose is still ahead.
-  const carePlan = t.family.carePlanItems.map((item, index) => ({
-    ...item,
-    done: index < 3,
-  }));
-  const doneCount = carePlan.filter((item) => item.done).length;
-  const planPercent = Math.round((doneCount / carePlan.length) * 100);
+  const concern = visit.concern;
+  const concernOpen =
+    serviceStarted &&
+    concern !== null &&
+    concern.review !== 'reviewed' &&
+    visitStatus !== 'upcoming';
+  const concernStatus = !concern
+    ? ''
+    : concern.review === 'notified' && concern.reviewerName
+      ? t.family.concernNotified.replace('{reviewer}', concern.reviewerName)
+      : concern.review === 'reviewed' && concern.reviewerName
+        ? t.family.concernReviewed.replace('{reviewer}', concern.reviewerName)
+        : `${t.family.concernNoted.replace('{nurse}', nurse)} · ${t.family.concernPending}`;
+
+  const before = beforeCare(inquiry ?? null, careName || t.family.lovedOne, t.family);
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.topBar}>
-        <ServiceBackButton
-          color={isDark ? "#A3B0AA" : "#4A5568"}
-          size={32}
-          style={styles.backButton}
-          href="/family-home"
-        />
-
-        <BrandLogo size={34} />
-        <Text style={styles.active}>{t.family.activeService}</Text>
-
-        <View style={styles.planChip}>
-          <View style={styles.planDot} />
-          <Text style={styles.planChipText}>{t.family.planActive}</Text>
-        </View>
-      </View>
-
-      <Text style={styles.title}>
-        {greeting}
-        {firstName ? `, ${firstName}` : ""}
-      </Text>
-      <Text style={styles.subtitle}>{t.family.greetingSubtitle}</Text>
-
-      {/* Today's visit: live, already finished, or still to come */}
-      {visitStatus === "live" && (
-        <View style={styles.visitCard}>
-          <View style={styles.visitTop}>
-            <View style={styles.dotWrap}>
-              <Animated.View style={[styles.halo, haloStyle]} />
-              <View style={styles.liveDot} />
-            </View>
-
-            <Text style={styles.liveLabel}>{t.family.liveNow}</Text>
-          </View>
-
-          <Text style={styles.visitTitle}>{t.family.visitInProgress}</Text>
-          <Text style={styles.visitSubtitle}>{t.family.visitSubtitle}</Text>
-
-          <TouchableOpacity
-            style={styles.visitAction}
-            onPress={() => router.push("/family/chat")}
-          >
-            <Ionicons name="chatbubble-ellipses" size={15} color="#FFFFFF" />
-            <Text style={styles.visitActionText}>{t.family.messageNurse}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {visitStatus === "complete" && (
-        <TouchableOpacity
-          style={styles.visitCard}
-          onPress={() => router.push("/family/reports")}
-        >
-          <View style={styles.visitTop}>
-            <Ionicons name="checkmark-circle" size={13} color={GREEN} />
-            <Text style={styles.liveLabel}>{t.family.visitDoneLabel}</Text>
-          </View>
-
-          <Text style={styles.visitTitle}>
-            {t.family.visitDoneTitle.replace(
-              "{time}",
-              formatClock(finishedAt, t),
-            )}
-          </Text>
-          <Text style={styles.visitSubtitle}>
-            {t.family.visitDoneBody.replace("{nurse}", visit.nurseName)}
-          </Text>
-
-          <View style={styles.visitAction}>
-            <Ionicons name="document-text" size={15} color="#FFFFFF" />
-            <Text style={styles.visitActionText}>
-              {t.family.visitDoneAction}
-            </Text>
-          </View>
-        </TouchableOpacity>
-      )}
-
-      {visitStatus === "upcoming" && (
-        <View style={styles.visitCard}>
-          <View style={styles.visitTop}>
-            <Ionicons name="time-outline" size={13} color={GREEN} />
-            <Text style={styles.liveLabel}>{t.family.visitTodayLabel}</Text>
-          </View>
-
-          <Text style={styles.visitTitle}>
-            {t.family.visitTodayTitle.replace(
-              "{time}",
-              formatClock(visit.arrivedAt, t),
-            )}
-          </Text>
-          <Text style={styles.visitSubtitle}>
-            {t.family.visitTodayBody.replace("{nurse}", visit.nurseName)}
-          </Text>
-
-          <TouchableOpacity
-            style={styles.visitAction}
-            onPress={() => router.push("/family/chat")}
-          >
-            <Ionicons name="chatbubble-ellipses" size={15} color="#FFFFFF" />
-            <Text style={styles.visitActionText}>{t.family.messageNurse}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Needs attention */}
-      <TouchableOpacity
-        style={styles.attentionCard}
-        onPress={() => router.push("/family/reports")}
+    <SafeAreaView style={styles.safe}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.attentionIcon}>
-          <Ionicons name="warning-outline" size={18} color="#C97A2E" />
-        </View>
+        <View style={styles.topBar}>
+          <ServiceBackButton
+            color={isDark ? '#A3B0AA' : '#5C6B65'}
+            size={36}
+            style={styles.backButton}
+            href="/family-home"
+          />
 
-        <View style={styles.attentionInfo}>
-          <Text style={styles.attentionLabel}>{t.family.attentionLabel}</Text>
-          <Text style={styles.attentionTitle}>{t.family.attentionTitle}</Text>
-          <Text style={styles.attentionBody}>{t.family.attentionBody}</Text>
-
-          <View style={styles.attentionLink}>
-            <Text style={styles.attentionLinkText}>
-              {t.family.attentionAction}
-            </Text>
-            <Ionicons name="arrow-forward" size={13} color="#C97A2E" />
-          </View>
-        </View>
-      </TouchableOpacity>
-
-      {/* Quick actions */}
-      <Text style={styles.sectionLabel}>{t.family.quickActions}</Text>
-
-      <View style={styles.actionRow}>
-        {quickActions.map((action) => (
-          <TouchableOpacity
-            key={action.label}
-            style={styles.actionTile}
-            onPress={action.onPress}
-          >
-            <View style={styles.actionIcon}>
-              <Ionicons name={action.icon} size={20} color={GREEN} />
+          <View style={styles.brand}>
+            <View style={styles.logoRing}>
+              <BrandLogo size={28} />
             </View>
-
-            <Text style={styles.actionLabel} numberOfLines={2}>
-              {action.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Patient */}
-      <Text style={styles.sectionLabel}>{t.family.underCare}</Text>
-
-      <TouchableOpacity
-        style={styles.patientCard}
-        onPress={() => router.push("/family/profile")}
-      >
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{patientInitials}</Text>
-        </View>
-
-        <View style={styles.patientInfo}>
-          <Text style={styles.name}>{patientName}</Text>
-          <Text style={styles.info}>{patientMeta}</Text>
-        </View>
-
-        <Ionicons name="chevron-forward" size={18} color="#C7CCC2" />
-      </TouchableOpacity>
-
-      {/* Live readings */}
-      <Text style={styles.sectionLabel}>{t.family.liveReadings}</Text>
-
-      <View style={styles.tileGrid}>
-        {readings.map((reading) => {
-          const tone = tones[reading.tone];
-
-          return (
-            <View key={reading.label} style={styles.tile}>
-              <View style={styles.tileTop}>
-                <Ionicons name={reading.icon} size={16} color={tone.text} />
-                <Text style={styles.tileLabel} numberOfLines={1}>
-                  {reading.label}
-                </Text>
-              </View>
-
-              <Text style={styles.tileValue} numberOfLines={1}>
-                {reading.value}
-              </Text>
-
-              <View style={[styles.badge, { backgroundColor: tone.bg }]}>
-                <Text style={[styles.badgeText, { color: tone.text }]}>
-                  {reading.status}
-                </Text>
-              </View>
-            </View>
-          );
-        })}
-      </View>
-
-      {/* Today's care plan */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionLabel}>{t.family.carePlan}</Text>
-
-        <View style={styles.countBadge}>
-          <Text style={styles.countBadgeText}>
-            {doneCount} / {carePlan.length}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.card}>
-        <View style={styles.progressRow}>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${planPercent}%` }]} />
-          </View>
-          <Text style={styles.progressCaption}>
-            {t.family.carePlanSummary}
-          </Text>
-        </View>
-
-        {carePlan.map((item, index) => (
-          <View
-            key={item.title}
-            style={[
-              styles.planRow,
-              index !== carePlan.length - 1 && styles.separator,
-            ]}
-          >
-            <Ionicons
-              name={item.done ? "checkmark-circle" : "ellipse-outline"}
-              size={20}
-              color={item.done ? "#8B9A7C" : "#C7CCC2"}
-            />
-
-            <View style={styles.planInfo}>
-              <Text style={[styles.planTitle, item.done && styles.planDone]}>
-                {item.title}
-              </Text>
-              <Text style={styles.planTime}>{item.time}</Text>
-            </View>
-
-            <Text
-              style={[
-                styles.planStatus,
-                { color: item.done ? "#8B9A7C" : "#9AA3AF" },
-              ]}
-            >
-              {item.done ? t.family.carePlanDone : t.family.carePlanUpcoming}
+            <Text style={[styles.active, type.kicker]} numberOfLines={1}>
+              {serviceStarted ? t.family.activeService : t.familyAdd.selectKicker}
             </Text>
           </View>
-        ))}
-      </View>
 
-      {/* Next appointment */}
-      <Text style={styles.sectionLabel}>{t.family.nextAppointment}</Text>
+          {serviceStarted ? (
+            <View style={styles.planChip}>
+              <View style={styles.planDot} />
+              <Text style={styles.planChipText}>{t.family.planActive}</Text>
+            </View>
+          ) : null}
+        </View>
 
-      <View style={styles.card}>
-        {nextAppointment ? (
+        <View style={styles.identity}>
+          <FamilyProfilePhoto size={64} />
+          <View style={styles.identityCopy}>
+            <Text style={[styles.title, type.headline]}>
+              {greeting}
+              {careName ? `, ${careName}` : ''}
+            </Text>
+            <Text style={[styles.subtitle, type.body]}>{glance}</Text>
+          </View>
+        </View>
+
+        {loading ? null : serviceStarted ? (
           <>
-            <View style={styles.nextTop}>
-              <View style={styles.dateBox}>
-                <Ionicons name="calendar" size={17} color={GREEN} />
+            <Text style={[styles.sectionLabel, type.kicker]}>{t.family.latestUpdate}</Text>
+            <View style={styles.visitCard}>
+              <View style={styles.visitMain}>
+                {visitStatus === 'live' ? (
+                  <View style={styles.visitIcon}>
+                    <View style={styles.dotWrap}>
+                      <Animated.View style={[styles.halo, haloStyle]} />
+                      <View style={styles.liveDot} />
+                    </View>
+                  </View>
+                ) : (
+                  <FamilyIconWell
+                    name={visitStatus === 'complete' ? 'calendar-outline' : 'time-outline'}
+                  />
+                )}
+
+                <View style={[styles.visitCopy, showVisitArt && visitStatus === 'complete' && styles.visitCopyArt]}>
+                  <Text style={[styles.kicker, type.kicker]}>{visitCopy.kicker}</Text>
+                  <Text style={[styles.visitTitle, { fontFamily: type.sansSemi }]}>{visitCopy.title}</Text>
+                  <Text style={[styles.visitBody, type.bodySmall]}>{visitCopy.body}</Text>
+
+                  <TouchableOpacity
+                    style={styles.visitAction}
+                    onPress={visitAction.onPress}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name={visitAction.icon} size={14} color="#5E7A62" />
+                    <Text style={styles.visitActionText}>{visitAction.label}</Text>
+                    <Ionicons name="chevron-forward" size={13} color="#5E7A62" />
+                  </TouchableOpacity>
+                </View>
               </View>
 
-              <View style={styles.patientInfo}>
-                <Text style={styles.visitTime}>
-                  {formatDateKey(nextAppointment.date, t)} ·{" "}
-                  {nextAppointment.time}
-                </Text>
-                <Text style={styles.nurse}>
-                  {t.familyAppointments.types[nextAppointment.type]} ·{" "}
-                  {nextAppointment.withName}
-                </Text>
-              </View>
-
-              <View style={[styles.badge, { backgroundColor: "#E8EDE4" }]}>
-                <Text style={[styles.badgeText, { color: "#8B9A7C" }]}>
-                  {t.family.booked}
-                </Text>
-              </View>
+              {showVisitArt && visitStatus === 'complete' ? (
+                <View style={styles.visitArt} pointerEvents="none">
+                  <Ionicons name="heart" size={92} color="rgba(94,122,98,0.16)" />
+                  <View style={styles.checkBadge}>
+                    <Ionicons name="checkmark" size={20} color={GREEN} />
+                  </View>
+                </View>
+              ) : null}
             </View>
 
-            <View style={styles.reminderRow}>
-              <Ionicons
-                name={
-                  nextAppointment.reminderMinutes !== null
-                    ? "notifications"
-                    : "notifications-off-outline"
-                }
-                size={13}
-                color={
-                  nextAppointment.reminderMinutes !== null
-                    ? "#8B9A7C"
-                    : "#9AA3AF"
-                }
-              />
-              <Text style={styles.reminderText}>
-                {nextAppointment.reminderMinutes !== null
-                  ? `${t.family.reminderOn} · ${reminderLabel(
-                      nextAppointment.reminderMinutes,
-                      t,
-                    )}`
-                  : t.family.reminderOff}
-              </Text>
+            {concernOpen ? (
+              <View style={styles.attentionCard}>
+                <View style={styles.attentionTop}>
+                  <FamilyIconWell name="warning-outline" tone="warn" />
+                  <View style={styles.attentionCopy}>
+                    <Text style={[styles.attentionKicker, type.kicker]}>{t.family.attentionLabel}</Text>
+                    <Text style={styles.attentionTitle}>{t.family.attentionTitle}</Text>
+                    <Text style={styles.attentionBody}>{t.family.attentionBody}</Text>
+                    <Text style={styles.attentionStatus}>{concernStatus}</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.attentionButton}
+                  onPress={() => router.push('/family/reports')}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.attentionButtonText}>{t.family.attentionAction}</Text>
+                  <Ionicons name="chevron-forward" size={13} color="#C97A2E" />
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            <View style={styles.nextCard}>
+              <View style={styles.nextTop}>
+                <FamilyIconWell name="calendar-outline" />
+                <View style={styles.nextCopy}>
+                  <Text style={[styles.kicker, type.kicker]}>{t.family.nextAppointment}</Text>
+                  {nextAppointment ? (
+                    <>
+                      <Text style={styles.nextTitle}>
+                        {formatDateKey(nextAppointment.date, t)} · {nextAppointment.time}
+                      </Text>
+                      <Text style={styles.nextMeta}>
+                        {t.familyAppointments.types[nextAppointment.type]} · {nextAppointment.withName}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={styles.nextTitle}>{t.family.noUpcoming}</Text>
+                  )}
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.manageChip}
+                onPress={() => router.push('/family/appointments')}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="calendar-outline" size={14} color="#5E7A62" />
+                <Text style={styles.manageText}>
+                  {nextAppointment ? t.family.manageAppointments : t.family.bookAppointment}
+                </Text>
+                <Ionicons name="chevron-forward" size={13} color="#5E7A62" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.sectionLabel, type.kicker]}>{t.family.careTeam}</Text>
+            <View style={styles.teamCard}>
+              <View style={[styles.teamRow, styles.teamDivider]}>
+                <View style={styles.teamAvatar}>
+                  <Text style={styles.teamAvatarText}>MG</Text>
+                </View>
+                <View style={styles.teamInfo}>
+                  <Text style={styles.teamName}>Meron Girma</Text>
+                  <Text style={styles.teamRole}>{t.family.assignedNurse}</Text>
+                </View>
+                {visitStatus === 'live' ? (
+                  <View style={styles.statusPill}>
+                    <Text style={styles.statusPillText}>{t.family.onVisit}</Text>
+                  </View>
+                ) : null}
+                <TouchableOpacity onPress={dial} hitSlop={8}>
+                  <FamilyIconWell name="call-outline" size={16} box={36} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.teamRow}>
+                <View style={styles.teamAvatar}>
+                  <Text style={styles.teamAvatarText}>MT</Text>
+                </View>
+                <View style={styles.teamInfo}>
+                  <Text style={styles.teamName}>Marta Tesfaye</Text>
+                  <Text style={styles.teamRole}>{t.family.careCoordinator}</Text>
+                </View>
+                <TouchableOpacity onPress={dial} hitSlop={8}>
+                  <FamilyIconWell name="call-outline" size={16} box={36} />
+                </TouchableOpacity>
+              </View>
             </View>
           </>
         ) : (
-          <Text style={styles.emptyNext}>{t.family.noUpcoming}</Text>
+          <View style={styles.nextCard}>
+            <Text style={[styles.kicker, type.kicker]}>{t.family.latestUpdate}</Text>
+            <Text style={styles.nextTitle}>{before.title}</Text>
+            <Text style={[styles.beforeBody, type.bodySmall]}>{before.body}</Text>
+            <TouchableOpacity
+              style={styles.manageChip}
+              onPress={() => router.push(before.href)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.manageText}>{t.family.beforeAction}</Text>
+              <Ionicons name="chevron-forward" size={13} color="#5E7A62" />
+            </TouchableOpacity>
+          </View>
         )}
-
-        <TouchableOpacity
-          style={styles.manageButton}
-          onPress={() => router.push("/family/appointments")}
-        >
-          <Ionicons name="calendar-outline" size={15} color="#5E7054" />
-          <Text style={styles.manageText}>
-            {nextAppointment
-              ? t.family.manageAppointments
-              : t.family.bookAppointment}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Care team */}
-      <Text style={styles.sectionLabel}>{t.family.careTeam}</Text>
-
-      <View style={styles.card}>
-        <View style={[styles.teamRow, styles.separator]}>
-          <View style={styles.teamAvatar}>
-            <Text style={styles.teamAvatarText}>MG</Text>
-          </View>
-
-          <View style={styles.patientInfo}>
-            <Text style={styles.teamName}>Meron Girma</Text>
-            <Text style={styles.teamRole}>{t.family.assignedNurse}</Text>
-          </View>
-
-          <View style={[styles.badge, { backgroundColor: "#E8EDE4" }]}>
-            <Text style={[styles.badgeText, { color: "#8B9A7C" }]}>
-              {t.family.onVisit}
-            </Text>
-          </View>
-
-          <TouchableOpacity style={styles.teamCall} onPress={dial}>
-            <Ionicons name="call" size={15} color={GREEN} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.teamRow}>
-          <View style={[styles.teamAvatar, styles.teamAvatarNeutral]}>
-            <Text style={styles.teamAvatarTextNeutral}>MT</Text>
-          </View>
-
-          <View style={styles.patientInfo}>
-            <Text style={styles.teamName}>Marta Tesfaye</Text>
-            <Text style={styles.teamRole}>{t.family.careCoordinator}</Text>
-          </View>
-
-          <View style={[styles.badge, { backgroundColor: "#F1F1EE" }]}>
-            <Text style={[styles.badgeText, { color: "#6F6A64" }]}>
-              {t.family.availableNow}
-            </Text>
-          </View>
-
-          <TouchableOpacity style={styles.teamCall} onPress={dial}>
-            <Ionicons name="call" size={15} color={GREEN} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => router.push("/family/reports")}
-      >
-        <Ionicons name="document-text-outline" size={17} color="#FFFFFF" />
-        <Text style={styles.buttonText}>{t.family.viewFullReport}</Text>
-      </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
+function beforeCare(
+  inquiry: FamilyInquiry | null,
+  name: string,
+  copy: {
+    beforeTitle: string;
+    beforeNone: string;
+    beforeReceived: string;
+    beforeContacted: string;
+    beforeProposed: string;
+    beforeSetup: string;
+  },
+) {
+  if (!inquiry) {
+    return {
+      title: copy.beforeTitle,
+      body: copy.beforeNone.replace('{name}', name),
+      href: '/family-request' as const,
+    };
+  }
+  if (inquiry.status === 'contacted') {
+    return { title: copy.beforeTitle, body: copy.beforeContacted, href: '/family-care-plan' as const };
+  }
+  if (inquiry.status === 'proposed') {
+    return { title: copy.beforeTitle, body: copy.beforeProposed, href: '/family-care-plan' as const };
+  }
+  if (inquiry.status === 'accepted' || inquiry.status === 'setup') {
+    return { title: copy.beforeTitle, body: copy.beforeSetup, href: '/family-care-plan' as const };
+  }
+  return { title: copy.beforeTitle, body: copy.beforeReceived, href: '/family-care-plan' as const };
+}
+
 const baseStyles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: '#F4F6F3',
+  },
   container: {
     flex: 1,
-    backgroundColor: "#F6F2EA",
+    backgroundColor: '#F4F6F3',
   },
-
   content: {
-    paddingHorizontal: 18,
-    paddingBottom: 30,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    maxWidth: 520,
+    width: '100%',
+    alignSelf: 'center',
   },
-
   topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingTop: 4,
-    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingTop: 6,
+    marginBottom: 22,
   },
-
   backButton: {
-    backgroundColor: "#E8EDE4",
-    borderColor: "#D8E0D3",
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E8EDE4',
   },
-
+  brand: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minWidth: 0,
+  },
+  logoRing: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: '#D5E3D8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
   active: {
     flex: 1,
-    fontSize: 11,
-    color: "#6F6A64",
-    letterSpacing: 1.2,
-    fontWeight: "700",
+    color: '#7A877F',
   },
-
   planChip: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
-    backgroundColor: "#E8EDE4",
-    paddingHorizontal: 11,
-    paddingVertical: 6,
+    backgroundColor: '#E8EDE4',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 20,
   },
-
   planDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#8B9A7C",
-  },
-
-  planChipText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#8B9A7C",
-  },
-
-  title: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#2A2622",
-  },
-
-  subtitle: {
-    fontSize: 13,
-    color: "#6F6A64",
-    marginTop: 4,
-    marginBottom: 20,
-  },
-
-  visitCard: {
-    backgroundColor: "#E8EDE4",
-    borderWidth: 1,
-    borderColor: "#D3E4D5",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 14,
-  },
-
-  visitTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 9,
-  },
-
-  dotWrap: {
-    width: 8,
-    height: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  halo: {
-    position: "absolute",
-    width: 8,
-    height: 8,
+    width: 7,
+    height: 7,
     borderRadius: 4,
-    backgroundColor: "#8B9A7C",
+    backgroundColor: GREEN,
   },
-
+  planChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: GREEN,
+  },
+  identity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 22,
+  },
+  identityCopy: {
+    flex: 1,
+  },
+  title: {
+    color: '#16332C',
+    marginBottom: 6,
+  },
+  subtitle: {
+    color: '#7A877F',
+  },
+  visitCard: {
+    backgroundColor: '#E8EDE4',
+    borderRadius: 22,
+    padding: 16,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  visitMain: {
+    flexDirection: 'row',
+    gap: 12,
+    zIndex: 1,
+  },
+  visitIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  visitCopy: {
+    flex: 1,
+  },
+  visitCopyArt: {
+    paddingRight: 48,
+  },
+  kicker: {
+    color: '#7A877F',
+    marginBottom: 6,
+  },
+  visitTitle: {
+    fontSize: 16,
+    lineHeight: 22,
+    color: '#16332C',
+    marginBottom: 4,
+  },
+  visitBody: {
+    color: '#5C6B65',
+    marginBottom: 12,
+  },
+  visitAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    height: 34,
+    borderRadius: 17,
+  },
+  visitActionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: GREEN,
+  },
+  visitArt: {
+    position: 'absolute',
+    right: -6,
+    bottom: -18,
+    width: 120,
+    height: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkBadge: {
+    position: 'absolute',
+    right: 28,
+    top: 28,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dotWrap: {
+    width: 10,
+    height: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  halo: {
+    position: 'absolute',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: GREEN,
+  },
   liveDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#8B9A7C",
-  },
-
-  liveLabel: {
-    fontSize: 10,
-    letterSpacing: 1.2,
-    fontWeight: "700",
-    color: "#8B9A7C",
-  },
-
-  visitTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#2A2622",
-    marginTop: 11,
-  },
-
-  visitSubtitle: {
-    color: "#6F6A64",
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 4,
-  },
-
-  visitAction: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    alignSelf: "flex-start",
-    marginTop: 14,
-    paddingHorizontal: 16,
-    height: 40,
-    borderRadius: 12,
     backgroundColor: GREEN,
   },
-
-  visitActionText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#FFFFFF",
+  nextCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 16,
+    marginBottom: 12,
   },
-
-  attentionCard: {
-    flexDirection: "row",
-    gap: 12,
-    backgroundColor: "#FFF8EC",
-    borderWidth: 1,
-    borderColor: "#F0DCBB",
-    borderRadius: 16,
-    padding: 15,
-    marginBottom: 24,
-  },
-
-  attentionIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: "#FBEBD4",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  attentionInfo: {
-    flex: 1,
-  },
-
-  attentionLabel: {
-    fontSize: 9,
-    letterSpacing: 1.1,
-    fontWeight: "700",
-    color: "#C97A2E",
-  },
-
-  attentionTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#5C4426",
-    marginTop: 4,
-  },
-
-  attentionBody: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: "#8A7454",
-    marginTop: 5,
-  },
-
-  attentionLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    marginTop: 10,
-  },
-
-  attentionLinkText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#C97A2E",
-  },
-
-  sectionLabel: {
-    fontSize: 10,
-    color: "#8A929B",
-    letterSpacing: 1.2,
-    fontWeight: "700",
-    marginBottom: 10,
-  },
-
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  countBadge: {
-    backgroundColor: "#E8EDE4",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-    marginBottom: 10,
-  },
-
-  countBadgeText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#8B9A7C",
-  },
-
-  actionRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 24,
-  },
-
-  actionTile: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 6,
-    alignItems: "center",
-  },
-
-  actionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 13,
-    backgroundColor: "#E8EDE4",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-
-  actionLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#5E7054",
-    textAlign: "center",
-  },
-
-  patientCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 15,
-    marginBottom: 24,
-  },
-
-  avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 13,
-    backgroundColor: "#222",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  avatarText: {
-    color: "#8FE388",
-    fontWeight: "700",
-    fontSize: 15,
-  },
-
-  patientInfo: {
-    flex: 1,
-  },
-
-  name: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#2A2622",
-  },
-
-  info: {
-    color: "#6F6A64",
-    fontSize: 12,
-    marginTop: 3,
-  },
-
-  tileGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 24,
-  },
-
-  tile: {
-    flexBasis: "47%",
-    flexGrow: 1,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    padding: 13,
-  },
-
-  tileTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-
-  tileLabel: {
-    flex: 1,
-    fontSize: 9,
-    letterSpacing: 0.8,
-    fontWeight: "700",
-    color: "#9A9A9A",
-  },
-
-  tileValue: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#222",
-    marginTop: 9,
-  },
-
-  badge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 30,
-    marginTop: 9,
-  },
-
-  badgeText: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
-
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 15,
-    marginBottom: 24,
-  },
-
-  progressRow: {
-    marginBottom: 4,
-  },
-
-  progressTrack: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#E8EDE4",
-    overflow: "hidden",
-  },
-
-  progressFill: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#8B9A7C",
-  },
-
-  progressCaption: {
-    fontSize: 11,
-    color: "#9AA3AF",
-    marginTop: 7,
-  },
-
-  planRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 11,
-    paddingVertical: 13,
-  },
-
-  separator: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1EFEB",
-  },
-
-  planInfo: {
-    flex: 1,
-  },
-
-  planTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#2A2622",
-  },
-
-  planDone: {
-    color: "#6F6A64",
-  },
-
-  planTime: {
-    fontSize: 11,
-    color: "#9AA3AF",
-    marginTop: 2,
-  },
-
-  planStatus: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
-
   nextTop: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
-
-  dateBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 13,
-    backgroundColor: "#E8EDE4",
-    alignItems: "center",
-    justifyContent: "center",
+  nextCopy: {
+    flex: 1,
+    minWidth: 0,
   },
-
-  visitTime: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#222",
+  nextTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#16332C',
+    marginBottom: 3,
   },
-
-  nurse: {
-    color: "#6F6A64",
-    fontSize: 12,
-    marginTop: 3,
-  },
-
-  reminderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 13,
-  },
-
-  reminderText: {
-    fontSize: 12,
-    color: "#6F6A64",
-    fontWeight: "500",
-  },
-
-  emptyNext: {
-    fontSize: 14,
-    color: "#9AA3AF",
-  },
-
-  manageButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginTop: 14,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: "#E8EDE4",
-  },
-
-  manageText: {
+  nextMeta: {
     fontSize: 13,
-    fontWeight: "600",
-    color: "#5E7054",
+    color: '#7A877F',
   },
-
-  teamRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 11,
-    paddingVertical: 13,
+  beforeBody: {
+    color: '#5C6B65',
+    marginTop: 6,
   },
-
-  teamAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#E8EDE4",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  teamAvatarNeutral: {
-    backgroundColor: "#F1F1EE",
-  },
-
-  teamAvatarText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#8B9A7C",
-  },
-
-  teamAvatarTextNeutral: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#6F6A64",
-  },
-
-  teamName: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#2A2622",
-  },
-
-  teamRole: {
-    fontSize: 12,
-    color: "#8A929B",
-    marginTop: 2,
-  },
-
-  teamCall: {
-    width: 34,
+  manageChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    backgroundColor: '#E8EDE4',
+    paddingHorizontal: 12,
     height: 34,
     borderRadius: 17,
-    backgroundColor: "#E8EDE4",
-    alignItems: "center",
-    justifyContent: "center",
+    marginTop: 12,
   },
-
-  button: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 9,
-    backgroundColor: "#8B9A7C",
-    height: 54,
-    borderRadius: 14,
+  manageText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: GREEN,
   },
-
-  buttonText: {
-    color: "#FFF",
+  attentionCard: {
+    backgroundColor: '#FFF8EC',
+    borderRadius: 22,
+    padding: 16,
+    marginBottom: 12,
+  },
+  attentionTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  attentionCopy: {
+    flex: 1,
+  },
+  attentionKicker: {
+    color: '#C97A2E',
+    marginBottom: 4,
+  },
+  attentionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#16332C',
+    marginBottom: 4,
+  },
+  attentionBody: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#8A7454',
+  },
+  attentionStatus: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#8A7454',
+    marginTop: 4,
+  },
+  attentionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    height: 34,
+    borderRadius: 17,
+    marginTop: 12,
+    marginLeft: 52,
+  },
+  attentionButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#C97A2E',
+  },
+  sectionLabel: {
+    color: '#7A877F',
+    marginBottom: 10,
+  },
+  teamCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  teamRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+  },
+  teamDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEF2EF',
+  },
+  teamAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#E8EDE4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  teamAvatarText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: GREEN,
+  },
+  teamInfo: {
+    flex: 1,
+  },
+  teamName: {
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: '700',
+    color: '#16332C',
+  },
+  teamRole: {
+    fontSize: 12,
+    color: '#7A877F',
+    marginTop: 2,
+  },
+  statusPill: {
+    backgroundColor: '#E8EDE4',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  statusPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: GREEN,
   },
 });

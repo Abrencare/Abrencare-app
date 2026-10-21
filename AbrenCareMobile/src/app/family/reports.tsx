@@ -7,23 +7,23 @@ import {
   View,
 } from 'react-native';
 
+import FamilyIconWell from '@/components/family/FamilyIconWell';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
+import FamilyHealthOverview from '@/components/family/FamilyHealthOverview';
+import FamilyMemberHeader from '@/components/family/FamilyMemberHeader';
 import { useLanguage } from '@/context/LanguageContext';
 import { useThemedStyles } from '@/theme/useThemedStyles';
 
 type Tab = 'reports' | 'prescriptions' | 'labs' | 'history';
 type Tone = 'good' | 'warn' | 'bad';
 
-const reportMeta: { day: string; tone: Tone; badge: boolean }[] = [
-  { day: '14', tone: 'bad', badge: true },
-  { day: '12', tone: 'good', badge: false },
-  { day: '10', tone: 'warn', badge: false },
-  { day: '7', tone: 'good', badge: false },
-  { day: '5', tone: 'good', badge: false },
-  { day: '2', tone: 'good', badge: false },
-  { day: '28', tone: 'warn', badge: false },
+const reportMeta: { tone: Tone }[] = [
+  { tone: 'warn' },
+  { tone: 'good' },
+  { tone: 'good' },
+  { tone: 'good' },
 ];
 
 const prescriptionMeta: { tone: Tone }[] = [
@@ -69,9 +69,9 @@ export default function FamilyReports() {
   ];
 
   const reportStatusLabel: Record<Tone, string> = {
-    good: t.familyReports.done,
-    warn: t.familyReports.note,
-    bad: t.familyReports.flagged,
+    good: t.familyReports.statusCompleted,
+    warn: t.familyReports.statusPending,
+    bad: t.familyReports.statusPending,
   };
 
   const actionLabel = {
@@ -82,7 +82,11 @@ export default function FamilyReports() {
   }[tab];
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => router.back()}
@@ -91,8 +95,11 @@ export default function FamilyReports() {
         <Ionicons name="chevron-back" size={22} color="#444" />
       </TouchableOpacity>
 
-      <Text style={styles.patient}>ATO TADESSE</Text>
+      <FamilyMemberHeader />
+      <FamilyHealthOverview />
+
       <Text style={styles.title}>{t.familyReports.title}</Text>
+      <Text style={styles.subtitle}>{t.familyReports.historySubtitle}</Text>
 
       <ScrollView
         horizontal
@@ -118,7 +125,7 @@ export default function FamilyReports() {
       </ScrollView>
 
       <View style={styles.card}>
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <View>
           {tab === 'reports' &&
             reportMeta.map((item, index) => {
               const copy = t.familyReports.items[index];
@@ -132,35 +139,24 @@ export default function FamilyReports() {
                 <View
                   key={copy.date}
                   style={[
-                    styles.row,
-                    index !== reportMeta.length - 1 && styles.separator,
+                    styles.reportCard,
+                    index !== reportMeta.length - 1 && styles.reportGap,
                   ]}
                 >
-                  <View style={styles.dateBox}>
-                    <Text style={styles.day}>{item.day}</Text>
-                  </View>
-
+                  <FamilyIconWell name="document-text-outline" box={36} />
                   <View style={styles.rowInfo}>
                     <View style={styles.titleRow}>
-                      <Text style={styles.rowTitle}>{copy.date}</Text>
-
-                      {item.badge && (
-                        <View style={styles.newBadge}>
-                          <Text style={styles.newText}>
-                            {t.familyReports.badgeNew}
-                          </Text>
-                        </View>
-                      )}
+                      <Text style={styles.reportDate}>{copy.date}</Text>
+                      <View style={[styles.statusBadge, { backgroundColor: tone.bg }]}>
+                        <Text style={[styles.statusText, { color: tone.color }]}>
+                          {reportStatusLabel[item.tone]}
+                        </Text>
+                      </View>
                     </View>
-
+                    <Text style={styles.rowTitle}>{copy.title}</Text>
                     <Text style={styles.rowMeta}>{copy.description}</Text>
                   </View>
-
-                  <View style={[styles.statusBadge, { backgroundColor: tone.bg }]}>
-                    <Text style={[styles.statusText, { color: tone.color }]}>
-                      {reportStatusLabel[item.tone]}
-                    </Text>
-                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#9AA3AF" />
                 </View>
               );
             })}
@@ -182,9 +178,7 @@ export default function FamilyReports() {
                     index !== prescriptionMeta.length - 1 && styles.separator,
                   ]}
                 >
-                  <View style={[styles.iconBox, { backgroundColor: tone.bg }]}>
-                    <Ionicons name="medkit-outline" size={16} color={tone.color} />
-                  </View>
+                  <FamilyIconWell name="medkit-outline" box={34} size={16} />
 
                   <View style={styles.rowInfo}>
                     <Text style={styles.rowTitle}>{copy.name}</Text>
@@ -223,9 +217,7 @@ export default function FamilyReports() {
                     index !== labMeta.length - 1 && styles.separator,
                   ]}
                 >
-                  <View style={[styles.iconBox, { backgroundColor: tone.bg }]}>
-                    <Ionicons name="flask-outline" size={16} color={tone.color} />
-                  </View>
+                  <FamilyIconWell name="flask-outline" box={34} size={16} />
 
                   <View style={styles.rowInfo}>
                     <Text style={styles.rowTitle}>{copy.name}</Text>
@@ -260,9 +252,7 @@ export default function FamilyReports() {
                     index !== historyMeta.length - 1 && styles.separator,
                   ]}
                 >
-                  <View style={[styles.iconBox, { backgroundColor: tone.bg }]}>
-                    <Ionicons name={item.icon} size={16} color={tone.color} />
-                  </View>
+                  <FamilyIconWell name={item.icon} box={34} size={16} />
 
                   <View style={styles.rowInfo}>
                     <Text style={styles.rowTitle}>{copy.title}</Text>
@@ -275,39 +265,41 @@ export default function FamilyReports() {
                 </View>
               );
             })}
-        </ScrollView>
+        </View>
       </View>
 
       <TouchableOpacity style={styles.button}>
+        <Ionicons name="document-text-outline" size={16} color="#FFFFFF" />
         <Text style={styles.buttonText}>{actionLabel}</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
 const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F6F2EA',
+    backgroundColor: '#F4F6F3',
+  },
+  content: {
     paddingHorizontal: 14,
     paddingTop: 55,
+    paddingBottom: 40,
   },
 
   backButton: {
     marginBottom: 8,
   },
 
-  patient: {
-    fontSize: 10,
-    color: '#8A8A8A',
-    letterSpacing: 1,
-    fontWeight: '600',
-  },
-
   title: {
-    fontSize: 30,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#2A2622',
+    color: '#16332C',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: '#5C6B65',
     marginBottom: 14,
   },
 
@@ -350,7 +342,29 @@ const baseStyles = StyleSheet.create({
     borderRadius: 18,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    flex: 1,
+  },
+  reportCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingVertical: 12,
+  },
+  reportGap: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  reportIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#E7EEEA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reportDate: {
+    fontSize: 12,
+    color: '#5C6B65',
+    fontWeight: '600',
   },
 
   row: {
@@ -396,6 +410,8 @@ const baseStyles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
 
   rowTitle: {
@@ -456,11 +472,13 @@ const baseStyles = StyleSheet.create({
   },
 
   button: {
-    backgroundColor: '#8B9A7C',
+    backgroundColor: '#1A3A32',
     height: 56,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
     marginVertical: 16,
   },
 
