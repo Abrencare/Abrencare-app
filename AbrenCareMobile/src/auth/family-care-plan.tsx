@@ -48,7 +48,6 @@ const CITY_LABELS: Record<string, string> = {
   other: 'Another city in Ethiopia',
 };
 
-/** Form option is who the patient is to the account holder (Mother = patient is mother). */
 function patientRelationshipFromCaregiver(
   relationship: FamilyCaregiverRelationshipId | undefined,
 ): FamilyRelationship {
@@ -116,7 +115,15 @@ export default function FamilyCarePlanScreen() {
   const [accepting, setAccepting] = useState(false);
 
   const refresh = useCallback(() => {
-    loadFamilyInquiry().then(setInquiry);
+    let active = true;
+    loadFamilyInquiry().then((data) => {
+      if (active) {
+        setInquiry(data);
+      }
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -139,19 +146,21 @@ export default function FamilyCarePlanScreen() {
 
   const proposal = inquiry.proposal;
   const member = activeFamilyMember(user);
-  const careName = member?.name || proposal?.recipient || '';
+  const careName = member?.name || proposal?.recipient || inquiry.patientName || 'Loved one';
   const personMeta = [
     member?.ageYears != null ? t.familyAdd.dobAge.replace('{age}', String(member.ageYears)) : null,
     member?.city || null,
   ]
     .filter(Boolean)
     .join(' · ');
+
   const services = [
     { title: copy.serviceNurse, detail: proposal?.visitFrequency || copy.serviceNurseDetail },
     { title: copy.serviceCheck, detail: copy.serviceCheckDetail },
     { title: copy.serviceFollow, detail: copy.serviceFollowDetail },
     { title: copy.serviceReport, detail: copy.serviceReportDetail },
   ];
+
   const canAccept = inquiry.status === 'proposed' && !!proposal && !accepting;
   const canContinueSetup = inquiry.status === 'accepted' || inquiry.status === 'setup';
 
@@ -190,6 +199,7 @@ export default function FamilyCarePlanScreen() {
     setAccepting(true);
     acceptFamilyProposal(inquiry.id)
       .then(async () => {
+        const fresh = await loadFamilyInquiry();
         if (!user || !hasService('family')) {
           router.replace({ pathname: '/signup', params: { service: 'family' } });
           return;
@@ -200,7 +210,7 @@ export default function FamilyCarePlanScreen() {
         }
         if (needsOnboarding('family') || user.familyMembers.length === 0) {
           completeFamilyOnboarding([
-            memberFromInquiry(inquiry, user.name || 'Loved one'),
+            memberFromInquiry(fresh || inquiry, user.name || 'Loved one'),
           ]);
         }
         await markFamilySetupStarted(inquiry.id);
@@ -267,31 +277,31 @@ export default function FamilyCarePlanScreen() {
           </View>
 
           {proposal.quoteAmount ? (
-          <View style={[styles.priceCard, { backgroundColor: colors.card, borderColor: isDark ? colors.border : '#D5E3DC' }]}>
-            <View style={[styles.priceHead, { backgroundColor: isDark ? colors.continue : '#E7EEEA' }]}>
-              <Ionicons name="pricetag-outline" size={16} color={isDark ? '#C9E4D8' : '#5E7A62'} />
-              <Text style={[styles.priceHeadText, type.label, { color: isDark ? '#E7EEEA' : '#1A3A32' }]}>
-                {copy.priceTitle}
-              </Text>
-            </View>
-            <View style={styles.priceBody}>
-              <Text style={[styles.feeLabel, type.caption, { color: colors.muted }]}>{copy.monthlyFee}</Text>
-              <View style={styles.amountRow}>
-                <Text style={[styles.quoteAmount, { color: colors.text }]}>{proposal.quoteAmount}</Text>
-                <View style={[styles.currencyChip, { backgroundColor: isDark ? colors.continue : '#1A3A32' }]}>
-                  <Text style={styles.currencyText}>{proposal.quoteCurrency}</Text>
-                </View>
+            <View style={[styles.priceCard, { backgroundColor: colors.card, borderColor: isDark ? colors.border : '#D5E3DC' }]}>
+              <View style={[styles.priceHead, { backgroundColor: isDark ? colors.continue : '#E7EEEA' }]}>
+                <Ionicons name="pricetag-outline" size={16} color={isDark ? '#C9E4D8' : '#5E7A62'} />
+                <Text style={[styles.priceHeadText, type.label, { color: isDark ? '#E7EEEA' : '#1A3A32' }]}>
+                  {copy.priceTitle}
+                </Text>
               </View>
-              <Text style={[styles.sectionBody, type.bodySmall, { color: colors.muted }]}>{proposal.billingPeriod}</Text>
-              <Text style={[styles.sectionBody, type.bodySmall, { color: colors.muted }]}>
-                {proposal.cancellationTerms}
-              </Text>
-              <Pressable style={styles.termsRow} onPress={() => router.push('/legal?doc=terms')}>
-                <Text style={[styles.termsLink, type.bodySmall]}>{copy.termsLink}</Text>
-                <Ionicons name="chevron-forward" size={14} color="#3D7A9A" />
-              </Pressable>
+              <View style={styles.priceBody}>
+                <Text style={[styles.feeLabel, type.caption, { color: colors.muted }]}>{copy.monthlyFee}</Text>
+                <View style={styles.amountRow}>
+                  <Text style={[styles.quoteAmount, { color: colors.text }]}>{proposal.quoteAmount}</Text>
+                  <View style={[styles.currencyChip, { backgroundColor: isDark ? colors.continue : '#1A3A32' }]}>
+                    <Text style={styles.currencyText}>{proposal.quoteCurrency}</Text>
+                  </View>
+                </View>
+                <Text style={[styles.sectionBody, type.bodySmall, { color: colors.muted }]}>{proposal.billingPeriod}</Text>
+                <Text style={[styles.sectionBody, type.bodySmall, { color: colors.muted }]}>
+                  {proposal.cancellationTerms}
+                </Text>
+                <Pressable style={styles.termsRow} onPress={() => router.push('/legal?doc=terms')}>
+                  <Text style={[styles.termsLink, type.bodySmall]}>{copy.termsLink}</Text>
+                  <Ionicons name="chevron-forward" size={14} color="#3D7A9A" />
+                </Pressable>
+              </View>
             </View>
-          </View>
           ) : null}
         </View>
       ) : waiting ? (
@@ -357,12 +367,6 @@ export default function FamilyCarePlanScreen() {
 
 const styles = StyleSheet.create({
   kicker: {
-    marginBottom: 16,
-  },
-  proposal: {
-    borderRadius: 22,
-    borderWidth: 1,
-    padding: 20,
     marginBottom: 16,
   },
   waitCard: {
@@ -479,10 +483,6 @@ const styles = StyleSheet.create({
     fontSize: 32,
     lineHeight: 38,
     fontWeight: '700',
-  },
-  quoteMeta: {
-    marginTop: 12,
-    marginBottom: 4,
   },
   primary: {
     minHeight: 54,
