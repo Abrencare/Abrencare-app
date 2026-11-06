@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useRouter } from 'expo-router';
@@ -10,6 +10,7 @@ import AuthField from '@/auth/AuthField';
 import AuthScaffold from '@/auth/AuthScaffold';
 import Replace from '@/components/gates/Replace';
 import { useLanguage } from '@/context/LanguageContext';
+import { markExecutiveSetupStarted } from '@/data/executiveInquiry';
 
 export default function ExecutiveProfileScreen() {
   const router = useRouter();
@@ -22,6 +23,10 @@ export default function ExecutiveProfileScreen() {
   const [heightCm, setHeightCm] = useState(user?.heightCm ?? '');
   const [weightKg, setWeightKg] = useState(user?.weightKg ?? '');
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  useEffect(() => {
+    markExecutiveSetupStarted();
+  }, []);
 
   if (!user || !hasService('executive')) {
     return (
@@ -137,7 +142,7 @@ export default function ExecutiveProfileScreen() {
         <Text style={styles.buttonText}>{t.auth.continue}</Text>
       </Pressable>
       <Pressable
-        onPress={() => router.replace('/executive-advisor')}
+        onPress={() => router.replace('/executive-care-plan')}
         style={styles.skip}
       >
         <Text style={[styles.skipText, { color: theme.muted }]}>

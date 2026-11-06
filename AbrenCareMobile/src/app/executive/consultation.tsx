@@ -1,73 +1,88 @@
 import React, { useMemo, useState } from "react";
 import {
   Alert,
+  Image,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import {
-  Avatar,
-  Card,
-  ScreenHeader,
-  SectionHeader,
-} from "@/components/executive/ExecutiveUI";
+import { GlassCard, glassTints } from "@/components/executive/GlassCard";
+import ServiceBackButton from "@/components/navigation/ServiceBackButton";
+import BrandLogo, { BrandHomeLink } from "@/components/ui/BrandLogo";
+import { useExecutiveAlerts } from "@/context/ExecutiveAlertsContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAppTheme } from "@/context/ThemeContext";
+import { useLandingType } from "@/theme/landingType";
 import {
   useExecutiveTheme,
   type ExecutivePalette,
 } from "@/theme/executiveTheme";
 
-const SLOTS = ["09:00", "11:30", "14:00", "16:30"];
+const HERO_PHOTO = require("@/assets/images/executive-hero-bg.jpg");
+const DOCTOR_PHOTO = require("@/assets/images/executive-doctor-portrait.jpg");
+const COORDINATOR_PHOTO = require("@/assets/images/executive-sarah-portrait.jpg");
+
+const SLOTS = ["09:00", "11:00", "14:00", "16:00"];
 
 export default function ExecutiveConsultation() {
   const c = useExecutiveTheme();
-  const styles = useMemo(() => createStyles(c), [c]);
+  const { isDark } = useAppTheme();
+  const styles = useMemo(() => createStyles(c, isDark), [c, isDark]);
+  const type = useLandingType("executive");
   const { t } = useLanguage();
+  const { unreadCount } = useExecutiveAlerts();
   const router = useRouter();
-  const [doctor, setDoctor] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
+  const [provider, setProvider] = useState<"doctor" | "nurse" | null>(null);
   const [slot, setSlot] = useState<string | null>(null);
 
   const copy = t.executiveConsult;
   const home = t.executiveHome;
+  const glass = glassTints(isDark);
 
   const specialists = [
     {
-      key: "doctor",
-      initials: "HB",
-      tone: "accent" as const,
+      key: "doctor" as const,
+      photo: DOCTOR_PHOTO,
       name: home.doctorName,
       role: home.doctorRole,
-      meta: home.doctorMeta,
     },
     {
-      key: "nurse",
-      initials: "NS",
-      tone: "slate" as const,
+      key: "nurse" as const,
+      photo: COORDINATOR_PHOTO,
       name: home.nurseName,
       role: home.nurseRole,
-      meta: t.executive.available,
     },
   ];
 
-  const request = () => {
-    if (!doctor || !slot) {
+  const openChat = (who: "doctor" | "nurse") =>
+    router.push({ pathname: "/executive/chat", params: { who } });
+
+  const joinCall = () =>
+    router.push({ pathname: "/executive/call", params: { who: "doctor" } });
+
+  const openAlerts = () => router.push("/executive/alerts");
+
+  const bookSlot = (option: string) => {
+    if (!provider) {
+      setSlot(option);
       Alert.alert(copy.title, copy.selectPrompt, [{ text: copy.ok }]);
       return;
     }
 
+    setSlot(option);
     Alert.alert(copy.requestedTitle, copy.requestedBody, [{ text: copy.ok }]);
-    setDoctor(null);
-    setSlot(null);
   };
 
   const reschedule = () => {
-    setDoctor("doctor");
+    setProvider("doctor");
     setSlot(null);
     Alert.alert(copy.rescheduleTitle, copy.rescheduleBody, [
       { text: copy.ok },
@@ -75,108 +90,229 @@ export default function ExecutiveConsultation() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        <ScreenHeader
-          kicker={home.kicker}
-          title={copy.title}
-          subtitle={copy.subtitle}
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={[styles.hero, { paddingTop: insets.top + 16 }]}>
+        <Image
+          source={HERO_PHOTO}
+          style={styles.heroPhoto}
+          resizeMode="cover"
         />
 
-        <Card style={styles.upcomingCard}>
-          <Text style={styles.upcomingLabel}>{copy.upcomingLabel}</Text>
+        <LinearGradient
+          colors={[c.hero, withAlpha(c.hero, 0.94), withAlpha(c.hero, 0.42)]}
+          locations={[0, 0.52, 1]}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={styles.heroFade}
+        />
 
-          <View style={styles.upcomingTop}>
-            <View style={styles.dateBlock}>
-              <Text style={styles.dateDay}>30</Text>
-              <Text style={styles.dateMonth}>SEP</Text>
+        <View style={styles.heroTopRow}>
+          <View style={styles.brandRow}>
+            <ServiceBackButton
+              color={c.heroText}
+              background={c.heroChip}
+              borderColor={c.heroChipBorder}
+              size={32}
+            />
+            <BrandHomeLink style={styles.brandLink}>
+              <BrandLogo size={34} link={false} />
+              <Text style={styles.wordmark}>{t.auth.brand}</Text>
+            </BrandHomeLink>
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t.header.notifications}
+            style={styles.bellButton}
+            onPress={openAlerts}
+          >
+            <Ionicons
+              name="notifications-outline"
+              size={19}
+              color={c.heroText}
+            />
+            {unreadCount > 0 ? (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>{unreadCount}</Text>
+              </View>
+            ) : null}
+          </Pressable>
+        </View>
+
+        <Text style={[styles.heroKicker, { fontFamily: type.sansSemi }]}>
+          {home.kicker}
+        </Text>
+        <Text style={[styles.heroTitle, { fontFamily: type.display }]}>
+          {copy.title}
+        </Text>
+        <Text style={[styles.heroSubtitle, { fontFamily: type.sans }]}>
+          {copy.subtitle}
+        </Text>
+      </View>
+
+      <View style={styles.body}>
+        <GlassCard
+          tint={glass.card}
+          border={glass.border}
+          sheen={glass.sheen}
+        >
+          <View style={styles.split}>
+            <View style={styles.flexCopy}>
+              <View style={styles.kickerRow}>
+                <Ionicons name="calendar-outline" size={15} color={c.accent} />
+                <Text
+                  style={[styles.kicker, { fontFamily: type.sansSemi }]}
+                >
+                  {copy.upcomingLabel}
+                </Text>
+              </View>
+
+              <Text style={[styles.cardTitle, { fontFamily: type.sansSemi }]}>
+                {copy.upcomingTitle}
+              </Text>
+              <Text style={[styles.when, { fontFamily: type.sansSemi }]}>
+                {copy.upcomingWhen}
+              </Text>
+              <Text style={[styles.cardBody, { fontFamily: type.sans }]}>
+                {copy.upcomingWith}
+              </Text>
             </View>
 
-            <View style={styles.upcomingCopy}>
-              <Text style={styles.upcomingTitle}>{copy.upcomingTitle}</Text>
-              <Text style={styles.upcomingWhen}>{copy.upcomingWhen}</Text>
-              <Text style={styles.upcomingWith}>{copy.upcomingWith}</Text>
+            <View style={styles.dateBadge}>
+              <Text style={[styles.dateMonth, { fontFamily: type.sansSemi }]}>
+                {home.appointmentMonth}
+              </Text>
+              <Text style={[styles.dateDay, { fontFamily: type.display }]}>
+                {home.appointmentDay}
+              </Text>
+              <Text style={[styles.dateWeek, { fontFamily: type.sansSemi }]}>
+                {home.appointmentWeekday}
+              </Text>
             </View>
           </View>
 
-          <View style={styles.upcomingActions}>
+          <View style={styles.actionRow}>
             <Pressable
-              style={styles.solidButton}
-              onPress={() =>
-                router.push({
-                  pathname: "/executive/call",
-                  params: { who: "doctor" },
-                })
-              }
+              accessibilityRole="button"
+              accessibilityLabel={copy.joinCall}
+              style={styles.goldButton}
+              onPress={joinCall}
             >
-              <Ionicons name="videocam" size={15} color={c.onAccent} />
-              <Text style={styles.solidButtonText}>{copy.joinCall}</Text>
+              <Ionicons name="videocam-outline" size={15} color={c.onAccent} />
+              <Text
+                style={[styles.goldButtonText, { fontFamily: type.sansSemi }]}
+              >
+                {copy.joinCall}
+              </Text>
+              <Ionicons name="arrow-forward" size={13} color={c.onAccent} />
             </Pressable>
 
-            <Pressable style={styles.ghostButton} onPress={reschedule}>
-              <Ionicons name="time-outline" size={15} color={c.accent} />
-              <Text style={styles.ghostButtonText}>{copy.reschedule}</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={copy.reschedule}
+              style={styles.outlineButton}
+              onPress={reschedule}
+            >
+              <Ionicons name="calendar-outline" size={15} color={c.accent} />
+              <Text
+                style={[styles.outlineButtonText, { fontFamily: type.sansSemi }]}
+              >
+                {copy.reschedule}
+              </Text>
+              <Ionicons name="arrow-forward" size={13} color={c.accent} />
             </Pressable>
           </View>
-        </Card>
+        </GlassCard>
 
-        <View style={styles.section}>
-          <SectionHeader title={copy.chooseTitle} />
-          <Text style={styles.sectionCaption}>{copy.chooseSubtitle}</Text>
+        <GlassCard
+          tint={glass.card}
+          border={glass.border}
+          sheen={glass.sheen}
+        >
+          <View style={styles.kickerRow}>
+            <Ionicons name="people-outline" size={15} color={c.accent} />
+            <Text style={[styles.kicker, { fontFamily: type.sansSemi }]}>
+              {copy.chooseTitle}
+            </Text>
+          </View>
+          <Text style={[styles.sectionLead, { fontFamily: type.sans }]}>
+            {copy.chooseSubtitle}
+          </Text>
 
-          {specialists.map((person) => {
-            const selected = doctor === person.key;
+          {specialists.map((person, index) => {
+            const selected = provider === person.key;
 
             return (
               <Pressable
                 key={person.key}
-                onPress={() => setDoctor(person.key)}
+                accessibilityRole="button"
+                accessibilityLabel={person.name}
+                onPress={() => setProvider(person.key)}
                 style={[
-                  styles.specialistCard,
-                  selected && styles.specialistCardActive,
+                  styles.personRow,
+                  index > 0 && styles.personRowDivided,
+                  selected && styles.personRowSelected,
                 ]}
               >
-                <Avatar initials={person.initials} tone={person.tone} />
-
-                <View style={styles.upcomingCopy}>
-                  <Text style={styles.specialistName}>{person.name}</Text>
-                  <Text style={styles.specialistRole}>{person.role}</Text>
-                  <Text style={styles.specialistMeta}>{person.meta}</Text>
+                <Image
+                  source={person.photo}
+                  style={styles.personPhoto}
+                  resizeMode="cover"
+                />
+                <View style={styles.flexCopy}>
+                  <Text
+                    style={[styles.personName, { fontFamily: type.sansSemi }]}
+                  >
+                    {person.name}
+                  </Text>
+                  <Text style={[styles.personRole, { fontFamily: type.sans }]}>
+                    {person.role}
+                  </Text>
                 </View>
 
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={t.executiveHome.message}
+                  accessibilityLabel={`${home.message} ${person.name}`}
                   style={styles.messageButton}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/executive/chat",
-                      params: { who: person.key },
-                    })
-                  }
+                  onPress={() => openChat(person.key)}
                 >
                   <Ionicons
                     name="chatbubble-outline"
-                    size={16}
+                    size={13}
                     color={c.accent}
                   />
+                  <Text
+                    style={[
+                      styles.messageButtonText,
+                      { fontFamily: type.sansSemi },
+                    ]}
+                  >
+                    {home.message}
+                  </Text>
                 </Pressable>
-
-                <Ionicons
-                  name={selected ? "radio-button-on" : "radio-button-off"}
-                  size={20}
-                  color={selected ? c.accent : c.faint}
-                />
               </Pressable>
             );
           })}
-        </View>
+        </GlassCard>
 
-        <View style={styles.section}>
-          <SectionHeader title={copy.slotsTitle} />
+        <GlassCard
+          tint={glass.card}
+          border={glass.border}
+          sheen={glass.sheen}
+        >
+          <View style={styles.kickerRow}>
+            <Ionicons name="time-outline" size={15} color={c.accent} />
+            <Text style={[styles.kicker, { fontFamily: type.sansSemi }]}>
+              {copy.slotsTitle}
+            </Text>
+          </View>
+          <Text style={[styles.sectionLead, { fontFamily: type.sans }]}>
+            {copy.slotsSubtitle}
+          </Text>
 
           <View style={styles.slotRow}>
             {SLOTS.map((option) => {
@@ -185,12 +321,15 @@ export default function ExecutiveConsultation() {
               return (
                 <Pressable
                   key={option}
-                  onPress={() => setSlot(option)}
+                  accessibilityRole="button"
+                  accessibilityLabel={option}
+                  onPress={() => bookSlot(option)}
                   style={[styles.slot, selected && styles.slotActive]}
                 >
                   <Text
                     style={[
                       styles.slotLabel,
+                      { fontFamily: type.sansSemi },
                       selected && styles.slotLabelActive,
                     ]}
                   >
@@ -200,209 +339,338 @@ export default function ExecutiveConsultation() {
               );
             })}
           </View>
-        </View>
 
-        <Pressable style={styles.requestButton} onPress={request}>
-          <Ionicons name="calendar" size={16} color={c.onAccent} />
-          <Text style={styles.requestButtonText}>{copy.request}</Text>
-        </Pressable>
-      </ScrollView>
-    </SafeAreaView>
+          <View style={styles.noteRow}>
+            <Ionicons name="home-outline" size={14} color={c.faint} />
+            <Text style={[styles.note, { fontFamily: type.sans }]}>
+              {copy.visitNote}
+            </Text>
+          </View>
+        </GlassCard>
+      </View>
+    </ScrollView>
   );
 }
 
-function createStyles(c: ExecutivePalette) {
+function withAlpha(hex: string, alpha: number) {
+  const value = hex.replace("#", "");
+  const r = parseInt(value.slice(0, 2), 16);
+  const g = parseInt(value.slice(2, 4), 16);
+  const b = parseInt(value.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function createStyles(c: ExecutivePalette, isDark: boolean) {
   return StyleSheet.create({
-    safeArea: {
+    screen: {
       flex: 1,
       backgroundColor: c.page,
     },
     content: {
-      padding: 18,
-      paddingBottom: 36,
+      paddingBottom: 88,
     },
-    section: {
-      marginTop: 24,
+    hero: {
+      backgroundColor: c.hero,
+      borderBottomLeftRadius: 30,
+      borderBottomRightRadius: 30,
+      paddingHorizontal: 20,
+      paddingBottom: 56,
+      overflow: "hidden",
     },
-    sectionCaption: {
-      fontSize: 12,
-      color: c.muted,
-      marginTop: -6,
-      marginBottom: 12,
+    heroPhoto: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
     },
-
-    upcomingCard: {
-      backgroundColor: c.card,
+    heroFade: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
     },
-    upcomingLabel: {
-      fontSize: 10,
-      fontWeight: "700",
-      letterSpacing: 1.2,
-      color: c.kicker,
-      marginBottom: 12,
-    },
-    upcomingTop: {
+    heroTopRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 14,
+      justifyContent: "space-between",
+      marginBottom: 26,
     },
-    dateBlock: {
-      width: 56,
-      height: 62,
-      borderRadius: 16,
-      backgroundColor: c.accentSoft,
+    brandRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    brandLink: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    wordmark: {
+      fontSize: 14,
+      fontWeight: "700",
+      letterSpacing: 1.6,
+      color: c.heroText,
+    },
+    bellButton: {
+      width: 38,
+      height: 38,
+      borderRadius: 13,
+      backgroundColor: c.heroChip,
+      borderWidth: 1,
+      borderColor: c.heroChipBorder,
       alignItems: "center",
       justifyContent: "center",
     },
-    dateDay: {
-      fontSize: 22,
+    bellBadge: {
+      position: "absolute",
+      top: -4,
+      right: -4,
+      minWidth: 18,
+      height: 18,
+      borderRadius: 9,
+      paddingHorizontal: 5,
+      backgroundColor: c.danger,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    bellBadgeText: {
+      fontSize: 10,
       fontWeight: "700",
+      color: "#FFFFFF",
+    },
+    heroKicker: {
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 1.6,
+      color: c.kicker,
+      marginBottom: 8,
+    },
+    heroTitle: {
+      fontSize: 32,
+      color: c.heroText,
+      letterSpacing: -0.6,
+    },
+    heroSubtitle: {
+      fontSize: 14,
+      color: c.heroMuted,
+      lineHeight: 20,
+      marginTop: 6,
+      maxWidth: 300,
+    },
+    body: {
+      paddingHorizontal: 16,
+      marginTop: -38,
+      gap: 14,
+    },
+    split: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    flexCopy: {
+      flex: 1,
+      minWidth: 0,
+    },
+    kickerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      marginBottom: 8,
+    },
+    kicker: {
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 0.8,
       color: c.accent,
+      textTransform: "uppercase",
+    },
+    cardTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: c.text,
+      lineHeight: 22,
+    },
+    when: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: c.text,
+      marginTop: 4,
+    },
+    cardBody: {
+      fontSize: 12,
+      color: c.muted,
+      lineHeight: 17,
+      marginTop: 3,
+    },
+    sectionLead: {
+      fontSize: 13,
+      color: c.muted,
+      lineHeight: 18,
+      marginBottom: 4,
+    },
+    dateBadge: {
+      width: 72,
+      borderRadius: 18,
+      paddingVertical: 10,
+      alignItems: "center",
+      backgroundColor: isDark
+        ? "rgba(196, 160, 90, 0.14)"
+        : "rgba(255,255,255,0.55)",
+      borderWidth: 1,
+      borderColor: isDark ? c.accentBorder : "rgba(196, 160, 90, 0.35)",
     },
     dateMonth: {
       fontSize: 10,
       fontWeight: "700",
-      letterSpacing: 1,
+      letterSpacing: 1.2,
       color: c.accent,
     },
-    upcomingCopy: {
-      flex: 1,
-    },
-    upcomingTitle: {
-      fontSize: 15,
-      fontWeight: "700",
+    dateDay: {
+      fontSize: 26,
       color: c.text,
-    },
-    upcomingWhen: {
-      fontSize: 12,
-      color: c.muted,
-      marginTop: 3,
-    },
-    upcomingWith: {
-      fontSize: 11,
-      color: c.faint,
+      lineHeight: 30,
       marginTop: 2,
     },
-    upcomingActions: {
+    dateWeek: {
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 1,
+      color: c.accent,
+      marginTop: 2,
+    },
+    actionRow: {
       flexDirection: "row",
       gap: 10,
       marginTop: 16,
     },
-
-    solidButton: {
+    goldButton: {
       flex: 1,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      gap: 7,
+      gap: 6,
       backgroundColor: c.accent,
-      borderRadius: 14,
-      paddingVertical: 12,
+      borderRadius: 22,
+      paddingVertical: 11,
+      paddingHorizontal: 8,
     },
-    solidButtonText: {
-      fontSize: 13,
+    goldButtonText: {
+      fontSize: 12,
       fontWeight: "700",
       color: c.onAccent,
     },
-    ghostButton: {
+    outlineButton: {
       flex: 1,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      gap: 7,
-      backgroundColor: c.accentSoft,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: c.accentBorder,
-      paddingVertical: 12,
+      gap: 6,
+      borderRadius: 22,
+      borderWidth: 1.5,
+      borderColor: c.accent,
+      backgroundColor: isDark
+        ? "rgba(196, 160, 90, 0.08)"
+        : "rgba(255,255,255,0.35)",
+      paddingVertical: 11,
+      paddingHorizontal: 8,
     },
-    ghostButtonText: {
-      fontSize: 13,
+    outlineButtonText: {
+      fontSize: 12,
       fontWeight: "700",
       color: c.accent,
     },
-
-    specialistCard: {
+    personRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 13,
-      backgroundColor: c.card,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: c.cardBorder,
-      padding: 16,
-      marginBottom: 12,
+      gap: 10,
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      marginHorizontal: -8,
+      borderRadius: 18,
     },
-    specialistCardActive: {
-      borderColor: c.accent,
-      backgroundColor: c.accentSoft,
+    personRowDivided: {
+      borderTopWidth: 1,
+      borderTopColor: c.divider,
     },
-    messageButton: {
-      width: 34,
-      height: 34,
-      borderRadius: 12,
-      backgroundColor: c.accentSoft,
-      borderWidth: 1,
-      borderColor: c.accentBorder,
-      alignItems: "center",
-      justifyContent: "center",
+    personRowSelected: {
+      backgroundColor: isDark
+        ? "rgba(196, 160, 90, 0.12)"
+        : "rgba(196, 160, 90, 0.1)",
     },
-    specialistName: {
+    personPhoto: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+    },
+    personName: {
       fontSize: 14,
       fontWeight: "700",
       color: c.text,
     },
-    specialistRole: {
+    personRole: {
       fontSize: 12,
       color: c.muted,
       marginTop: 2,
     },
-    specialistMeta: {
-      fontSize: 11,
-      color: c.faint,
-      marginTop: 2,
+    messageButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      borderRadius: 18,
+      borderWidth: 1.5,
+      borderColor: c.accent,
+      backgroundColor: isDark
+        ? "rgba(196, 160, 90, 0.08)"
+        : "rgba(255,255,255,0.35)",
+      paddingHorizontal: 12,
+      paddingVertical: 8,
     },
-
+    messageButtonText: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: c.accent,
+    },
     slotRow: {
       flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 10,
+      gap: 8,
+      marginTop: 14,
     },
     slot: {
-      paddingHorizontal: 18,
+      flex: 1,
+      alignItems: "center",
       paddingVertical: 11,
-      borderRadius: 14,
-      backgroundColor: c.card,
+      borderRadius: 18,
+      backgroundColor: isDark
+        ? "rgba(255,255,255,0.06)"
+        : "rgba(255,255,255,0.55)",
       borderWidth: 1,
-      borderColor: c.cardBorder,
+      borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.8)",
     },
     slotActive: {
       backgroundColor: c.accent,
       borderColor: c.accent,
     },
     slotLabel: {
-      fontSize: 13,
-      fontWeight: "600",
+      fontSize: 12,
+      fontWeight: "700",
       color: c.text,
     },
     slotLabelActive: {
       color: c.onAccent,
     },
-
-    requestButton: {
+    noteRow: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "center",
       gap: 8,
-      backgroundColor: c.accent,
-      borderRadius: 16,
-      paddingVertical: 15,
-      marginTop: 26,
+      marginTop: 14,
     },
-    requestButtonText: {
-      fontSize: 14,
-      fontWeight: "700",
-      color: c.onAccent,
+    note: {
+      flex: 1,
+      fontSize: 11,
+      color: c.faint,
+      lineHeight: 16,
     },
   });
 }

@@ -105,6 +105,10 @@ export function doctorsInSpecialty(specialty: SpecialtyId) {
   return DOCTORS.filter((doctor) => doctor.specialty === specialty);
 }
 
+export function doctorsAvailableNow() {
+  return DOCTORS.filter((doctor) => doctor.online);
+}
+
 /** Filters by specialty, then by a free-text match on name or specialty. */
 export function filterDoctors(
   { query, specialty }: { query: string; specialty: SpecialtyId | null },

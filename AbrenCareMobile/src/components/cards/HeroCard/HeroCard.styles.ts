@@ -2,24 +2,10 @@ import { StyleSheet } from 'react-native';
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#E7EEEA',
-    overflow: 'hidden',
-    minHeight: 236,
-    position: 'relative',
-  },
-  backgroundPhoto: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  fade: {
-    ...StyleSheet.absoluteFillObject,
+    padding: 20,
   },
   copy: {
-    padding: 22,
-    paddingRight: 110,
-    zIndex: 1,
+    padding: 0,
   },
   greeting: {
     color: '#1A4A42',
@@ -51,7 +37,7 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(231,238,234,0.94)',
+    backgroundColor: '#E7EEEA',
     paddingHorizontal: 10,
     paddingVertical: 7,
     borderRadius: 14,

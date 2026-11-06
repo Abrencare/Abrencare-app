@@ -23,6 +23,15 @@ export type FamilySupportId =
 
 export type FamilyContactId = 'whatsapp' | 'call' | 'email';
 
+export type FamilyCaregiverRelationshipId =
+  | 'mother'
+  | 'father'
+  | 'parent'
+  | 'spouse'
+  | 'child'
+  | 'sibling'
+  | 'other';
+
 export type FamilyJourneyStatus =
   | 'received'
   | 'contacted'
@@ -47,6 +56,7 @@ export type FamilyProposal = {
 
 export type FamilyInquiry = {
   id: string;
+  /** Caregiver / account contact name (legacy field kept for older records). */
   name: string;
   phone: string;
   email: string;
@@ -54,6 +64,12 @@ export type FamilyInquiry = {
   city: FamilyCityId;
   support: FamilySupportId;
   contact: FamilyContactId;
+  patientName: string;
+  patientPhone: string;
+  patientCountry: CountryId;
+  /** Patient date of birth as YYYY-MM-DD when provided. */
+  patientDateOfBirth: string;
+  caregiverRelationship: FamilyCaregiverRelationshipId;
   submittedAt: string;
   status: FamilyJourneyStatus;
   contactedAt?: string;
@@ -71,6 +87,16 @@ const STATUS_ORDER: FamilyJourneyStatus[] = [
   'accepted',
   'setup',
   'active',
+];
+
+const RELATIONSHIPS: FamilyCaregiverRelationshipId[] = [
+  'mother',
+  'father',
+  'parent',
+  'spouse',
+  'child',
+  'sibling',
+  'other',
 ];
 
 export function journeyStageIndex(status: FamilyJourneyStatus) {
@@ -113,18 +139,29 @@ function isInquiry(value: unknown): value is FamilyInquiry {
     typeof item.name === 'string' &&
     typeof item.phone === 'string' &&
     typeof item.country === 'string' &&
-    typeof item.city === 'string' &&
     typeof item.support === 'string' &&
-    typeof item.contact === 'string' &&
     typeof item.submittedAt === 'string'
   );
 }
 
 function normalizeInquiry(item: FamilyInquiry): FamilyInquiry {
   const status = STATUS_ORDER.includes(item.status) ? item.status : 'received';
+  const relationship = RELATIONSHIPS.includes(item.caregiverRelationship)
+    ? item.caregiverRelationship
+    : 'other';
   return {
     ...item,
     email: item.email ?? '',
+    city: item.city ?? 'addis',
+    contact: item.contact ?? 'whatsapp',
+    patientName: item.patientName?.trim() || item.name,
+    patientPhone: item.patientPhone?.trim() || '',
+    patientCountry: item.patientCountry || 'ET',
+    patientDateOfBirth:
+      typeof item.patientDateOfBirth === 'string'
+        ? item.patientDateOfBirth.trim()
+        : '',
+    caregiverRelationship: relationship,
     status,
     proposal: item.proposal && isProposal(item.proposal) ? item.proposal : undefined,
   };
@@ -152,18 +189,36 @@ export async function loadFamilyInquiryById(id: string) {
   return list.find((item) => item.id === id) ?? null;
 }
 
-export async function saveFamilyInquiry(
-  input: Omit<FamilyInquiry, 'id' | 'submittedAt' | 'status'>,
-) {
+export type FamilyInquiryInput = {
+  patientName: string;
+  patientPhone: string;
+  patientCountry: CountryId;
+  patientDateOfBirth: string;
+  name: string;
+  phone: string;
+  country: CountryId;
+  caregiverRelationship: FamilyCaregiverRelationshipId;
+  support: FamilySupportId;
+  email?: string;
+  city?: FamilyCityId;
+  contact?: FamilyContactId;
+};
+
+export async function saveFamilyInquiry(input: FamilyInquiryInput) {
   const inquiry: FamilyInquiry = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    patientName: input.patientName.trim(),
+    patientPhone: input.patientPhone.trim(),
+    patientCountry: input.patientCountry,
+    patientDateOfBirth: input.patientDateOfBirth.trim(),
     name: input.name.trim(),
     phone: input.phone.trim(),
-    email: input.email.trim(),
+    email: (input.email ?? '').trim(),
     country: input.country,
-    city: input.city,
+    city: input.city ?? 'addis',
     support: input.support,
-    contact: input.contact,
+    contact: input.contact ?? 'whatsapp',
+    caregiverRelationship: input.caregiverRelationship,
     submittedAt: new Date().toISOString(),
     status: 'received',
   };

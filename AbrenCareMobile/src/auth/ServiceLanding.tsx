@@ -101,6 +101,7 @@ type Props = {
   manifesto?: ManifestoCopy;
   pitch?: PitchCopy;
   offer?: OfferCopy;
+  onCreateAccount?: () => void;
 };
 
 const THEME = {
@@ -125,6 +126,7 @@ export default function ServiceLanding({
   manifesto,
   pitch,
   offer,
+  onCreateAccount,
 }: Props) {
 
   const styles = useThemedStyles(baseStyles);
@@ -165,6 +167,10 @@ export default function ServiceLanding({
   }
 
   function goSignup() {
+    if (onCreateAccount) {
+      onCreateAccount();
+      return;
+    }
     router.push({ pathname: '/signup', params: { service } });
   }
 

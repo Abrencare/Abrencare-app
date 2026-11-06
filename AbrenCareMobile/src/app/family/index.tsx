@@ -2,12 +2,10 @@ import React, { useEffect } from 'react';
 import {
   Alert,
   Linking,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  useWindowDimensions,
   View,
 } from 'react-native';
 
@@ -20,10 +18,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { GlassCard, glassTints } from '@/components/executive/GlassCard';
+import { FamilyHero } from '@/components/family/FamilyHero';
 import FamilyIconWell from '@/components/family/FamilyIconWell';
-import FamilyProfilePhoto from '@/components/family/FamilyProfilePhoto';
-import ServiceBackButton from '@/components/navigation/ServiceBackButton';
-import BrandLogo from '@/components/ui/BrandLogo';
 import { useAppointments } from '@/context/AppointmentsContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -82,9 +79,8 @@ function glanceFor(
 
 export default function FamilyOverview() {
   const styles = useThemedStyles(baseStyles);
-  const { width } = useWindowDimensions();
-  const showVisitArt = width >= 390;
   const { isDark } = useAppTheme();
+  const glass = glassTints(isDark, 'family');
   const { t } = useLanguage();
   const type = useLandingType('family');
   const router = useRouter();
@@ -184,52 +180,34 @@ export default function FamilyOverview() {
   const before = beforeCare(inquiry ?? null, careName || t.family.lovedOne, t.family);
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.topBar}>
-          <ServiceBackButton
-            color={isDark ? '#A3B0AA' : '#5C6B65'}
-            size={36}
-            style={styles.backButton}
-            href="/family-home"
-          />
-
-          <View style={styles.brand}>
-            <View style={styles.logoRing}>
-              <BrandLogo size={28} />
-            </View>
-            <Text style={[styles.active, type.kicker]} numberOfLines={1}>
-              {serviceStarted ? t.family.activeService : t.familyAdd.selectKicker}
-            </Text>
-          </View>
-
-          {serviceStarted ? (
+    <ScrollView
+      style={[styles.container, isDark && styles.containerDark]}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      <FamilyHero
+        kicker={serviceStarted ? t.family.activeService : t.familyAdd.selectKicker}
+        title={`${greeting}${careName ? `, ${careName}` : ''}`}
+        subtitle={glance}
+        trailing={
+          serviceStarted ? (
             <View style={styles.planChip}>
               <View style={styles.planDot} />
               <Text style={styles.planChipText}>{t.family.planActive}</Text>
             </View>
-          ) : null}
-        </View>
+          ) : null
+        }
+      />
 
-        <View style={styles.identity}>
-          <FamilyProfilePhoto size={64} />
-          <View style={styles.identityCopy}>
-            <Text style={[styles.title, type.headline]}>
-              {greeting}
-              {careName ? `, ${careName}` : ''}
-            </Text>
-            <Text style={[styles.subtitle, type.body]}>{glance}</Text>
-          </View>
-        </View>
-
+      <View style={styles.body}>
         {loading ? null : serviceStarted ? (
           <>
-            <Text style={[styles.sectionLabel, type.kicker]}>{t.family.latestUpdate}</Text>
-            <View style={styles.visitCard}>
+            <GlassCard
+              tint={glass.update}
+              border={glass.border}
+              sheen={glass.sheen}
+              shadowColor="#16332C"
+            >
               <View style={styles.visitMain}>
                 {visitStatus === 'live' ? (
                   <View style={styles.visitIcon}>
@@ -244,7 +222,7 @@ export default function FamilyOverview() {
                   />
                 )}
 
-                <View style={[styles.visitCopy, showVisitArt && visitStatus === 'complete' && styles.visitCopyArt]}>
+                <View style={styles.visitCopy}>
                   <Text style={[styles.kicker, type.kicker]}>{visitCopy.kicker}</Text>
                   <Text style={[styles.visitTitle, { fontFamily: type.sansSemi }]}>{visitCopy.title}</Text>
                   <Text style={[styles.visitBody, type.bodySmall]}>{visitCopy.body}</Text>
@@ -260,19 +238,15 @@ export default function FamilyOverview() {
                   </TouchableOpacity>
                 </View>
               </View>
-
-              {showVisitArt && visitStatus === 'complete' ? (
-                <View style={styles.visitArt} pointerEvents="none">
-                  <Ionicons name="heart" size={92} color="rgba(94,122,98,0.16)" />
-                  <View style={styles.checkBadge}>
-                    <Ionicons name="checkmark" size={20} color={GREEN} />
-                  </View>
-                </View>
-              ) : null}
-            </View>
+            </GlassCard>
 
             {concernOpen ? (
-              <View style={styles.attentionCard}>
+              <GlassCard
+                tint={glass.attention}
+                border={glass.border}
+                sheen={glass.sheen}
+                shadowColor="#16332C"
+              >
                 <View style={styles.attentionTop}>
                   <FamilyIconWell name="warning-outline" tone="warn" />
                   <View style={styles.attentionCopy}>
@@ -290,10 +264,15 @@ export default function FamilyOverview() {
                   <Text style={styles.attentionButtonText}>{t.family.attentionAction}</Text>
                   <Ionicons name="chevron-forward" size={13} color="#C97A2E" />
                 </TouchableOpacity>
-              </View>
+              </GlassCard>
             ) : null}
 
-            <View style={styles.nextCard}>
+            <GlassCard
+              tint={glass.card}
+              border={glass.border}
+              sheen={glass.sheen}
+              shadowColor="#16332C"
+            >
               <View style={styles.nextTop}>
                 <FamilyIconWell name="calendar-outline" />
                 <View style={styles.nextCopy}>
@@ -323,10 +302,16 @@ export default function FamilyOverview() {
                 </Text>
                 <Ionicons name="chevron-forward" size={13} color="#5E7A62" />
               </TouchableOpacity>
-            </View>
+            </GlassCard>
 
             <Text style={[styles.sectionLabel, type.kicker]}>{t.family.careTeam}</Text>
-            <View style={styles.teamCard}>
+            <GlassCard
+              tint={glass.card}
+              border={glass.border}
+              sheen={glass.sheen}
+              shadowColor="#16332C"
+              style={styles.teamCard}
+            >
               <View style={[styles.teamRow, styles.teamDivider]}>
                 <View style={styles.teamAvatar}>
                   <Text style={styles.teamAvatarText}>MG</Text>
@@ -357,10 +342,15 @@ export default function FamilyOverview() {
                   <FamilyIconWell name="call-outline" size={16} box={36} />
                 </TouchableOpacity>
               </View>
-            </View>
+            </GlassCard>
           </>
         ) : (
-          <View style={styles.nextCard}>
+          <GlassCard
+            tint={glass.card}
+            border={glass.border}
+            sheen={glass.sheen}
+            shadowColor="#16332C"
+          >
             <Text style={[styles.kicker, type.kicker]}>{t.family.latestUpdate}</Text>
             <Text style={styles.nextTitle}>{before.title}</Text>
             <Text style={[styles.beforeBody, type.bodySmall]}>{before.body}</Text>
@@ -369,13 +359,13 @@ export default function FamilyOverview() {
               onPress={() => router.push(before.href)}
               activeOpacity={0.85}
             >
-              <Text style={styles.manageText}>{t.family.beforeAction}</Text>
+              <Text style={styles.manageText}>{before.action}</Text>
               <Ionicons name="chevron-forward" size={13} color="#5E7A62" />
             </TouchableOpacity>
-          </View>
+          </GlassCard>
         )}
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </ScrollView>
   );
 }
 
@@ -389,6 +379,11 @@ function beforeCare(
     beforeContacted: string;
     beforeProposed: string;
     beforeSetup: string;
+    beforeAction: string;
+    beforeActionPending: string;
+    beforeActionContacted: string;
+    beforeActionProposed: string;
+    beforeActionAccepted: string;
   },
 ) {
   if (!inquiry) {
@@ -396,73 +391,64 @@ function beforeCare(
       title: copy.beforeTitle,
       body: copy.beforeNone.replace('{name}', name),
       href: '/family-request' as const,
+      action: copy.beforeAction,
     };
   }
   if (inquiry.status === 'contacted') {
-    return { title: copy.beforeTitle, body: copy.beforeContacted, href: '/family-care-plan' as const };
+    return {
+      title: copy.beforeTitle,
+      body: copy.beforeContacted,
+      href: '/family-care-plan' as const,
+      action: copy.beforeActionContacted,
+    };
   }
   if (inquiry.status === 'proposed') {
-    return { title: copy.beforeTitle, body: copy.beforeProposed, href: '/family-care-plan' as const };
+    return {
+      title: copy.beforeTitle,
+      body: copy.beforeProposed,
+      href: '/family-care-plan' as const,
+      action: copy.beforeActionProposed,
+    };
   }
   if (inquiry.status === 'accepted' || inquiry.status === 'setup') {
-    return { title: copy.beforeTitle, body: copy.beforeSetup, href: '/family-care-plan' as const };
+    return {
+      title: copy.beforeTitle,
+      body: copy.beforeSetup,
+      href: '/family-care-plan' as const,
+      action: copy.beforeActionAccepted,
+    };
   }
-  return { title: copy.beforeTitle, body: copy.beforeReceived, href: '/family-care-plan' as const };
+  return {
+    title: copy.beforeTitle,
+    body: copy.beforeReceived,
+    href: '/family-request-status' as const,
+    action: copy.beforeActionPending,
+  };
 }
 
 const baseStyles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: '#F4F6F3',
-  },
   container: {
     flex: 1,
     backgroundColor: '#F4F6F3',
   },
+  containerDark: {
+    backgroundColor: '#0E1412',
+  },
   content: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    maxWidth: 520,
-    width: '100%',
-    alignSelf: 'center',
+    paddingBottom: 88,
   },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingTop: 6,
-    marginBottom: 22,
-  },
-  backButton: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E8EDE4',
-  },
-  brand: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    minWidth: 0,
-  },
-  logoRing: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: '#D5E3D8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  active: {
-    flex: 1,
-    color: '#7A877F',
+  body: {
+    paddingHorizontal: 16,
+    marginTop: -38,
+    gap: 14,
   },
   planChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#E8EDE4',
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 20,
@@ -471,35 +457,12 @@ const baseStyles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: GREEN,
+    backgroundColor: '#C5D4C8',
   },
   planChipText: {
     fontSize: 12,
     fontWeight: '600',
-    color: GREEN,
-  },
-  identity: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginBottom: 22,
-  },
-  identityCopy: {
-    flex: 1,
-  },
-  title: {
-    color: '#16332C',
-    marginBottom: 6,
-  },
-  subtitle: {
-    color: '#7A877F',
-  },
-  visitCard: {
-    backgroundColor: '#E8EDE4',
-    borderRadius: 22,
-    padding: 16,
-    marginBottom: 12,
-    overflow: 'hidden',
+    color: '#F4F6F3',
   },
   visitMain: {
     flexDirection: 'row',
@@ -516,9 +479,6 @@ const baseStyles = StyleSheet.create({
   },
   visitCopy: {
     flex: 1,
-  },
-  visitCopyArt: {
-    paddingRight: 48,
   },
   kicker: {
     color: '#7A877F',
@@ -549,26 +509,6 @@ const baseStyles = StyleSheet.create({
     fontWeight: '600',
     color: GREEN,
   },
-  visitArt: {
-    position: 'absolute',
-    right: -6,
-    bottom: -18,
-    width: 120,
-    height: 120,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkBadge: {
-    position: 'absolute',
-    right: 28,
-    top: 28,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   dotWrap: {
     width: 10,
     height: 10,
@@ -587,12 +527,6 @@ const baseStyles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: GREEN,
-  },
-  nextCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    padding: 16,
-    marginBottom: 12,
   },
   nextTop: {
     flexDirection: 'row',
@@ -616,6 +550,7 @@ const baseStyles = StyleSheet.create({
   beforeBody: {
     color: '#5C6B65',
     marginTop: 6,
+    lineHeight: 20,
   },
   manageChip: {
     flexDirection: 'row',
@@ -632,12 +567,6 @@ const baseStyles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: GREEN,
-  },
-  attentionCard: {
-    backgroundColor: '#FFF8EC',
-    borderRadius: 22,
-    padding: 16,
-    marginBottom: 12,
   },
   attentionTop: {
     flexDirection: 'row',
@@ -690,10 +619,7 @@ const baseStyles = StyleSheet.create({
     marginBottom: 10,
   },
   teamCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingVertical: 4,
   },
   teamRow: {
     flexDirection: 'row',

@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router/build/useFocusEffect';
 
 import { loadFamilyInquiry, type FamilyInquiry } from '@/data/familyInquiry';
 
@@ -20,6 +20,7 @@ export function useFamilyJourney() {
   return {
     inquiry,
     loading: inquiry === undefined,
+    // Full family dashboard only after care is activated (post-acceptance).
     serviceStarted: inquiry?.status === 'active',
   };
 }

@@ -1,15 +1,17 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { GlassCard, glassTints } from '@/components/executive/GlassCard';
 import FamilyIconWell from '@/components/family/FamilyIconWell';
 import { Ionicons } from '@expo/vector-icons';
 
 import { fromDateKey } from '@/context/AppointmentsContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAppTheme } from '@/context/ThemeContext';
 import { useVisit } from '@/context/VisitContext';
-import { useThemedStyles } from '@/theme/useThemedStyles';
 
 export default function FamilyHealthOverview() {
-  const styles = useThemedStyles(baseStyles);
+  const { isDark } = useAppTheme();
+  const glass = glassTints(isDark, 'family');
   const { t } = useLanguage();
   const copy = t.familyCareHealth;
   const { visit, status } = useVisit();
@@ -59,14 +61,20 @@ export default function FamilyHealthOverview() {
       {showFollowUp ? (
         <View>
           <Text style={styles.section}>{copy.latestUpdate}</Text>
-          <View style={styles.followCard}>
+          <GlassCard
+            tint={glass.attention}
+            border={glass.border}
+            sheen={glass.sheen}
+            shadowColor="#16332C"
+            style={styles.followCard}
+          >
             <FamilyIconWell name="warning-outline" tone="warn" box={34} size={16} />
             <View style={styles.followCopy}>
               <Text style={styles.followTitle}>{copy.followUp}</Text>
               <Text style={styles.followBody}>{followUpBody}</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="#C45C4A" />
-          </View>
+          </GlassCard>
         </View>
       ) : null}
 
@@ -74,7 +82,14 @@ export default function FamilyHealthOverview() {
       <Text style={styles.date}>{measuredLabel}</Text>
       <View style={styles.grid}>
         {readings.map((item) => (
-          <View key={item.label} style={styles.measure}>
+          <GlassCard
+            key={item.label}
+            tint={item.tone === 'warn' ? glass.attention : glass.card}
+            border={glass.border}
+            sheen={glass.sheen}
+            shadowColor="#16332C"
+            style={styles.measure}
+          >
             <View style={styles.measureTop}>
               <FamilyIconWell name={item.icon} box={28} size={14} />
               <Text style={styles.measureLabel}>{item.label}</Text>
@@ -83,21 +98,27 @@ export default function FamilyHealthOverview() {
             <Text style={item.tone === 'warn' ? styles.statusWarn : styles.statusGood}>
               {item.status}
             </Text>
-          </View>
+          </GlassCard>
         ))}
       </View>
 
-      <View style={styles.privacy}>
+      <GlassCard
+        tint={glass.update}
+        border={glass.border}
+        sheen={glass.sheen}
+        shadowColor="#16332C"
+        style={styles.privacy}
+      >
         <FamilyIconWell name="lock-closed-outline" box={34} size={16} />
         <Text style={styles.privacyText}>{copy.privacy}</Text>
-      </View>
+      </GlassCard>
     </View>
   );
 }
 
-const baseStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   section: {
-    marginTop: 8,
+    marginTop: 4,
     marginBottom: 8,
     fontSize: 16,
     fontWeight: '700',
@@ -113,9 +134,6 @@ const baseStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    backgroundColor: '#FFF6F2',
-    borderRadius: 16,
-    padding: 14,
     marginBottom: 16,
   },
   followCopy: {
@@ -139,11 +157,7 @@ const baseStyles = StyleSheet.create({
   },
   measure: {
     width: '48%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E6EAE2',
-    padding: 12,
+    flexGrow: 1,
   },
   measureTop: {
     flexDirection: 'row',
@@ -180,9 +194,6 @@ const baseStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    backgroundColor: '#E7EEEA',
-    borderRadius: 16,
-    padding: 14,
   },
   privacyText: {
     flex: 1,

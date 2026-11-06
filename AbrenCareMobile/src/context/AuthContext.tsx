@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -22,6 +23,25 @@ import {
   type MonitorMetric,
 } from '@/types/auth';
 
+function demoFamilyMember(profile: { name: string; phone: string }): FamilyMember {
+  return {
+    id: `demo-family-${Date.now()}`,
+    kind: 'parent',
+    name: profile.name || 'Family member',
+    relationship: 'parent',
+    dateOfBirth: '',
+    ageYears: 68,
+    phone: profile.phone,
+    city: 'Addis Ababa',
+    address: '',
+    emergencyPhone: '',
+    careNeeds: ['homeVisits', 'vitals'],
+    preferredLanguage: '',
+    notes: '',
+    status: 'active',
+  };
+}
+
 const STORAGE_KEY = 'abrencare-account';
 
 type AuthContextValue = {
@@ -32,13 +52,24 @@ type AuthContextValue = {
   nextRouteFor: (service: CareService) => string;
   signIn: (email: string, service: CareService) => AuthUser;
   signUp: (
-    input: { name: string; email: string; phone: string },
+    input: { name: string; email: string; phone: string; dateOfBirth?: string },
     service: CareService,
   ) => AuthUser;
   verifyEmail: () => void;
   setFamilyMembers: (members: FamilyMember[]) => void;
   selectFamilyMember: (id: string) => void;
   completeFamilyOnboarding: (members: FamilyMember[]) => void;
+  updateAccountProfile: (input: {
+    name: string;
+    email: string;
+    phone: string;
+  }) => void;
+  updateActiveFamilyMember: (input: {
+    name?: string;
+    phone?: string;
+    city?: string;
+  }) => void;
+  approveFamilyMember: (id: string) => void;
   saveExecutiveProfile: (input: {
     dateOfBirth: string;
     gender: Gender;
@@ -53,7 +84,12 @@ type AuthContextValue = {
   completeConsultationOnboarding: (input: {
     dateOfBirth: string;
     gender: Gender;
+    healthConcern?: string;
   }) => void;
+  enterDemoCare: (
+    service: CareService,
+    profile: { name: string; email: string; phone: string },
+  ) => AuthUser;
   signOut: () => void;
 };
 
@@ -165,6 +201,8 @@ function normalizeUser(parsed: unknown): AuthUser | null {
     frequency: value.frequency ?? 'managed',
     executiveOnboarded: Boolean(value.executiveOnboarded),
     consultationOnboarded: Boolean(value.consultationOnboarded),
+    healthConcern:
+      typeof value.healthConcern === 'string' ? value.healthConcern : '',
     emailVerified:
       typeof value.emailVerified === 'boolean' ? value.emailVerified : true,
   });
@@ -215,19 +253,25 @@ function onboarded(user: AuthUser, service: CareService) {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(readStoredUser);
+  // Keep a sync mirror so patch/signUp chains work inside async callbacks
+  // (React state alone is not updated until the next render).
+  const userRef = useRef<AuthUser | null>(user);
+  userRef.current = user;
 
   const value = useMemo<AuthContextValue>(() => {
     function commit(next: AuthUser) {
+      userRef.current = next;
       setUser(next);
       persistUser(next);
       return next;
     }
 
     function patch(updater: (current: AuthUser) => AuthUser) {
-      if (!user) {
+      const current = userRef.current;
+      if (!current) {
         throw new Error('Not signed in');
       }
-      return commit(updater(user));
+      return commit(updater(current));
     }
 
     return {
@@ -252,21 +296,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             name: nameFromEmail(email),
             email: email.trim(),
           });
-        return commit(withService({ ...current, email: email.trim() }, service));
+        const next = { ...current, email: email.trim() };
+        if (service === 'consultation') {
+          return commit(withService(next, service));
+        }
+        return commit(next);
       },
       signUp: (input, service) => {
+        const dateOfBirth = input.dateOfBirth?.trim() || '';
         const current = user
           ? {
               ...user,
               name: input.name.trim() || user.name,
               email: input.email.trim() || user.email,
               phone: input.phone.trim() || user.phone,
+              dateOfBirth: dateOfBirth || user.dateOfBirth,
             }
           : emptyUser({
               name: input.name.trim() || nameFromEmail(input.email),
               email: input.email.trim(),
               phone: input.phone.trim(),
-              emailVerified: service !== 'family',
+              dateOfBirth,
+              emailVerified: true,
             });
 
         return commit(withService(current, service));
@@ -300,6 +351,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ...current,
           familyMembers: members,
           familyOnboarded: true,
+          activeFamilyMemberId:
+            current.activeFamilyMemberId &&
+            members.some((member) => member.id === current.activeFamilyMemberId)
+              ? current.activeFamilyMemberId
+              : members[0]?.id ?? null,
+        }));
+      },
+      updateAccountProfile: (input) => {
+        patch((current) => ({
+          ...current,
+          name: input.name.trim() || current.name,
+          email: input.email.trim() || current.email,
+          phone: input.phone.trim() || current.phone,
+        }));
+      },
+      updateActiveFamilyMember: (input) => {
+        patch((current) => {
+          const activeId = current.activeFamilyMemberId;
+          if (!activeId) {
+            return current;
+          }
+          return {
+            ...current,
+            familyMembers: current.familyMembers.map((member) => {
+              if (member.id !== activeId) {
+                return member;
+              }
+              return {
+                ...member,
+                name: input.name?.trim() || member.name,
+                phone: input.phone?.trim() || member.phone,
+                city: input.city?.trim() || member.city,
+              };
+            }),
+          };
+        });
+      },
+      approveFamilyMember: (id) => {
+        patch((current) => ({
+          ...current,
+          familyMembers: current.familyMembers.map((member) =>
+            member.id === id ? { ...member, status: 'active' } : member,
+          ),
         }));
       },
       saveExecutiveProfile: (input) => {
@@ -329,10 +423,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ...current,
           dateOfBirth: input.dateOfBirth,
           gender: input.gender,
+          healthConcern: input.healthConcern?.trim() ?? current.healthConcern,
           consultationOnboarded: true,
         }));
       },
+      enterDemoCare: (service, profile) => {
+        const current =
+          user ??
+          emptyUser({
+            name: profile.name.trim() || nameFromEmail(profile.email || 'demo@abrencare.com'),
+            email: profile.email.trim() || 'demo@abrencare.com',
+            phone: profile.phone.trim(),
+            emailVerified: true,
+          });
+        let next = withService(
+          {
+            ...current,
+            name: profile.name.trim() || current.name,
+            email: profile.email.trim() || current.email,
+            phone: profile.phone.trim() || current.phone,
+            emailVerified: true,
+          },
+          service,
+        );
+        if (service === 'family') {
+          const member = next.familyMembers[0] ?? demoFamilyMember(profile);
+          next = {
+            ...next,
+            familyMembers: next.familyMembers.length ? next.familyMembers : [member],
+            activeFamilyMemberId: next.activeFamilyMemberId ?? member.id,
+            familyOnboarded: true,
+          };
+        }
+        if (service === 'executive') {
+          next = { ...next, executiveOnboarded: true };
+        }
+        return commit(next);
+      },
       signOut: () => {
+        userRef.current = null;
         setUser(null);
         persistUser(null);
       },

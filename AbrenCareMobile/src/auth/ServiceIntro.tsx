@@ -13,12 +13,14 @@ export default function ServiceIntro() {
   const params = useLocalSearchParams();
   const service = parseService(params.service);
 
-  if (user && hasService(service) && !needsOnboarding(service)) {
-    return <Replace href={dashboardFor(service)} />;
-  }
+  if (service !== 'consultation') {
+    if (user && hasService(service) && !needsOnboarding(service)) {
+      return <Replace href={dashboardFor(service)} />;
+    }
 
-  if (user && hasService(service) && needsOnboarding(service)) {
-    return <Replace href={onboardingPath(service)} />;
+    if (user && hasService(service) && needsOnboarding(service)) {
+      return <Replace href={onboardingPath(service)} />;
+    }
   }
 
   if (service === 'executive') {

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import {
+  Alert,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Switch,
@@ -11,15 +11,12 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
-import {
-  Card,
-  ScreenHeader,
-  SectionHeader,
-  StatusPill,
-} from "@/components/executive/ExecutiveUI";
+import { ExecutiveHero } from "@/components/executive/ExecutiveHero";
+import { GlassCard, glassTints } from "@/components/executive/GlassCard";
 import { initialsFor, useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAppTheme } from "@/context/ThemeContext";
+import { useLandingType } from "@/theme/landingType";
 import {
   useExecutiveTheme,
   type ExecutivePalette,
@@ -27,249 +24,266 @@ import {
 
 export default function ExecutiveProfile() {
   const c = useExecutiveTheme();
-  const styles = useMemo(() => createStyles(c), [c]);
-  const { t, language, setLanguage } = useLanguage();
   const { isDark, toggleTheme } = useAppTheme();
+  const styles = useMemo(() => createStyles(c, isDark), [c, isDark]);
+  const type = useLandingType("executive");
+  const { t, language, setLanguage } = useLanguage();
   const { user, signOut } = useAuth();
   const router = useRouter();
-  const [notifications, setNotifications] = useState(true);
+  const glass = glassTints(isDark);
+  const [infoOpen, setInfoOpen] = useState(false);
+
+  const copy = t.profile;
+  const firstName = user?.name.split(" ")[0] ?? copy.guest;
 
   const info = [
-    { key: "name", label: t.profile.fullName, value: user?.name ?? "—" },
-    { key: "email", label: t.profile.emailLabel, value: user?.email ?? "—" },
-    { key: "phone", label: t.profile.phone, value: user?.phone || "—" },
+    { key: "name", label: copy.fullName, value: user?.name ?? "—" },
+    { key: "email", label: copy.emailLabel, value: user?.email ?? "—" },
+    { key: "phone", label: copy.phone, value: user?.phone || "—" },
+  ];
+
+  const settings = [
+    {
+      key: "personal",
+      icon: "person-outline" as const,
+      title: copy.personalInformation,
+      meta: copy.personalMeta,
+      onPress: () => setInfoOpen((open) => !open),
+    },
+    {
+      key: "language",
+      icon: "globe-outline" as const,
+      title: copy.languageLabel,
+      meta:
+        language === "en" ? copy.languageEnglish : copy.languageAmharic,
+      onPress: () => setLanguage(language === "en" ? "am" : "en"),
+    },
+    {
+      key: "notifications",
+      icon: "notifications-outline" as const,
+      title: copy.notificationsLabel,
+      meta: copy.notificationsMeta,
+      onPress: () => router.push("/executive/alerts"),
+    },
+  ];
+
+  const support = [
+    {
+      key: "reports",
+      icon: "document-text-outline" as const,
+      title: copy.downloadReports,
+      meta: copy.downloadReportsMeta,
+      onPress: () => router.push("/executive/reports"),
+    },
+    {
+      key: "privacy",
+      icon: "shield-checkmark-outline" as const,
+      title: copy.privacySecurity,
+      meta: copy.privacyMeta,
+      onPress: () =>
+        Alert.alert(copy.privacySecurity, copy.privacyMessage, [
+          { text: copy.ok },
+        ]),
+    },
+    {
+      key: "contact",
+      icon: "headset-outline" as const,
+      title: copy.contactTeam,
+      meta: copy.contactTeamMeta,
+      onPress: () =>
+        router.push({ pathname: "/executive/chat", params: { who: "doctor" } }),
+    },
   ];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        <ScreenHeader
-          kicker={t.executiveHome.kicker}
-          title={t.profile.title}
-          subtitle={t.profile.subtitle}
-        />
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      <ExecutiveHero title={copy.title} subtitle={copy.executiveSubtitle} />
 
-        <Card style={styles.identityCard}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initialsFor(user)}</Text>
-          </View>
+      <View style={styles.body}>
+        <GlassCard tint={glass.card} border={glass.border} sheen={glass.sheen}>
+          <View style={styles.identityRow}>
+            <View style={styles.avatar}>
+              <Text style={[styles.avatarText, { fontFamily: type.sansSemi }]}>
+                {initialsFor(user)}
+              </Text>
+            </View>
 
-          <View style={styles.identityCopy}>
-            <Text style={styles.identityName}>
-              {user?.name ?? t.profile.guest}
-            </Text>
-            <Text style={styles.identityEmail}>
-              {user?.email ?? t.profile.notSignedIn}
-            </Text>
+            <View style={styles.flexCopy}>
+              <Text style={[styles.identityName, { fontFamily: type.sansSemi }]}>
+                {firstName}
+              </Text>
+              <Text style={[styles.identityEmail, { fontFamily: type.sans }]}>
+                {user?.email ?? copy.notSignedIn}
+              </Text>
+              <Text style={[styles.identityRole, { fontFamily: type.sans }]}>
+                {copy.executiveMember}
+              </Text>
+            </View>
 
-            <View style={styles.identityPill}>
-              <StatusPill label={t.profile.activePlan} tone="accent" />
+            <View style={styles.planPill}>
+              <Ionicons name="checkmark-circle" size={14} color={c.success} />
+              <Text style={[styles.planPillText, { fontFamily: type.sansSemi }]}>
+                {copy.activePlan}
+              </Text>
             </View>
           </View>
-        </Card>
+        </GlassCard>
 
-        <View style={styles.section}>
-          <SectionHeader title={t.profile.yourInformation} />
-
-          <Card>
-            {info.map((row, index) => (
-              <View
-                key={row.key}
-                style={[styles.infoRow, index > 0 && styles.infoRowDivided]}
+        <GlassCard tint={glass.card} border={glass.border} sheen={glass.sheen}>
+          {settings.map((row, index) => (
+            <View key={row.key}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={row.title}
+                onPress={row.onPress}
+                style={[styles.linkRow, index > 0 && styles.rowDivided]}
               >
-                <Text style={styles.infoLabel}>{row.label}</Text>
-                <Text style={styles.infoValue}>{row.value}</Text>
-              </View>
-            ))}
-          </Card>
-        </View>
-
-        <View style={styles.section}>
-          <SectionHeader title={t.profile.consultationSettings} />
-
-          <Card>
-            <View style={styles.settingRow}>
-              <View style={styles.settingCopy}>
-                <Text style={styles.settingLabel}>
-                  {t.profile.languageLabel}
-                </Text>
-                <Text style={styles.settingMeta}>
-                  {language === "en"
-                    ? t.profile.languageEnglish
-                    : t.profile.languageAmharic}
-                </Text>
-              </View>
-
-              <View style={styles.langToggle}>
-                <Pressable
-                  onPress={() => setLanguage("en")}
-                  style={[
-                    styles.langOption,
-                    language === "en" && styles.langOptionActive,
-                  ]}
-                >
+                <View style={styles.iconWell}>
+                  <Ionicons name={row.icon} size={16} color={c.accent} />
+                </View>
+                <View style={styles.flexCopy}>
                   <Text
-                    style={[
-                      styles.langLabel,
-                      language === "en" && styles.langLabelActive,
-                    ]}
+                    style={[styles.linkTitle, { fontFamily: type.sansSemi }]}
                   >
-                    EN
+                    {row.title}
                   </Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => setLanguage("am")}
-                  style={[
-                    styles.langOption,
-                    language === "am" && styles.langOptionActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.langLabel,
-                      language === "am" && styles.langLabelActive,
-                    ]}
-                  >
-                    አማ
+                  <Text style={[styles.linkMeta, { fontFamily: type.sans }]}>
+                    {row.meta}
                   </Text>
-                </Pressable>
-              </View>
-            </View>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={c.faint} />
+              </Pressable>
 
-            <View style={[styles.settingRow, styles.settingRowDivided]}>
-              <View style={styles.settingCopy}>
-                <Text style={styles.settingLabel}>{t.header.darkTheme}</Text>
-                <Text style={styles.settingMeta}>
-                  {isDark
-                    ? t.profile.notificationsOn
-                    : t.profile.notificationsOff}
+              {row.key === "personal" && infoOpen
+                ? info.map((item) => (
+                    <View key={item.key} style={styles.detailRow}>
+                      <Text
+                        style={[styles.detailLabel, { fontFamily: type.sans }]}
+                      >
+                        {item.label}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.detailValue,
+                          { fontFamily: type.sansSemi },
+                        ]}
+                      >
+                        {item.value}
+                      </Text>
+                    </View>
+                  ))
+                : null}
+            </View>
+          ))}
+
+          <View style={[styles.linkRow, styles.rowDivided]}>
+            <View style={styles.iconWell}>
+              <Ionicons name="moon-outline" size={16} color={c.accent} />
+            </View>
+            <View style={styles.flexCopy}>
+              <Text style={[styles.linkTitle, { fontFamily: type.sansSemi }]}>
+                {t.header.darkTheme}
+              </Text>
+              <Text style={[styles.linkMeta, { fontFamily: type.sans }]}>
+                {copy.darkThemeMeta}
+              </Text>
+            </View>
+            <Switch
+              value={isDark}
+              onValueChange={toggleTheme}
+              trackColor={{ false: c.track, true: c.accent }}
+              thumbColor={c.card}
+            />
+          </View>
+        </GlassCard>
+
+        <Text style={[styles.sectionKicker, { fontFamily: type.sansSemi }]}>
+          {copy.support}
+        </Text>
+
+        <GlassCard tint={glass.card} border={glass.border} sheen={glass.sheen}>
+          {support.map((row, index) => (
+            <Pressable
+              key={row.key}
+              accessibilityRole="button"
+              accessibilityLabel={row.title}
+              onPress={row.onPress}
+              style={[styles.linkRow, index > 0 && styles.rowDivided]}
+            >
+              <View style={styles.iconWell}>
+                <Ionicons name={row.icon} size={16} color={c.accent} />
+              </View>
+              <View style={styles.flexCopy}>
+                <Text style={[styles.linkTitle, { fontFamily: type.sansSemi }]}>
+                  {row.title}
+                </Text>
+                <Text style={[styles.linkMeta, { fontFamily: type.sans }]}>
+                  {row.meta}
                 </Text>
               </View>
+              <Ionicons name="chevron-forward" size={16} color={c.faint} />
+            </Pressable>
+          ))}
 
-              <Switch
-                value={isDark}
-                onValueChange={toggleTheme}
-                trackColor={{ false: c.track, true: c.accent }}
-                thumbColor={c.card}
-              />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={copy.signOut}
+            onPress={() => {
+              signOut();
+              router.replace("/(tabs)");
+            }}
+            style={[styles.linkRow, styles.rowDivided]}
+          >
+            <View style={[styles.iconWell, styles.signOutWell]}>
+              <Ionicons name="log-out-outline" size={16} color={c.danger} />
             </View>
-
-            <View style={[styles.settingRow, styles.settingRowDivided]}>
-              <View style={styles.settingCopy}>
-                <Text style={styles.settingLabel}>
-                  {t.profile.notificationsLabel}
-                </Text>
-                <Text style={styles.settingMeta}>
-                  {notifications
-                    ? t.profile.notificationsOn
-                    : t.profile.notificationsOff}
-                </Text>
-              </View>
-
-              <Switch
-                value={notifications}
-                onValueChange={setNotifications}
-                trackColor={{ false: c.track, true: c.accent }}
-                thumbColor={c.card}
-              />
-            </View>
-          </Card>
-        </View>
-
-        <View style={styles.section}>
-          <SectionHeader title={t.profile.accountSection} />
-
-          <Card>
-            <Pressable
-              style={styles.linkRow}
-              onPress={() =>
-                router.push({
-                  pathname: "/executive/chat",
-                  params: { who: "doctor" },
-                })
-              }
+            <Text
+              style={[
+                styles.linkTitle,
+                styles.flexCopy,
+                { color: c.danger, fontFamily: type.sansSemi },
+              ]}
             >
-              <Ionicons name="chatbubble-outline" size={17} color={c.accent} />
-              <Text style={styles.linkLabel}>
-                {t.executiveHome.messageTeam}
-              </Text>
-              <Ionicons name="chevron-forward" size={17} color={c.faint} />
-            </Pressable>
-
-            <Pressable
-              style={[styles.linkRow, styles.settingRowDivided]}
-              onPress={() => router.push("/executive/reports")}
-            >
-              <Ionicons
-                name="document-text-outline"
-                size={17}
-                color={c.accent}
-              />
-              <Text style={styles.linkLabel}>
-                {t.executiveHome.actionReport}
-              </Text>
-              <Ionicons name="chevron-forward" size={17} color={c.faint} />
-            </Pressable>
-
-            <Pressable
-              style={[styles.linkRow, styles.settingRowDivided]}
-              onPress={() => router.push("/executive/programme")}
-            >
-              <Ionicons name="layers-outline" size={17} color={c.accent} />
-              <Text style={styles.linkLabel}>
-                {t.executiveHealth.programmeLink}
-              </Text>
-              <Ionicons name="chevron-forward" size={17} color={c.faint} />
-            </Pressable>
-
-            <Pressable
-              style={[styles.linkRow, styles.settingRowDivided]}
-              onPress={() => {
-                signOut();
-                router.replace("/(tabs)");
-              }}
-            >
-              <Ionicons name="log-out-outline" size={17} color={c.danger} />
-              <Text style={[styles.linkLabel, { color: c.danger }]}>
-                {t.profile.signOut}
-              </Text>
-              <Ionicons name="chevron-forward" size={17} color={c.danger} />
-            </Pressable>
-          </Card>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+              {copy.signOut}
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={c.danger} />
+          </Pressable>
+        </GlassCard>
+      </View>
+    </ScrollView>
   );
 }
 
-function createStyles(c: ExecutivePalette) {
+function createStyles(c: ExecutivePalette, isDark: boolean) {
   return StyleSheet.create({
-    safeArea: {
+    screen: {
       flex: 1,
       backgroundColor: c.page,
     },
     content: {
-      padding: 18,
-      paddingBottom: 36,
+      paddingBottom: 88,
     },
-    section: {
-      marginTop: 24,
+    body: {
+      paddingHorizontal: 16,
+      marginTop: -38,
+      gap: 14,
     },
-
-    identityCard: {
+    identityRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 15,
+      gap: 14,
     },
     avatar: {
-      width: 58,
-      height: 58,
-      borderRadius: 20,
-      backgroundColor: c.accentSoft,
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: isDark ? c.accentSoft : "rgba(255,255,255,0.7)",
+      borderWidth: 1,
+      borderColor: isDark ? c.accentBorder : "rgba(255,255,255,0.9)",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -278,11 +292,12 @@ function createStyles(c: ExecutivePalette) {
       fontWeight: "700",
       color: c.accent,
     },
-    identityCopy: {
+    flexCopy: {
       flex: 1,
+      minWidth: 0,
     },
     identityName: {
-      fontSize: 17,
+      fontSize: 18,
       fontWeight: "700",
       color: c.text,
     },
@@ -291,93 +306,84 @@ function createStyles(c: ExecutivePalette) {
       color: c.muted,
       marginTop: 3,
     },
-    identityPill: {
-      marginTop: 9,
-    },
-
-    infoRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: 12,
-      paddingVertical: 13,
-    },
-    infoRowDivided: {
-      borderTopWidth: 1,
-      borderTopColor: c.divider,
-    },
-    infoLabel: {
+    identityRole: {
       fontSize: 12,
-      color: c.muted,
-    },
-    infoValue: {
-      flex: 1,
-      fontSize: 13,
-      fontWeight: "600",
-      color: c.text,
-      textAlign: "right",
-    },
-
-    settingRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 12,
-      paddingVertical: 13,
-    },
-    settingRowDivided: {
-      borderTopWidth: 1,
-      borderTopColor: c.divider,
-    },
-    settingCopy: {
-      flex: 1,
-    },
-    settingLabel: {
-      fontSize: 13,
-      fontWeight: "600",
-      color: c.text,
-    },
-    settingMeta: {
-      fontSize: 11,
       color: c.faint,
       marginTop: 2,
     },
-
-    langToggle: {
+    planPill: {
       flexDirection: "row",
-      backgroundColor: c.page,
-      borderRadius: 11,
-      borderWidth: 1,
-      borderColor: c.cardBorder,
-      padding: 3,
-    },
-    langOption: {
+      alignItems: "center",
+      gap: 5,
+      backgroundColor: isDark ? c.successSoft : "rgba(233, 241, 232, 0.9)",
+      borderRadius: 16,
       paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 8,
+      paddingVertical: 6,
     },
-    langOptionActive: {
-      backgroundColor: c.accent,
-    },
-    langLabel: {
+    planPillText: {
       fontSize: 11,
       fontWeight: "700",
-      color: c.muted,
+      color: c.success,
     },
-    langLabelActive: {
-      color: c.onAccent,
+    sectionKicker: {
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 1.2,
+      color: c.accent,
+      textTransform: "uppercase",
+      marginTop: 6,
+      marginLeft: 4,
     },
-
     linkRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: 12,
-      paddingVertical: 14,
+      paddingVertical: 12,
     },
-    linkLabel: {
-      flex: 1,
-      fontSize: 13,
-      fontWeight: "600",
+    rowDivided: {
+      borderTopWidth: 1,
+      borderTopColor: c.divider,
+    },
+    iconWell: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: isDark
+        ? "rgba(196, 160, 90, 0.14)"
+        : "rgba(255, 248, 236, 0.9)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    signOutWell: {
+      backgroundColor: isDark ? c.dangerSoft : "rgba(251, 234, 232, 0.9)",
+    },
+    linkTitle: {
+      fontSize: 14,
+      fontWeight: "700",
       color: c.text,
+    },
+    linkMeta: {
+      fontSize: 11,
+      color: c.muted,
+      marginTop: 2,
+      lineHeight: 15,
+    },
+    detailRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: 12,
+      paddingLeft: 48,
+      paddingBottom: 8,
+    },
+    detailLabel: {
+      fontSize: 11,
+      color: c.faint,
+    },
+    detailValue: {
+      flex: 1,
+      fontSize: 12,
+      color: c.text,
+      textAlign: "right",
     },
   });
 }

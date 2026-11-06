@@ -15,7 +15,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
+import { GlassCard, glassTints } from '@/components/executive/GlassCard';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAppTheme } from '@/context/ThemeContext';
 import { useThemedStyles } from '@/theme/useThemedStyles';
 
 type FileKind = 'photo' | 'document' | 'lab';
@@ -45,6 +47,8 @@ function nowTime() {
 export default function FamilyChat() {
 
   const styles = useThemedStyles(baseStyles);
+  const { isDark } = useAppTheme();
+  const glass = glassTints(isDark, 'family');
   const { t } = useLanguage();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
@@ -115,7 +119,13 @@ export default function FamilyChat() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* Header */}
-      <View style={styles.header}>
+      <GlassCard
+        tint={glass.card}
+        border={glass.border}
+        sheen={glass.sheen}
+        shadowColor="#16332C"
+        style={styles.header}
+      >
         <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
           <Ionicons name="chevron-back" size={22} color="#444" />
         </TouchableOpacity>
@@ -143,7 +153,7 @@ export default function FamilyChat() {
         >
           <Ionicons name="videocam" size={18} color="#FFFFFF" />
         </TouchableOpacity>
-      </View>
+      </GlassCard>
 
       {/* Messages */}
       <ScrollView
@@ -195,7 +205,13 @@ export default function FamilyChat() {
       </ScrollView>
 
       {/* Message Box */}
-      <View style={styles.inputContainer}>
+      <GlassCard
+        tint={glass.card}
+        border={glass.border}
+        sheen={glass.sheen}
+        shadowColor="#16332C"
+        style={styles.inputContainer}
+      >
         <TouchableOpacity
           style={styles.attachButton}
           onPress={() => setSheetOpen(true)}
@@ -217,7 +233,7 @@ export default function FamilyChat() {
         <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
           <Ionicons name="send" color="white" size={18} />
         </TouchableOpacity>
-      </View>
+      </GlassCard>
 
       {/* File sharing sheet */}
       <Modal
@@ -227,7 +243,13 @@ export default function FamilyChat() {
         onRequestClose={() => setSheetOpen(false)}
       >
         <Pressable style={styles.backdrop} onPress={() => setSheetOpen(false)}>
-          <Pressable style={styles.sheet}>
+          <GlassCard
+            tint={glass.card}
+            border={glass.border}
+            sheen={glass.sheen}
+            shadowColor="#16332C"
+            style={styles.sheet}
+          >
             <View style={styles.sheetHandle} />
 
             <Text style={styles.sheetTitle}>{t.familyChat.attachTitle}</Text>
@@ -270,7 +292,7 @@ export default function FamilyChat() {
                 {t.familyChat.attachCancel}
               </Text>
             </TouchableOpacity>
-          </Pressable>
+          </GlassCard>
         </Pressable>
       </Modal>
     </KeyboardAvoidingView>
@@ -327,12 +349,12 @@ const baseStyles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 15,
-    paddingTop: 55,
-    paddingBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
-    backgroundColor: '#FFF',
+    paddingHorizontal: 12,
+    paddingTop: 48,
+    borderRadius: 0,
+    borderLeftWidth: 0,
+    borderRightWidth: 0,
+    borderTopWidth: 0,
   },
 
   avatar: {
@@ -520,10 +542,9 @@ const baseStyles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#EEE',
-    backgroundColor: '#FFF',
+    marginHorizontal: 10,
+    marginBottom: 72,
+    borderRadius: 22,
   },
 
   attachButton: {
@@ -564,11 +585,10 @@ const baseStyles = StyleSheet.create({
   },
 
   sheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    paddingHorizontal: 18,
-    paddingTop: 10,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
     paddingBottom: 30,
   },
 

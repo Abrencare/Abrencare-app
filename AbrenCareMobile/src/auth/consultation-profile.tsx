@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-import { useAuth } from '@/context/AuthContext';
-import { useServiceTheme } from '@/service/serviceTheme';
-import type { Gender } from '@/types/auth';
 import AuthField from '@/auth/AuthField';
 import AuthScaffold from '@/auth/AuthScaffold';
 import Replace from '@/components/gates/Replace';
+import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { useServiceTheme } from '@/service/serviceTheme';
+import type { Gender } from '@/types/auth';
 
 export default function ConsultationProfileScreen() {
   const router = useRouter();
@@ -22,9 +23,7 @@ export default function ConsultationProfileScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
 
   if (!user || !hasService('consultation')) {
-    return (
-      <Replace href="/signup?service=consultation" />
-    );
+    return <Replace href="/signup?service=consultation" />;
   }
 
   const genders: { id: Gender; label: string }[] = [
@@ -39,7 +38,7 @@ export default function ConsultationProfileScreen() {
   return (
     <AuthScaffold
       theme={theme}
-      serviceLabel={t.consultationSignup.service}
+      serviceLabel={t.consultationFlow.digital}
       title={t.consultationSignup.welcomeTitle}
       subtitle={t.consultationSignup.setupTitle}
     >
@@ -58,7 +57,10 @@ export default function ConsultationProfileScreen() {
       <Pressable
         style={[
           styles.select,
-          { backgroundColor: theme.field, borderColor: theme.border },
+          {
+            backgroundColor: theme.card,
+            borderColor: theme.border,
+          },
         ]}
         onPress={() => setPickerOpen((current) => !current)}
       >
@@ -66,10 +68,11 @@ export default function ConsultationProfileScreen() {
           {genders.find((item) => item.id === gender)?.label ??
             t.executiveSignup.selectGender}
         </Text>
+        <Ionicons name="chevron-down" size={16} color={theme.muted} />
       </Pressable>
 
-      {pickerOpen && (
-        <View style={styles.genderList}>
+      {pickerOpen ? (
+        <View style={[styles.genderList, { borderColor: theme.border }]}>
           {genders.map((item) => (
             <Pressable
               key={item.id}
@@ -85,7 +88,7 @@ export default function ConsultationProfileScreen() {
             </Pressable>
           ))}
         </View>
-      )}
+      ) : null}
 
       <Pressable
         style={({ pressed }) => [
@@ -100,10 +103,13 @@ export default function ConsultationProfileScreen() {
             return;
           }
           completeConsultationOnboarding({ dateOfBirth, gender });
-          router.replace('/consultation');
+          router.replace('/consultation/doctors');
         }}
       >
-        <Text style={styles.buttonText}>{t.auth.continue}</Text>
+        <View style={styles.buttonRow}>
+          <Text style={styles.buttonText}>{t.consultationFlow.continue}</Text>
+          <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+        </View>
       </Pressable>
     </AuthScaffold>
   );
@@ -120,7 +126,9 @@ const styles = StyleSheet.create({
     minHeight: 54,
     borderRadius: 14,
     borderWidth: 1,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 14,
     marginBottom: 14,
   },
@@ -130,6 +138,7 @@ const styles = StyleSheet.create({
   genderList: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
+    borderWidth: 1,
     marginTop: -8,
     marginBottom: 14,
     overflow: 'hidden',
@@ -138,17 +147,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1EFEB',
+    borderBottomColor: '#E8EEF2',
   },
   genderText: {
     fontSize: 15,
   },
   button: {
     height: 54,
-    borderRadius: 16,
+    borderRadius: 27,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
+    marginTop: 18,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   buttonText: {
     color: '#FFFFFF',

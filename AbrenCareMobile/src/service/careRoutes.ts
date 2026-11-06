@@ -14,6 +14,7 @@ export function primaryServiceOf(user: AuthUser | null): CareService | null {
 }
 
 export type CareRoutes = {
+  home: string;
   myCare: string;
   book: string;
   profile: string;
@@ -23,24 +24,32 @@ export function careRoutesFor(service: CareService | null): CareRoutes {
   switch (service) {
     case 'family':
       return {
+        home: '/family',
         myCare: '/family/reports',
         book: '/family/appointments',
         profile: '/family/profile',
       };
     case 'executive':
       return {
+        home: '/executive',
         myCare: '/executive/health',
         book: '/executive/consultation',
         profile: '/executive/profile',
       };
     case 'consultation':
       return {
+        home: '/consultation',
         myCare: '/consultation/mycare',
         book: '/consultation/doctors',
         profile: '/consultation/profile',
       };
     default:
       // Nothing subscribed yet: send them to the service picker.
-      return { myCare: '/service', book: '/service', profile: '/login' };
+      return {
+        home: '/(tabs)',
+        myCare: '/service',
+        book: '/service',
+        profile: '/login',
+      };
   }
 }

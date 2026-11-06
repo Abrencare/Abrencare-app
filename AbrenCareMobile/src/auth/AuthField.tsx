@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { memo, useCallback, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -7,9 +7,10 @@ import {
   View,
   type KeyboardTypeOptions,
 } from 'react-native';
-
 import { Ionicons } from '@expo/vector-icons';
 
+import { glassField } from '@/components/executive/GlassCard';
+import { useAppTheme } from '@/context/ThemeContext';
 import type { ServiceTheme } from '@/service/serviceTheme';
 
 type Props = {
@@ -24,7 +25,7 @@ type Props = {
   autoCapitalize?: 'none' | 'words' | 'sentences';
 };
 
-export default function AuthField({
+function AuthField({
   theme,
   label,
   value,
@@ -36,25 +37,17 @@ export default function AuthField({
   autoCapitalize = 'none',
 }: Props) {
   const [visible, setVisible] = useState(false);
+  const { isDark } = useAppTheme();
+
+  const toggleVisibility = useCallback(() => {
+    setVisible(current => !current);
+  }, []);
 
   return (
     <View style={styles.wrap}>
       <Text style={[styles.label, { color: theme.muted }]}>{label}</Text>
-      <View
-        style={[
-          styles.field,
-          {
-            backgroundColor: theme.field,
-            borderColor: theme.border,
-          },
-        ]}
-      >
-        <Ionicons
-          name={icon}
-          size={18}
-          color={theme.accent}
-          style={styles.icon}
-        />
+      <View style={[styles.field, glassField(isDark)]}>
+        <Ionicons name={icon} size={18} color={theme.accent} style={styles.icon} />
         <TextInput
           value={value}
           onChangeText={onChangeText}
@@ -65,25 +58,27 @@ export default function AuthField({
           autoCorrect={false}
           keyboardType={keyboardType}
           style={[styles.input, { color: theme.text }]}
+          underlineColorAndroid="transparent"
         />
-        {secure && (
-          <Pressable onPress={() => setVisible((current) => !current)} hitSlop={10}>
+        {secure ? (
+          <Pressable onPress={toggleVisibility} hitSlop={10} accessibilityRole="button"
+            accessibilityLabel={visible ? 'Hide password' : 'Show password'}>
             <Ionicons
               name={visible ? 'eye-off-outline' : 'eye-outline'}
               size={18}
               color={theme.muted}
             />
           </Pressable>
-        )}
+        ) : null}
       </View>
     </View>
   );
 }
 
+export default memo(AuthField);
+
 const styles = StyleSheet.create({
-  wrap: {
-    marginBottom: 14,
-  },
+  wrap: { marginBottom: 14 },
   label: {
     fontSize: 11,
     fontWeight: '700',
@@ -98,9 +93,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     paddingHorizontal: 12,
   },
-  icon: {
-    marginRight: 8,
-  },
+  icon: { marginRight: 8 },
   input: {
     flex: 1,
     fontSize: 15,

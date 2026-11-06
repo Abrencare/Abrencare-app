@@ -16,13 +16,10 @@ import { useRouter } from "expo-router";
 import { initialsFor, useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAppTheme } from "@/context/ThemeContext";
-import { useThemedStyles } from "@/theme/useThemedStyles";
 
 const BLUE = "#7E93A8";
 
 export default function ConsultationProfile() {
-
-  const styles = useThemedStyles(baseStyles);
   const { t, language, setLanguage } = useLanguage();
   const router = useRouter();
   const { user, isSignedIn, signOut } = useAuth();
@@ -102,7 +99,7 @@ export default function ConsultationProfile() {
           <InfoRow
             icon="call-outline"
             label={t.profile.phone}
-            value="+251 91 234 5678"
+            value={user?.phone?.trim() ? user.phone : t.profile.notSignedIn}
             divider
           />
 
@@ -282,7 +279,6 @@ function InfoRow({
   value: string;
   divider?: boolean;
 }) {
-  const styles = useThemedStyles(baseStyles);
   return (
     <View style={[styles.infoRow, divider && styles.divider]}>
       <View style={styles.settingIcon}>
@@ -297,7 +293,7 @@ function InfoRow({
   );
 }
 
-const baseStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: "#F4F6F8",

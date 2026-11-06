@@ -1,18 +1,16 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-import { Colors } from '@/constants/theme';
-
 type StatusBadgeProps = {
   label: string;
   tone?: 'success' | 'warning' | 'danger' | 'neutral';
 };
 
 const toneColors: Record<NonNullable<StatusBadgeProps['tone']>, string> = {
-  success: Colors.success,
-  warning: Colors.warning,
-  danger: Colors.danger,
-  neutral: Colors.subtitle,
+  success: '#5E8A63',
+  warning: '#C4A05A',
+  danger: '#C2453A',
+  neutral: '#60646C',
 };
 
 export default function StatusBadge({ label, tone = 'neutral' }: StatusBadgeProps) {
@@ -31,7 +29,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   text: {
-    color: Colors.text,
+    color: '#000000',
     fontWeight: '600',
     fontSize: 12,
   },

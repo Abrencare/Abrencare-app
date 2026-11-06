@@ -1,69 +1,40 @@
-import React, { useEffect, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import ConsultationPaymentGate from "@/components/gates/ConsultationPaymentGate";
-import { initialsFor, useAuth } from "@/context/AuthContext";
-import { useConsultations } from "@/context/ConsultationContext";
-import { doctorById, specialtyLabel } from "@/data/doctors";
-import { useLanguage } from "@/context/LanguageContext";
-import { useThemedStyles } from "@/theme/useThemedStyles";
+import Replace from '@/components/gates/Replace';
+import { initialsFor, useAuth } from '@/context/AuthContext';
+import { useConsultations } from '@/context/ConsultationContext';
+import { useLanguage } from '@/context/LanguageContext';
+import { doctorById, specialtyLabel } from '@/data/doctors';
 
 function formatDuration(seconds: number) {
-  const minutes = `${Math.floor(seconds / 60)}`.padStart(2, "0");
-  const rest = `${seconds % 60}`.padStart(2, "0");
+  const minutes = `${Math.floor(seconds / 60)}`.padStart(2, '0');
+  const rest = `${seconds % 60}`.padStart(2, '0');
   return `${minutes}:${rest}`;
 }
 
-type ControlButtonProps = {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  active?: boolean;
-  onPress: () => void;
-};
-
-function ControlButton({ icon, label, active, onPress }: ControlButtonProps) {
-  const styles = useThemedStyles(baseStyles);
-  return (
-    <View style={styles.control}>
-      <TouchableOpacity
-        style={[styles.controlCircle, active && styles.controlCircleActive]}
-        onPress={onPress}
-      >
-        <Ionicons
-          name={icon}
-          size={20}
-          color={active ? "#1B2735" : "#FFFFFF"}
-        />
-      </TouchableOpacity>
-
-      <Text style={styles.controlLabel}>{label}</Text>
-    </View>
-  );
-}
-
 export default function ConsultationCall() {
-
-  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const { t } = useLanguage();
   const { user } = useAuth();
   const params = useLocalSearchParams();
-  const { draft } = useConsultations();
-  const doctorId =
-    typeof params.doctor === "string" ? params.doctor : undefined;
-  const doctor = doctorById(doctorId ?? draft.doctorId);
-  const paid = params.paid === "1";
+  const { ready, consultationById, completeVisit } = useConsultations();
+  const copy = t.consultationFlow;
+  const id = typeof params.id === 'string' ? params.id : '';
+  const consultation = consultationById(id);
+  const doctor = consultation ? doctorById(consultation.doctorId) : null;
+  const audio = consultation?.kind === 'audio';
 
   const [connected, setConnected] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [muted, setMuted] = useState(false);
-  const [cameraOn, setCameraOn] = useState(true);
+  const [cameraOn, setCameraOn] = useState(!audio);
 
   useEffect(() => {
-    const timer = setTimeout(() => setConnected(true), 1800);
+    const timer = setTimeout(() => setConnected(true), 1600);
     return () => clearTimeout(timer);
   }, []);
 
@@ -71,257 +42,144 @@ export default function ConsultationCall() {
     if (!connected) {
       return;
     }
-
     const interval = setInterval(() => {
       setSeconds((current) => current + 1);
     }, 1000);
-
     return () => clearInterval(interval);
   }, [connected]);
 
+  if (!ready) {
+    return null;
+  }
+
+  if (!consultation || !consultation.paid || !doctor) {
+    return <Replace href="/consultation/mycare" />;
+  }
+
+  function endCall() {
+    completeVisit(id);
+    router.replace('/consultation/mycare');
+  }
+
   return (
-    <ConsultationPaymentGate
-      doctorId={doctor?.id ?? ""}
-      kind="video"
-      next="call"
-      alreadyPaid={paid}
-    >
     <View style={styles.container}>
       <View style={styles.stage}>
         <View style={styles.remoteAvatar}>
-          <Text style={styles.remoteAvatarText}>
-            {doctor?.initials ?? "AC"}
-          </Text>
+          <Text style={styles.remoteAvatarText}>{doctor.initials}</Text>
         </View>
-
-        <Text style={styles.remoteName}>{doctor?.name}</Text>
-
-        <Text style={styles.remoteSpecialty}>
-          {doctor ? specialtyLabel(doctor.specialty, t) : ""}
-        </Text>
-
+        <Text style={styles.remoteName}>{doctor.name}</Text>
+        <Text style={styles.remoteSpecialty}>{specialtyLabel(doctor.specialty, t)}</Text>
         <Text style={styles.status}>
-          {connected
-            ? formatDuration(seconds)
-            : t.consultationChat.callConnecting}
+          {connected ? formatDuration(seconds) : copy.connecting}
         </Text>
+        <Text style={styles.secure}>{copy.inCall}</Text>
+      </View>
 
-        <View style={styles.secureRow}>
-          <Ionicons name="lock-closed" size={12} color="#9DC7F0" />
-          <Text style={styles.secureText}>
-            {t.consultationChat.callSecure}
-          </Text>
+      {!audio ? (
+        <View style={styles.selfView}>
+          {cameraOn ? (
+            <Text style={styles.selfViewText}>{initialsFor(user)}</Text>
+          ) : (
+            <Ionicons name="videocam-off" size={20} color="#9AA3AF" />
+          )}
         </View>
-      </View>
-
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
-          <Ionicons name="chevron-down" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-
-        <Text style={styles.headerTitle}>{t.consultationChat.callTitle}</Text>
-
-        <TouchableOpacity
-          hitSlop={10}
-          onPress={() =>
-            router.replace({
-              pathname: "/consultation/chat",
-              params: doctor
-                ? { doctor: doctor.id, paid: paid ? "1" : "0" }
-                : undefined,
-            })
-          }
-          accessibilityLabel={t.consultationChat.startChat}
-        >
-          <Ionicons name="chatbubble-ellipses" size={21} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.selfView}>
-        {cameraOn ? (
-          <Text style={styles.selfViewText}>{initialsFor(user)}</Text>
-        ) : (
-          <Ionicons name="videocam-off" size={20} color="#9AA3AF" />
-        )}
-      </View>
+      ) : null}
 
       <View style={styles.controls}>
-        <ControlButton
-          icon={muted ? "mic-off" : "mic"}
-          label={
-            muted ? t.consultationChat.callUnmute : t.consultationChat.callMute
-          }
+        <Control
+          icon={muted ? 'mic-off' : 'mic'}
+          label={muted ? t.consultationChat.callUnmute : t.consultationChat.callMute}
           active={muted}
           onPress={() => setMuted((current) => !current)}
         />
-
-        <ControlButton
-          icon={cameraOn ? "videocam" : "videocam-off"}
-          label={t.consultationChat.callCamera}
-          active={!cameraOn}
-          onPress={() => setCameraOn((current) => !current)}
-        />
-
-        <ControlButton
-          icon="camera-reverse"
-          label={t.consultationChat.callFlip}
-          onPress={() => {}}
-        />
-
+        {!audio ? (
+          <Control
+            icon={cameraOn ? 'videocam' : 'videocam-off'}
+            label={t.consultationChat.callCamera}
+            active={!cameraOn}
+            onPress={() => setCameraOn((current) => !current)}
+          />
+        ) : null}
         <View style={styles.control}>
-          <TouchableOpacity
-            style={[styles.controlCircle, styles.endCall]}
-            onPress={() => router.back()}
-          >
+          <Pressable style={[styles.circle, styles.end]} onPress={endCall}>
             <Ionicons name="call" size={22} color="#FFFFFF" />
-          </TouchableOpacity>
-
-          <Text style={styles.controlLabel}>
-            {t.consultationChat.callEnd}
-          </Text>
+          </Pressable>
+          <Text style={styles.controlLabel}>{copy.endCall}</Text>
         </View>
       </View>
     </View>
-    </ConsultationPaymentGate>
   );
 }
 
-const baseStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#16202B",
-  },
+function Control({
+  icon,
+  label,
+  active,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  active?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <View style={styles.control}>
+      <Pressable
+        style={[styles.circle, active && styles.circleActive]}
+        onPress={onPress}
+      >
+        <Ionicons name={icon} size={20} color={active ? '#0F172A' : '#FFFFFF'} />
+      </Pressable>
+      <Text style={styles.controlLabel}>{label}</Text>
+    </View>
+  );
+}
 
-  stage: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#10221F' },
+  stage: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   remoteAvatar: {
     width: 108,
     height: 108,
-    borderRadius: 34,
-    backgroundColor: "#233448",
-    alignItems: "center",
-    justifyContent: "center",
+    borderRadius: 54,
+    backgroundColor: '#1C3D38',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 18,
   },
-
-  remoteAvatarText: {
-    color: "#9DC7F0",
-    fontSize: 32,
-    fontWeight: "700",
-  },
-
-  remoteName: {
-    color: "#FFFFFF",
-    fontSize: 20,
-    fontWeight: "700",
-  },
-
-  remoteSpecialty: {
-    color: "#8FA3BC",
-    fontSize: 13,
-    marginTop: 4,
-  },
-
-  status: {
-    color: "#A6B6C8",
-    fontSize: 14,
-    marginTop: 10,
-  },
-
-  secureRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-  },
-
-  secureText: {
-    color: "#9DC7F0",
-    fontSize: 11,
-    fontWeight: "600",
-  },
-
-  header: {
-    position: "absolute",
-    top: 55,
-    left: 18,
-    right: 18,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  headerTitle: {
-    flex: 1,
-    textAlign: "center",
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "600",
-  },
-
+  remoteAvatarText: { color: '#8EDDD3', fontSize: 32, fontWeight: '700' },
+  remoteName: { color: '#FFFFFF', fontSize: 22, fontWeight: '700' },
+  remoteSpecialty: { color: '#A9C4BF', fontSize: 14, marginTop: 6 },
+  status: { color: '#FFFFFF', fontSize: 16, marginTop: 16, fontWeight: '600' },
+  secure: { color: '#8EDDD3', fontSize: 12, marginTop: 8 },
   selfView: {
-    position: "absolute",
-    top: 110,
+    position: 'absolute',
     right: 18,
+    top: 54,
     width: 84,
-    height: 116,
+    height: 112,
     borderRadius: 16,
-    backgroundColor: "#1F2E3E",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.12)",
+    backgroundColor: '#1C3D38',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-
-  selfViewText: {
-    color: "#9DC7F0",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-
+  selfViewText: { color: '#8EDDD3', fontWeight: '700', fontSize: 18 },
   controls: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "flex-start",
-    paddingHorizontal: 18,
-    paddingBottom: 46,
-    paddingTop: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 22,
+    paddingBottom: 36,
   },
-
-  control: {
-    alignItems: "center",
-    width: 72,
-  },
-
-  controlCircle: {
+  control: { alignItems: 'center', gap: 8 },
+  circle: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "rgba(255, 255, 255, 0.12)",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: '#2A4A45',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-
-  controlCircleActive: {
-    backgroundColor: "#FFFFFF",
-  },
-
-  endCall: {
-    backgroundColor: "#D64545",
-    transform: [{ rotate: "135deg" }],
-  },
-
-  controlLabel: {
-    color: "#A6B6C8",
-    fontSize: 11,
-    marginTop: 8,
-    textAlign: "center",
-  },
+  circleActive: { backgroundColor: '#FFFFFF' },
+  end: { backgroundColor: '#E24B4A' },
+  controlLabel: { color: '#D5E6E3', fontSize: 11 },
 });

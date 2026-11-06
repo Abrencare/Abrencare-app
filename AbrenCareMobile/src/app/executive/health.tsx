@@ -1,24 +1,14 @@
 import React, { useMemo, useState } from "react";
-import {
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
-import {
-  Card,
-  Ring,
-  ScreenHeader,
-  SectionHeader,
-  StatusPill,
-  type PillTone,
-} from "@/components/executive/ExecutiveUI";
+import { ExecutiveHero } from "@/components/executive/ExecutiveHero";
+import { GlassCard, glassTints } from "@/components/executive/GlassCard";
+import { Ring, StatusPill, type PillTone } from "@/components/executive/ExecutiveUI";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAppTheme } from "@/context/ThemeContext";
+import { useLandingType } from "@/theme/landingType";
 import {
   useExecutiveTheme,
   type ExecutivePalette,
@@ -28,10 +18,13 @@ type Range = "week" | "month";
 
 export default function ExecutiveHealth() {
   const c = useExecutiveTheme();
-  const styles = useMemo(() => createStyles(c), [c]);
+  const { isDark } = useAppTheme();
+  const styles = useMemo(() => createStyles(c, isDark), [c, isDark]);
+  const type = useLandingType("executive");
   const { t } = useLanguage();
   const router = useRouter();
   const [range, setRange] = useState<Range>("week");
+  const glass = glassTints(isDark);
 
   const copy = t.executiveHealth;
   const home = t.executiveHome;
@@ -148,40 +141,43 @@ export default function ExecutiveHealth() {
   ];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        <ScreenHeader
-          kicker={home.kicker}
-          title={copy.title}
-          subtitle={copy.subtitle}
-        />
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      <ExecutiveHero title={copy.title} subtitle={copy.subtitle} />
 
-        <Card style={styles.scoreCard}>
-          <Ring
-            size={88}
-            thickness={8}
-            value="87"
-            caption={t.executive.scoreOutOf}
-            color={c.accent}
-            track={c.track}
-          />
-
-          <View style={styles.scoreCopy}>
-            <Text style={styles.scoreLabel}>{copy.scoreLabel}</Text>
-            <StatusPill label={home.scoreStatus} tone="success" />
-
-            <View style={styles.trendRow}>
-              <Ionicons name="trending-up" size={14} color={c.success} />
-              <Text style={styles.trendValue}>{home.scoreTrend}</Text>
-              <Text style={styles.trendCaption}>
-                {home.scoreTrendCaption}
+      <View style={styles.body}>
+        <GlassCard tint={glass.card} border={glass.border} sheen={glass.sheen}>
+          <View style={styles.scoreRow}>
+            <Ring
+              size={88}
+              thickness={8}
+              value="87"
+              caption={t.executive.scoreOutOf}
+              color={c.accent}
+              track={c.track}
+            />
+            <View style={styles.scoreCopy}>
+              <Text style={[styles.scoreLabel, { fontFamily: type.sansSemi }]}>
+                {copy.scoreLabel}
               </Text>
+              <StatusPill label={home.scoreStatus} tone="success" />
+              <View style={styles.trendRow}>
+                <Ionicons name="trending-up" size={14} color={c.success} />
+                <Text
+                  style={[styles.trendValue, { fontFamily: type.sansSemi }]}
+                >
+                  {home.scoreTrend}
+                </Text>
+                <Text style={[styles.trendCaption, { fontFamily: type.sans }]}>
+                  {home.scoreTrendCaption}
+                </Text>
+              </View>
             </View>
           </View>
-        </Card>
+        </GlassCard>
 
         <View style={styles.rangeRow}>
           {(["week", "month"] as Range[]).map((option) => (
@@ -196,6 +192,7 @@ export default function ExecutiveHealth() {
               <Text
                 style={[
                   styles.rangeLabel,
+                  { fontFamily: type.sansSemi },
                   range === option && styles.rangeLabelActive,
                 ]}
               >
@@ -205,28 +202,45 @@ export default function ExecutiveHealth() {
           ))}
         </View>
 
-        <View style={styles.section}>
-          <SectionHeader title={copy.trendsTitle} />
+        <Text style={[styles.sectionKicker, { fontFamily: type.sansSemi }]}>
+          {copy.trendsTitle}
+        </Text>
 
-          {trends.map((trend) => (
-            <Pressable
-              key={trend.key}
-              style={styles.trendCard}
-              onPress={() => router.push("/executive/reports")}
+        {trends.map((trend) => (
+          <Pressable
+            key={trend.key}
+            onPress={() => router.push("/executive/reports")}
+          >
+            <GlassCard
+              tint={glass.card}
+              border={glass.border}
+              sheen={glass.sheen}
             >
               <View style={styles.trendHeader}>
-                <View style={[styles.trendIcon, { backgroundColor: trend.tint }]}>
+                <View
+                  style={[styles.trendIcon, { backgroundColor: trend.tint }]}
+                >
                   <Ionicons name={trend.icon} size={17} color={trend.color} />
                 </View>
-
-                <View style={styles.trendCopy}>
-                  <Text style={styles.trendLabel}>{trend.label}</Text>
-                  <Text style={styles.trendMeta}>{copy.measuredToday}</Text>
+                <View style={styles.flexCopy}>
+                  <Text
+                    style={[styles.trendLabel, { fontFamily: type.sansSemi }]}
+                  >
+                    {trend.label}
+                  </Text>
+                  <Text style={[styles.trendMeta, { fontFamily: type.sans }]}>
+                    {copy.measuredToday}
+                  </Text>
                 </View>
-
                 <View style={styles.trendValueBlock}>
-                  <Text style={styles.trendNumber}>{trend.value}</Text>
-                  <Text style={styles.trendUnit}>{trend.unit}</Text>
+                  <Text
+                    style={[styles.trendNumber, { fontFamily: type.sansSemi }]}
+                  >
+                    {trend.value}
+                  </Text>
+                  <Text style={[styles.trendUnit, { fontFamily: type.sans }]}>
+                    {trend.unit}
+                  </Text>
                 </View>
               </View>
 
@@ -252,72 +266,92 @@ export default function ExecutiveHealth() {
                 <StatusPill label={trend.trend} tone="success" />
                 <Ionicons name="chevron-forward" size={15} color={c.faint} />
               </View>
-            </Pressable>
-          ))}
-        </View>
+            </GlassCard>
+          </Pressable>
+        ))}
 
-        <View style={styles.section}>
-          <SectionHeader title={copy.readingsTitle} />
+        <Text style={[styles.sectionKicker, { fontFamily: type.sansSemi }]}>
+          {copy.readingsTitle}
+        </Text>
 
-          <Card>
-            {readings.map((reading, index) => (
-              <View
-                key={reading.key}
-                style={[styles.readingRow, index > 0 && styles.readingDivided]}
-              >
-                <View style={styles.trendCopy}>
-                  <Text style={styles.readingLabel}>{reading.label}</Text>
-                  <Text style={styles.readingTime}>{reading.time}</Text>
-                </View>
-
-                <View style={styles.readingRight}>
-                  <Text style={styles.readingValue}>{reading.value}</Text>
-                  <StatusPill label={reading.status} tone={reading.tone} />
-                </View>
+        <GlassCard
+          tint={glass.attention}
+          border={glass.border}
+          sheen={glass.sheen}
+        >
+          {readings.map((reading, index) => (
+            <View
+              key={reading.key}
+              style={[styles.readingRow, index > 0 && styles.readingDivided]}
+            >
+              <View style={styles.flexCopy}>
+                <Text
+                  style={[styles.readingLabel, { fontFamily: type.sansSemi }]}
+                >
+                  {reading.label}
+                </Text>
+                <Text style={[styles.readingTime, { fontFamily: type.sans }]}>
+                  {reading.time}
+                </Text>
               </View>
-            ))}
+              <View style={styles.readingRight}>
+                <Text
+                  style={[styles.readingValue, { fontFamily: type.sansSemi }]}
+                >
+                  {reading.value}
+                </Text>
+                <StatusPill label={reading.status} tone={reading.tone} />
+              </View>
+            </View>
+          ))}
+          <Text style={[styles.watchCaption, { fontFamily: type.sans }]}>
+            {copy.watchCaption}
+          </Text>
+        </GlassCard>
 
-            <Text style={styles.watchCaption}>{copy.watchCaption}</Text>
-          </Card>
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          style={styles.goldButton}
+          onPress={() => router.push("/executive/reports")}
+        >
+          <Ionicons name="stats-chart" size={16} color={c.onAccent} />
+          <Text style={[styles.goldButtonText, { fontFamily: type.sansSemi }]}>
+            {copy.openFullReport}
+          </Text>
+        </Pressable>
 
-        <View style={styles.section}>
-          <Pressable
-            style={styles.primaryButton}
-            onPress={() => router.push("/executive/reports")}
+        <Pressable
+          accessibilityRole="button"
+          style={styles.outlineButton}
+          onPress={() => router.push("/executive/programme")}
+        >
+          <Ionicons name="layers-outline" size={16} color={c.accent} />
+          <Text
+            style={[styles.outlineButtonText, { fontFamily: type.sansSemi }]}
           >
-            <Ionicons name="stats-chart" size={16} color={c.onAccent} />
-            <Text style={styles.primaryButtonText}>{copy.openFullReport}</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.secondaryButton}
-            onPress={() => router.push("/executive/programme")}
-          >
-            <Ionicons name="layers-outline" size={16} color={c.accent} />
-            <Text style={styles.secondaryButtonText}>{copy.programmeLink}</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+            {copy.programmeLink}
+          </Text>
+        </Pressable>
+      </View>
+    </ScrollView>
   );
 }
 
-function createStyles(c: ExecutivePalette) {
+function createStyles(c: ExecutivePalette, isDark: boolean) {
   return StyleSheet.create({
-    safeArea: {
+    screen: {
       flex: 1,
       backgroundColor: c.page,
     },
     content: {
-      padding: 18,
-      paddingBottom: 36,
+      paddingBottom: 88,
     },
-    section: {
-      marginTop: 22,
+    body: {
+      paddingHorizontal: 16,
+      marginTop: -38,
+      gap: 14,
     },
-
-    scoreCard: {
+    scoreRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: 18,
@@ -327,7 +361,7 @@ function createStyles(c: ExecutivePalette) {
       gap: 8,
     },
     scoreLabel: {
-      fontSize: 15,
+      fontSize: 16,
       fontWeight: "700",
       color: c.text,
     },
@@ -339,48 +373,52 @@ function createStyles(c: ExecutivePalette) {
     trendValue: {
       fontSize: 13,
       fontWeight: "700",
-      color: c.accent,
+      color: c.success,
     },
     trendCaption: {
       fontSize: 12,
       color: c.muted,
     },
-
     rangeRow: {
       flexDirection: "row",
       gap: 8,
-      backgroundColor: c.card,
-      borderRadius: 14,
+      backgroundColor: isDark
+        ? "rgba(255,255,255,0.07)"
+        : "rgba(255, 252, 247, 0.4)",
+      borderRadius: 18,
       borderWidth: 1,
-      borderColor: c.cardBorder,
+      borderColor: isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.86)",
       padding: 4,
-      marginTop: 16,
     },
     rangeOption: {
       flex: 1,
       alignItems: "center",
       paddingVertical: 9,
-      borderRadius: 11,
+      borderRadius: 14,
     },
     rangeOptionActive: {
-      backgroundColor: c.accentSoft,
+      backgroundColor: c.accent,
     },
     rangeLabel: {
       fontSize: 12,
-      fontWeight: "600",
+      fontWeight: "700",
       color: c.muted,
     },
     rangeLabelActive: {
-      color: c.accent,
+      color: c.onAccent,
     },
-
-    trendCard: {
-      backgroundColor: c.card,
-      borderRadius: 22,
-      borderWidth: 1,
-      borderColor: c.cardBorder,
-      padding: 18,
-      marginBottom: 12,
+    sectionKicker: {
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 1.2,
+      color: c.accent,
+      textTransform: "uppercase",
+      marginTop: 4,
+      marginLeft: 4,
+    },
+    flexCopy: {
+      flex: 1,
+      minWidth: 0,
     },
     trendHeader: {
       flexDirection: "row",
@@ -390,12 +428,9 @@ function createStyles(c: ExecutivePalette) {
     trendIcon: {
       width: 36,
       height: 36,
-      borderRadius: 12,
+      borderRadius: 18,
       alignItems: "center",
       justifyContent: "center",
-    },
-    trendCopy: {
-      flex: 1,
     },
     trendLabel: {
       fontSize: 14,
@@ -438,7 +473,6 @@ function createStyles(c: ExecutivePalette) {
       justifyContent: "space-between",
       marginTop: 12,
     },
-
     readingRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -476,35 +510,35 @@ function createStyles(c: ExecutivePalette) {
       borderTopWidth: 1,
       borderTopColor: c.divider,
     },
-
-    primaryButton: {
+    goldButton: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       gap: 8,
       backgroundColor: c.accent,
-      borderRadius: 16,
-      paddingVertical: 15,
+      borderRadius: 22,
+      paddingVertical: 14,
     },
-    primaryButtonText: {
-      fontSize: 14,
+    goldButtonText: {
+      fontSize: 13,
       fontWeight: "700",
       color: c.onAccent,
     },
-    secondaryButton: {
+    outlineButton: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       gap: 8,
-      backgroundColor: c.card,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: c.accentBorder,
-      paddingVertical: 15,
-      marginTop: 12,
+      borderRadius: 22,
+      borderWidth: 1.5,
+      borderColor: c.accent,
+      backgroundColor: isDark
+        ? "rgba(196, 160, 90, 0.08)"
+        : "rgba(255,255,255,0.35)",
+      paddingVertical: 14,
     },
-    secondaryButtonText: {
-      fontSize: 14,
+    outlineButtonText: {
+      fontSize: 13,
       fontWeight: "700",
       color: c.accent,
     },

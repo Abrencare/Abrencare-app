@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -7,34 +7,32 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from "react-native";
+} from 'react-native';
 
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
-import { useConsultations } from "@/context/ConsultationContext";
+import BrandLogo, { BrandHomeLink } from '@/components/ui/BrandLogo';
+import { useConsultations } from '@/context/ConsultationContext';
+import { useLanguage } from '@/context/LanguageContext';
 import {
   SPECIALTIES,
-  doctorsInSpecialty,
   filterDoctors,
   specialtyLabel,
   to12Hour,
   type Doctor,
   type SpecialtyId,
-} from "@/data/doctors";
-import { useLanguage } from "@/context/LanguageContext";
-import { useThemedStyles } from "@/theme/useThemedStyles";
+} from '@/data/doctors';
 
-const BLUE = "#7E93A8";
+const BLUE = '#7E93A8';
 
 export default function ConsultationDoctors() {
-
-  const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
   const router = useRouter();
   const { setDraft } = useConsultations();
+  const copy = t.doctorsPage;
 
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const [specialty, setSpecialty] = useState<SpecialtyId | null>(null);
 
   const matches = useMemo(
@@ -42,33 +40,24 @@ export default function ConsultationDoctors() {
     [query, specialty, t],
   );
 
-  const online = matches.filter((doctor) => doctor.online);
-  const offline = matches.filter((doctor) => !doctor.online);
-  const filtered = query.trim().length > 0 || specialty !== null;
-
   function openDoctor(doctor: Doctor) {
     setDraft({ doctorId: doctor.id });
-    router.push("/consultation");
-  }
-
-  function messageDoctor(doctor: Doctor) {
-    setDraft({ doctorId: doctor.id });
-    router.push({
-      pathname: "/consultation/pay",
-      params: { doctor: doctor.id, kind: "message", next: "chat" },
-    });
+    router.push('/consultation');
   }
 
   function clearFilters() {
-    setQuery("");
+    setQuery('');
     setSpecialty(null);
   }
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <Text style={styles.headerLabel}>{t.doctorsPage.headerLabel}</Text>
-        <Text style={styles.headerTitle}>{t.doctorsPage.title}</Text>
+        <BrandHomeLink style={styles.brandRow}>
+          <BrandLogo size={34} link={false} />
+        </BrandHomeLink>
+        <Text style={styles.headerLabel}>{t.consultation.headerLabel}</Text>
+        <Text style={styles.headerTitle}>{copy.title}</Text>
       </View>
 
       <ScrollView
@@ -78,21 +67,19 @@ export default function ConsultationDoctors() {
       >
         <View style={styles.searchRow}>
           <Ionicons name="search" size={17} color="#9AA3AF" />
-
           <TextInput
             style={styles.searchInput}
             value={query}
             onChangeText={setQuery}
-            placeholder={t.doctorsPage.searchPlaceholder}
+            placeholder={copy.searchPlaceholder}
             placeholderTextColor="#A8AEB4"
             returnKeyType="search"
           />
-
-          {query.length > 0 && (
-            <TouchableOpacity onPress={() => setQuery("")}>
+          {query.length > 0 ? (
+            <TouchableOpacity onPress={() => setQuery('')}>
               <Ionicons name="close-circle" size={17} color="#C4C9CE" />
             </TouchableOpacity>
-          )}
+          ) : null}
         </View>
 
         <ScrollView
@@ -105,7 +92,6 @@ export default function ConsultationDoctors() {
             selected={specialty === null}
             onPress={() => setSpecialty(null)}
           />
-
           {SPECIALTIES.map((id) => (
             <FilterChip
               key={id}
@@ -116,103 +102,23 @@ export default function ConsultationDoctors() {
           ))}
         </ScrollView>
 
-        {matches.length === 0 && (
+        {matches.length === 0 ? (
           <View style={styles.emptyCard}>
             <Ionicons name="search-outline" size={24} color="#B4BAC1" />
-            <Text style={styles.emptyTitle}>{t.doctorsPage.noResults}</Text>
-            <Text style={styles.emptyHint}>{t.doctorsPage.noResultsHint}</Text>
-
-            <TouchableOpacity
-              style={styles.clearButton}
-              onPress={clearFilters}
-            >
-              <Text style={styles.clearButtonText}>
-                {t.doctorsPage.clearFilters}
-              </Text>
+            <Text style={styles.emptyTitle}>{copy.noResults}</Text>
+            <Text style={styles.emptyHint}>{copy.noResultsHint}</Text>
+            <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
+              <Text style={styles.clearButtonText}>{copy.clearFilters}</Text>
             </TouchableOpacity>
           </View>
-        )}
-
-        {online.length > 0 && (
-          <>
-            <Text style={styles.sectionLabel}>
-              {t.doctorsPage.availableNow}
-            </Text>
-
-            {online.map((doctor) => (
-              <DoctorCard
-                key={doctor.id}
-                doctor={doctor}
-                onPress={() => openDoctor(doctor)}
-                onMessage={() => messageDoctor(doctor)}
-              />
-            ))}
-          </>
-        )}
-
-        {offline.length > 0 && (
-          <>
-            <Text style={styles.sectionLabel}>{t.doctorsPage.busyNow}</Text>
-
-            {offline.map((doctor) => (
-              <DoctorCard
-                key={doctor.id}
-                doctor={doctor}
-                onPress={() => openDoctor(doctor)}
-                onMessage={() => messageDoctor(doctor)}
-              />
-            ))}
-          </>
-        )}
-
-        <Text style={styles.sectionLabel}>{t.doctorsPage.specialties}</Text>
-
-        <View style={styles.card}>
-          {SPECIALTIES.map((id, index) => {
-            const count = doctorsInSpecialty(id).length;
-
-            return (
-              <TouchableOpacity
-                key={id}
-                style={[
-                  styles.specialtyRow,
-                  index !== SPECIALTIES.length - 1 && styles.divider,
-                ]}
-                onPress={() => setSpecialty(id)}
-              >
-                <View style={styles.specialtyInfo}>
-                  <Text style={styles.specialtyName}>
-                    {specialtyLabel(id, t)}
-                  </Text>
-
-                  <Text style={styles.specialtyCount}>
-                    {count}{" "}
-                    {count === 1
-                      ? t.doctorsPage.doctorOne
-                      : t.doctorsPage.doctorMany}
-                  </Text>
-                </View>
-
-                <Ionicons
-                  name="arrow-forward"
-                  size={17}
-                  color={specialty === id ? BLUE : "#C7CCD2"}
-                />
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {filtered && matches.length > 0 && (
-          <TouchableOpacity
-            style={styles.clearInline}
-            onPress={clearFilters}
-          >
-            <Ionicons name="close" size={15} color={BLUE} />
-            <Text style={styles.clearInlineText}>
-              {t.doctorsPage.clearFilters}
-            </Text>
-          </TouchableOpacity>
+        ) : (
+          matches.map((doctor) => (
+            <DoctorCard
+              key={doctor.id}
+              doctor={doctor}
+              onPress={() => openDoctor(doctor)}
+            />
+          ))
         )}
 
         <View style={{ height: 28 }} />
@@ -224,14 +130,12 @@ export default function ConsultationDoctors() {
 function DoctorCard({
   doctor,
   onPress,
-  onMessage,
 }: {
   doctor: Doctor;
   onPress: () => void;
-  onMessage: () => void;
 }) {
-  const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
+  const copy = t.doctorsPage;
 
   return (
     <View style={styles.doctorCard}>
@@ -245,62 +149,46 @@ function DoctorCard({
           <Text style={styles.doctorSpecialty}>
             {specialtyLabel(doctor.specialty, t)}
           </Text>
+          <Text style={styles.experience}>
+            {doctor.years}+ {copy.yearsExperience}
+          </Text>
         </View>
 
         <View
           style={[
             styles.statusPill,
-            doctor.online ? styles.onlinePill : styles.offlinePill,
+            doctor.online ? styles.onlinePill : styles.busyPill,
           ]}
         >
           <View
             style={[
               styles.statusDot,
-              { backgroundColor: doctor.online ? "#5A9964" : "#A8AEB4" },
+              { backgroundColor: doctor.online ? '#5A9964' : '#C4626A' },
             ]}
           />
-
           <Text
             style={[
               styles.statusText,
-              { color: doctor.online ? "#4E8A58" : "#8D9297" },
+              { color: doctor.online ? '#4E8A58' : '#A84E55' },
             ]}
           >
-            {doctor.online ? t.doctorsPage.online : t.doctorsPage.offline}
+            {doctor.online ? copy.online : copy.offline}
           </Text>
         </View>
       </View>
-
-      <Text style={styles.experience}>
-        {doctor.years}+ {t.doctorsPage.yearsExperience}
-      </Text>
 
       <View style={styles.doctorFooter}>
         <View style={styles.nextRow}>
           <Ionicons name="time-outline" size={15} color={BLUE} />
           <Text style={styles.nextText}>
-            {t.doctorsPage.nextLabel} · {to12Hour(doctor.slots[0])}
+            {copy.nextLabel} · {to12Hour(doctor.slots[0] ?? '09:00')}
           </Text>
         </View>
 
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={styles.messageButton}
-            onPress={onMessage}
-            accessibilityLabel={t.doctorsPage.message}
-          >
-            <Ionicons
-              name="chatbubble-ellipses-outline"
-              size={16}
-              color={BLUE}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.viewButton} onPress={onPress}>
-            <Text style={styles.viewButtonText}>{t.doctorsPage.view}</Text>
-            <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.viewButton} onPress={onPress}>
+          <Text style={styles.viewButtonText}>{copy.view}</Text>
+          <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -315,7 +203,6 @@ function FilterChip({
   selected: boolean;
   onPress: () => void;
 }) {
-  const styles = useThemedStyles(baseStyles);
   return (
     <TouchableOpacity
       style={[styles.chip, selected && styles.chipSelected]}
@@ -328,307 +215,200 @@ function FilterChip({
   );
 }
 
-const baseStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#F4F6F8",
+    backgroundColor: '#F4F6F8',
   },
-
   header: {
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 12,
   },
-
+  brandRow: {
+    alignItems: 'center',
+    marginBottom: 10,
+  },
   headerLabel: {
     fontSize: 10,
     letterSpacing: 1.3,
     color: BLUE,
-    fontWeight: "700",
+    fontWeight: '700',
     marginBottom: 3,
   },
-
   headerTitle: {
-    fontSize: 22,
-    color: "#172B42",
-    fontWeight: "700",
+    fontSize: 24,
+    color: '#172B42',
+    fontWeight: '700',
   },
-
   scrollContent: {
     paddingHorizontal: 16,
     paddingBottom: 40,
   },
-
   searchRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 9,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingHorizontal: 13,
     height: 46,
     marginBottom: 12,
   },
-
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: "#172B42",
+    color: '#172B42',
     padding: 0,
   },
-
   filterRow: {
     gap: 8,
-    paddingBottom: 20,
-    paddingRight: 4,
+    paddingBottom: 16,
   },
-
   chip: {
     paddingHorizontal: 14,
     height: 34,
-    justifyContent: "center",
-    backgroundColor: "#EAF0F7",
+    justifyContent: 'center',
+    backgroundColor: '#EAF0F7',
     borderRadius: 17,
   },
-
   chipSelected: {
-    backgroundColor: BLUE,
+    backgroundColor: '#243040',
   },
-
   chipText: {
     fontSize: 13,
-    color: "#34475D",
+    color: '#34475D',
   },
-
   chipTextSelected: {
-    color: "#FFFFFF",
-    fontWeight: "600",
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
-
-  sectionLabel: {
-    fontSize: 10,
-    letterSpacing: 1.3,
-    color: "#8A929B",
-    fontWeight: "700",
-    marginBottom: 10,
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    alignItems: 'center',
+    paddingVertical: 28,
+    paddingHorizontal: 22,
   },
-
+  emptyTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#5C646C',
+    marginTop: 9,
+  },
+  emptyHint: {
+    fontSize: 12,
+    color: '#98A0A8',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  clearButton: {
+    marginTop: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#EAF0F7',
+  },
+  clearButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: BLUE,
+  },
   doctorCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     padding: 15,
     marginBottom: 12,
   },
-
   doctorTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 11,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
   },
-
   avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 13,
-    backgroundColor: "#EAF0F7",
-    alignItems: "center",
-    justifyContent: "center",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#E4EAF1',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-
   avatarText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: BLUE,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#243040',
   },
-
   doctorInfo: {
     flex: 1,
   },
-
   doctorName: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#26394C",
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#172B42',
   },
-
   doctorSpecialty: {
-    fontSize: 12,
-    color: "#8D9297",
+    fontSize: 13,
+    color: '#667384',
     marginTop: 2,
   },
-
+  experience: {
+    fontSize: 12,
+    color: '#98A0A8',
+    marginTop: 4,
+  },
   statusPill: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 5,
     paddingHorizontal: 9,
     paddingVertical: 5,
-    borderRadius: 20,
+    borderRadius: 12,
   },
-
   onlinePill: {
-    backgroundColor: "#EAF6EC",
+    backgroundColor: '#E8F5EA',
   },
-
-  offlinePill: {
-    backgroundColor: "#F2F2F0",
+  busyPill: {
+    backgroundColor: '#FCEEEF',
   },
-
   statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
   },
-
   statusText: {
     fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.5,
+    fontWeight: '700',
+    letterSpacing: 0.4,
   },
-
-  experience: {
-    marginTop: 13,
-    fontSize: 12,
-    color: "#8D9297",
-  },
-
   doctorFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginTop: 14,
-    paddingTop: 13,
-    borderTopWidth: 1,
-    borderTopColor: "#F1EFEB",
   },
-
   nextRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
   },
-
   nextText: {
     fontSize: 13,
-    fontWeight: "600",
-    color: "#34475D",
+    color: '#667384',
+    fontWeight: '600',
   },
-
-  actionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-
-  messageButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "#EAF0F7",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
   viewButton: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
-    backgroundColor: BLUE,
-    paddingHorizontal: 15,
-    paddingVertical: 9,
-    borderRadius: 20,
+    backgroundColor: '#243040',
+    paddingHorizontal: 14,
+    height: 36,
+    borderRadius: 18,
   },
-
   viewButtonText: {
+    color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: "700",
-    color: "#FFFFFF",
+    fontWeight: '700',
     letterSpacing: 0.6,
-  },
-
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    paddingHorizontal: 15,
-    marginBottom: 16,
-  },
-
-  divider: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1EFEB",
-  },
-
-  specialtyRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 15,
-  },
-
-  specialtyInfo: {
-    flex: 1,
-  },
-
-  specialtyName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#26394C",
-  },
-
-  specialtyCount: {
-    fontSize: 12,
-    color: "#98A0A8",
-    marginTop: 2,
-  },
-
-  emptyCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    alignItems: "center",
-    paddingVertical: 28,
-    paddingHorizontal: 22,
-    marginBottom: 20,
-  },
-
-  emptyTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#5C646C",
-    marginTop: 10,
-  },
-
-  emptyHint: {
-    fontSize: 12,
-    color: "#98A0A8",
-    textAlign: "center",
-    marginTop: 4,
-  },
-
-  clearButton: {
-    marginTop: 16,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: "#EAF0F7",
-  },
-
-  clearButtonText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: BLUE,
-  },
-
-  clearInline: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 12,
-  },
-
-  clearInlineText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: BLUE,
   },
 });

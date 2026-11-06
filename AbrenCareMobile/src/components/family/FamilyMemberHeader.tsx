@@ -3,14 +3,16 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
 
+import { GlassCard, glassTints } from '@/components/executive/GlassCard';
 import FamilyProfilePhoto from '@/components/family/FamilyProfilePhoto';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { useThemedStyles } from '@/theme/useThemedStyles';
+import { useAppTheme } from '@/context/ThemeContext';
 import { activeFamilyMember } from '@/utilities/familyMember';
 
 export default function FamilyMemberHeader() {
-  const styles = useThemedStyles(baseStyles);
+  const { isDark } = useAppTheme();
+  const glass = glassTints(isDark, 'family');
   const { user, selectFamilyMember } = useAuth();
   const { t } = useLanguage();
   const member = activeFamilyMember(user);
@@ -27,7 +29,13 @@ export default function FamilyMemberHeader() {
       : '';
 
   return (
-    <View style={styles.wrap}>
+    <GlassCard
+      tint={glass.card}
+      border={glass.border}
+      sheen={glass.sheen}
+      shadowColor="#16332C"
+      style={styles.wrap}
+    >
       <Pressable
         style={styles.row}
         onPress={() => {
@@ -68,18 +76,13 @@ export default function FamilyMemberHeader() {
             );
           })
         : null}
-    </View>
+    </GlassCard>
   );
 }
 
-const baseStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   wrap: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#E6EAE2',
-    padding: 14,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   row: {
     flexDirection: 'row',
@@ -106,7 +109,7 @@ const baseStyles = StyleSheet.create({
     borderRadius: 12,
   },
   optionOn: {
-    backgroundColor: '#E7EEEA',
+    backgroundColor: 'rgba(232, 237, 228, 0.72)',
   },
   optionName: {
     fontSize: 14,

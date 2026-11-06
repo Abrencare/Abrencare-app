@@ -33,6 +33,13 @@ export default function FamilyHomeScreen() {
   }
 
   function openMember(member: FamilyMember) {
+    if (member.status === 'pending') {
+      router.push({
+        pathname: '/family-member-request-status',
+        params: { name: member.name, id: member.id },
+      });
+      return;
+    }
     selectFamilyMember(member.id);
     router.replace({
       pathname: '/family',
@@ -77,33 +84,20 @@ export default function FamilyHomeScreen() {
                 </Text>
                 <Text style={[styles.meta, { color: theme.muted }]}>
                   {memberSummary(member, copy)}
+                  {member.status === 'pending'
+                    ? ` · ${copy.requestPendingBadge}`
+                    : ` · ${copy.active}`}
                 </Text>
                 <Text style={[styles.tapHint, { color: theme.accent }]}>
-                  {copy.tapToOpen}
+                  {member.status === 'pending'
+                    ? copy.requestPendingBadge
+                    : copy.tapToOpen}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={theme.accent} />
             </Pressable>
           ))}
         </View>
-
-        <Pressable
-          onPress={() =>
-            router.push({ pathname: '/family-setup', params: { add: '1' } })
-          }
-          style={({ pressed }) => [
-            styles.addCard,
-            { borderColor: theme.accent },
-            pressed && styles.pressed,
-          ]}
-        >
-          <View style={[styles.plus, { backgroundColor: theme.accentSoft }]}>
-            <Ionicons name="add" size={22} color={theme.accent} />
-          </View>
-          <Text style={[styles.addTitle, { color: theme.text }]}>
-            {copy.addAnother}
-          </Text>
-        </Pressable>
 
         <View style={styles.privacy}>
           <Ionicons name="lock-closed-outline" size={13} color={theme.muted} />

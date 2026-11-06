@@ -9,11 +9,13 @@ import {
 
 import FamilyIconWell from '@/components/family/FamilyIconWell';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 
+import { GlassCard, glassTints } from '@/components/executive/GlassCard';
+import { FamilyHero } from '@/components/family/FamilyHero';
 import FamilyHealthOverview from '@/components/family/FamilyHealthOverview';
 import FamilyMemberHeader from '@/components/family/FamilyMemberHeader';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAppTheme } from '@/context/ThemeContext';
 import { useThemedStyles } from '@/theme/useThemedStyles';
 
 type Tab = 'reports' | 'prescriptions' | 'labs' | 'history';
@@ -57,8 +59,9 @@ const toneStyles: Record<Tone, { color: string; bg: string }> = {
 export default function FamilyReports() {
 
   const styles = useThemedStyles(baseStyles);
+  const { isDark } = useAppTheme();
+  const glass = glassTints(isDark, 'family');
   const { t } = useLanguage();
-  const router = useRouter();
   const [tab, setTab] = useState<Tab>('reports');
 
   const tabs: { id: Tab; label: string }[] = [
@@ -87,19 +90,15 @@ export default function FamilyReports() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => router.back()}
-        hitSlop={10}
-      >
-        <Ionicons name="chevron-back" size={22} color="#444" />
-      </TouchableOpacity>
+      <FamilyHero
+        kicker={t.family.activeService}
+        title={t.familyReports.title}
+        subtitle={t.familyReports.historySubtitle}
+      />
 
+      <View style={styles.body}>
       <FamilyMemberHeader />
       <FamilyHealthOverview />
-
-      <Text style={styles.title}>{t.familyReports.title}</Text>
-      <Text style={styles.subtitle}>{t.familyReports.historySubtitle}</Text>
 
       <ScrollView
         horizontal
@@ -124,7 +123,13 @@ export default function FamilyReports() {
         })}
       </ScrollView>
 
-      <View style={styles.card}>
+      <GlassCard
+        tint={glass.card}
+        border={glass.border}
+        sheen={glass.sheen}
+        shadowColor="#16332C"
+        style={styles.card}
+      >
         <View>
           {tab === 'reports' &&
             reportMeta.map((item, index) => {
@@ -266,12 +271,13 @@ export default function FamilyReports() {
               );
             })}
         </View>
-      </View>
+      </GlassCard>
 
       <TouchableOpacity style={styles.button}>
         <Ionicons name="document-text-outline" size={16} color="#FFFFFF" />
         <Text style={styles.buttonText}>{actionLabel}</Text>
       </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 }
@@ -282,25 +288,11 @@ const baseStyles = StyleSheet.create({
     backgroundColor: '#F4F6F3',
   },
   content: {
-    paddingHorizontal: 14,
-    paddingTop: 55,
-    paddingBottom: 40,
+    paddingBottom: 88,
   },
-
-  backButton: {
-    marginBottom: 8,
-  },
-
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#16332C',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#5C6B65',
-    marginBottom: 14,
+  body: {
+    paddingHorizontal: 16,
+    marginTop: -38,
   },
 
   tabsRow: {
@@ -338,10 +330,7 @@ const baseStyles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: '#FFF',
-    borderRadius: 18,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 4,
   },
   reportCard: {
     flexDirection: 'row',

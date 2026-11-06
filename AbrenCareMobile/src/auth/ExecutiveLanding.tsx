@@ -1,50 +1,52 @@
-import ServiceLanding from '@/auth/ServiceLanding';
-import { useLanguage } from '@/context/LanguageContext';
+import { Text } from 'react-native';
 
-const HERO_PHOTO = require('@/assets/images/stock-executive-why.jpg');
+import { useRouter } from 'expo-router';
+
+import Replace from '@/components/gates/Replace';
+import ServiceHeroLanding from '@/auth/ServiceHeroLanding';
+import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
+import { dashboardFor, onboardingPath, useServiceTheme } from '@/service/serviceTheme';
+
+const HERO = require('@/assets/images/executive-landing-full.jpg');
 
 export default function ExecutiveLanding() {
+  const router = useRouter();
   const { t } = useLanguage();
-  const copy = t.executiveLanding;
+  const landing = t.executiveLanding;
+  const copy = t.executiveFlow;
+  const theme = useServiceTheme('executive');
+  const { user, hasService, needsOnboarding } = useAuth();
+
+  if (user && hasService('executive') && !needsOnboarding('executive')) {
+    return <Replace href={dashboardFor('executive')} />;
+  }
+
+  if (user && hasService('executive') && needsOnboarding('executive')) {
+    return <Replace href={onboardingPath('executive')} />;
+  }
 
   return (
-    <ServiceLanding
+    <ServiceHeroLanding
       service="executive"
-      copy={copy}
-      heroPhoto={HERO_PHOTO}
-      heroItems={[
-        { icon: 'pulse-outline', label: copy.preventive },
-        { icon: 'flask-outline', label: copy.personalPhysician },
-        { icon: 'people-outline', label: copy.advancedScreenings },
-      ]}
-      included={[
-        { icon: 'watch-outline', title: copy.monitoringTitle, body: copy.monitoringBody },
-        { icon: 'flask-outline', title: copy.labsTitle, body: copy.labsBody },
-        { icon: 'medkit-outline', title: copy.physicianTitle, body: copy.physicianBody },
-      ]}
-      steps={[
-        { icon: 'call-outline', title: copy.step1Title, body: copy.step1Body },
-        { icon: 'medkit-outline', title: copy.step2Title, body: copy.step2Body },
-        { icon: 'eye-outline', title: copy.step3Title, body: copy.step3Body },
-      ]}
-      trust={[
-        { icon: 'heart-outline', label: copy.experienced },
-        { icon: 'pulse-outline', label: copy.facilities },
-        { icon: 'medkit-outline', label: copy.confidential },
-        { icon: 'leaf-outline', label: copy.localCare },
-      ]}
-      pitch={{
-        scarcity: copy.scarcity,
-        messageDoctor: copy.messageDoctor,
-        alertCaption: copy.alertCaption,
-        alertKicker: t.executiveAlerts.priorityHigh,
-        alertTitle: t.executiveAlerts.bpTitle,
-        alertBody: t.executiveAlerts.bpBody,
-        alertTime: t.executiveAlerts.bpTime,
-        emergencyTitle: copy.emergencyTitle,
-        emergencyEta: copy.emergencyEta,
-        emergencyBody: copy.emergencyBody,
-      }}
+      photo={HERO}
+      kicker={copy.kicker}
+      title={
+        <>
+          {copy.headline}
+          {'\n'}
+          <Text style={{ color: '#E6D3A8' }}>{copy.headlineAccent}</Text>
+        </>
+      }
+      subtitle={copy.body}
+      primaryLabel={copy.talk}
+      secondaryLabel={copy.how}
+      note={copy.privateNote}
+      loginPrefix={landing.alreadyAccount}
+      loginLabel={landing.logIn}
+      primaryColor={theme.accent}
+      onPrimary={() => router.push('/executive-request')}
+      onSecondary={() => router.push('/executive-how-it-works')}
     />
   );
 }

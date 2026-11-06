@@ -1,17 +1,61 @@
-import { Image, type ImageStyle, type StyleProp } from 'react-native';
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
-const SOURCE = require('@/assets/images/family-plan-profile.png');
+import { useAuth } from '@/context/AuthContext';
+import { useAppTheme } from '@/context/ThemeContext';
+import { activeFamilyMember, memberInitials } from '@/utilities/familyMember';
 
 type Props = {
   size?: number;
-  style?: StyleProp<ImageStyle>;
+  name?: string;
+  style?: StyleProp<ViewStyle>;
 };
 
-export default function FamilyProfilePhoto({ size = 48, style }: Props) {
+const FILL = '#1A3A32';
+
+export default function FamilyProfilePhoto({ size = 48, name, style }: Props) {
+  const { isDark } = useAppTheme();
+  const { user } = useAuth();
+  const member = activeFamilyMember(user);
+  const initials = memberInitials(name || member?.name || user?.name || '');
+  const radius = Math.round(size * 0.28);
+
   return (
-    <Image
-      source={SOURCE}
-      style={[{ width: size, height: size, borderRadius: size / 2 }, style]}
-    />
+    <View
+      style={[
+        styles.mark,
+        {
+          width: size,
+          height: size,
+          borderRadius: radius,
+          backgroundColor: isDark ? '#243028' : '#EEF3EF',
+          borderColor: isDark ? '#2C3833' : '#D7E3DC',
+        },
+        style,
+      ]}
+    >
+      <Text
+        style={[
+          styles.initials,
+          {
+            fontSize: Math.round(size * 0.34),
+            color: isDark ? '#D7E6DC' : FILL,
+          },
+        ]}
+      >
+        {initials}
+      </Text>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  mark: {
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  initials: {
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+});

@@ -1,6 +1,5 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import FamilyMemberGate from '@/components/gates/FamilyMemberGate';
@@ -21,24 +20,9 @@ function TabIcon({
   focusedName: keyof typeof Ionicons.glyphMap;
 }) {
   return (
-    <View style={tabIconStyles.wrap}>
-      <Ionicons name={focused ? focusedName : name} size={size} color={color} />
-      {focused ? <View style={[tabIconStyles.underline, { backgroundColor: color }]} /> : null}
-    </View>
+    <Ionicons name={focused ? focusedName : name} size={size} color={color} />
   );
 }
-
-const tabIconStyles = StyleSheet.create({
-  wrap: {
-    alignItems: 'center',
-  },
-  underline: {
-    marginTop: 4,
-    width: 18,
-    height: 2,
-    borderRadius: 1,
-  },
-});
 
 export default function FamilyLayout() {
   const { t } = useLanguage();
@@ -50,10 +34,13 @@ export default function FamilyLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarShowLabel: true,
         tabBarActiveTintColor: '#5E7A62',
         tabBarInactiveTintColor: colors.navInactive,
         tabBarStyle: {
+          height: 64,
           paddingTop: 6,
+          paddingBottom: 8,
           backgroundColor: isDark ? colors.nav : '#FBFCFB',
           borderTopWidth: 0,
           elevation: 0,
@@ -70,6 +57,7 @@ export default function FamilyLayout() {
         name="index"
         options={{
           title: t.tabs.home,
+          tabBarLabel: t.tabs.home,
           tabBarIcon: (props: TabIconProps) => (
             <TabIcon {...props} name="home-outline" focusedName="home" />
           ),
@@ -79,6 +67,7 @@ export default function FamilyLayout() {
         name="reports"
         options={{
           title: t.tabs.myCare,
+          tabBarLabel: t.tabs.myCare,
           tabBarIcon: (props: TabIconProps) => (
             <TabIcon {...props} name="heart-outline" focusedName="heart" />
           ),
@@ -88,6 +77,7 @@ export default function FamilyLayout() {
         name="appointments"
         options={{
           title: t.tabs.book,
+          tabBarLabel: t.tabs.book,
           tabBarIcon: (props: TabIconProps) => (
             <TabIcon {...props} name="calendar-outline" focusedName="calendar" />
           ),
@@ -97,6 +87,7 @@ export default function FamilyLayout() {
         name="profile"
         options={{
           title: t.tabs.profile,
+          tabBarLabel: t.tabs.profile,
           tabBarIcon: (props: TabIconProps) => (
             <TabIcon {...props} name="person-outline" focusedName="person" />
           ),

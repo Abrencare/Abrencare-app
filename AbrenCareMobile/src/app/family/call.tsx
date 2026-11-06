@@ -4,7 +4,9 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
+import { GlassCard, glassTints } from '@/components/executive/GlassCard';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAppTheme } from '@/context/ThemeContext';
 import { useThemedStyles } from '@/theme/useThemedStyles';
 
 function formatDuration(seconds: number) {
@@ -16,6 +18,8 @@ function formatDuration(seconds: number) {
 export default function FamilyCall() {
 
   const styles = useThemedStyles(baseStyles);
+  const { isDark } = useAppTheme();
+  const glass = glassTints(isDark, 'family');
   const router = useRouter();
   const { t } = useLanguage();
 
@@ -79,7 +83,13 @@ export default function FamilyCall() {
       </View>
 
       {/* Controls */}
-      <View style={styles.controls}>
+      <GlassCard
+        tint="rgba(26, 58, 50, 0.42)"
+        border={glass.border}
+        sheen={glass.sheen}
+        shadowColor="#16332C"
+        style={styles.controls}
+      >
         <ControlButton
           icon={muted ? 'mic-off' : 'mic'}
           label={muted ? t.familyChat.callUnmute : t.familyChat.callMute}
@@ -109,7 +119,7 @@ export default function FamilyCall() {
           </TouchableOpacity>
           <Text style={styles.controlLabel}>{t.familyChat.callEnd}</Text>
         </View>
-      </View>
+      </GlassCard>
     </View>
   );
 }
@@ -245,9 +255,8 @@ const baseStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'flex-start',
-    paddingHorizontal: 18,
-    paddingBottom: 46,
-    paddingTop: 20,
+    marginHorizontal: 16,
+    marginBottom: 28,
   },
 
   control: {

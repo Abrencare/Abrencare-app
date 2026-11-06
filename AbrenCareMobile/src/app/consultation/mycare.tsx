@@ -1,753 +1,299 @@
-import React, { useState } from "react";
 import {
   Alert,
-  Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
-} from "react-native";
+} from 'react-native';
 
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
+import { useAuth } from '@/context/AuthContext';
 import {
   isJoinable,
   useConsultations,
   type Consultation,
-} from "@/context/ConsultationContext";
-import { doctorById, specialtyLabel } from "@/data/doctors";
-import { longDate, shortDate } from "@/utilities/consultationFormat";
-import { formatDateKey } from "@/utilities/familyFormat";
-import { useLanguage } from "@/context/LanguageContext";
-import { useThemedStyles } from "@/theme/useThemedStyles";
-
-const BLUE = "#7E93A8";
+} from '@/context/ConsultationContext';
+import { useLanguage } from '@/context/LanguageContext';
+import { doctorById, specialtyLabel } from '@/data/doctors';
+import { useServiceTheme } from '@/service/serviceTheme';
+import { longDate } from '@/utilities/consultationFormat';
 
 export default function ConsultationMyCare() {
-
-  const styles = useThemedStyles(baseStyles);
-  const { t } = useLanguage();
   const router = useRouter();
-  const { upcoming, recent, followUpDate, cancel, setDraft } =
-    useConsultations();
+  const { t } = useLanguage();
+  const theme = useServiceTheme('consultation');
+  const { user } = useAuth();
+  const { upcoming, recent, followUpDate, cancel } = useConsultations();
+  const copy = t.consultationFlow;
+  const approved = recent.filter((item) => item.reportApproved);
+  const prescriptions = recent.filter((item) => item.prescriptionIssued);
 
-  const [summary, setSummary] = useState<Consultation | null>(null);
-
-  const next = upcoming[0] ?? null;
-  const lastVisit = recent[0] ?? null;
-
-  function handleJoin(consultation: Consultation) {
+  function join(consultation: Consultation) {
     if (!isJoinable(consultation)) {
-      Alert.alert(t.myCare.joinTitle, t.myCare.joinTooEarly, [
-        { text: t.myCare.ok },
-      ]);
+      Alert.alert(t.myCare.joinTitle, copy.joinTooEarly, [{ text: t.myCare.ok }]);
       return;
     }
-
     router.push({
-      pathname: "/consultation/call",
-      params: {
-        doctor: consultation.doctorId,
-        paid: consultation.paid ? "1" : "0",
-      },
-    });
-  }
-
-  function handleMessage(consultation: Consultation) {
-    router.push({
-      pathname: "/consultation/chat",
-      params: {
-        doctor: consultation.doctorId,
-        paid: consultation.paid ? "1" : "0",
-      },
+      pathname: '/consultation/waiting',
+      params: { id: consultation.id },
     });
   }
 
   function handleCancel(consultation: Consultation) {
     Alert.alert(t.myCare.cancelTitle, t.myCare.cancelMessage, [
-      { text: t.myCare.cancelKeep, style: "cancel" },
+      { text: t.myCare.cancelKeep, style: 'cancel' },
       {
         text: t.myCare.cancelConfirm,
-        style: "destructive",
+        style: 'destructive',
         onPress: () => cancel(consultation.id),
       },
     ]);
   }
 
-  function bookFollowUp() {
-    setDraft({
-      doctorId: lastVisit?.doctorId ?? null,
-      date: followUpDate,
-    });
-    router.push("/consultation");
-  }
-
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
       <View style={styles.header}>
-        <Text style={styles.headerLabel}>{t.myCare.headerLabel}</Text>
-        <Text style={styles.headerTitle}>{t.myCare.title}</Text>
+        <Text style={[styles.kicker, { color: theme.muted }]}>{copy.digital}</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t.myCare.title}</Text>
+        {user?.name ? (
+          <Text style={[styles.patient, { color: theme.muted }]}>{user.name}</Text>
+        ) : null}
       </View>
 
       <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
       >
-        <Text style={styles.sectionLabel}>{t.myCare.upcoming}</Text>
-
-        {next ? (
-          <UpcomingCard
-            consultation={next}
-            onJoin={() => handleJoin(next)}
-            onMessage={() => handleMessage(next)}
-            onCancel={() => handleCancel(next)}
+        <Text style={[styles.section, { color: theme.muted }]}>{t.myCare.upcoming}</Text>
+        {upcoming.length === 0 ? (
+          <Empty
+            icon="calendar-outline"
+            title={t.myCare.noUpcoming}
+            hint={t.myCare.noUpcomingHint}
+            action={copy.book}
+            onPress={() => router.push('/consultation/doctors')}
           />
         ) : (
-          <View style={styles.emptyCard}>
-            <Ionicons name="calendar-outline" size={22} color="#B4BAC1" />
-            <Text style={styles.emptyTitle}>{t.myCare.noUpcoming}</Text>
-            <Text style={styles.emptyHint}>{t.myCare.noUpcomingHint}</Text>
-
-            <TouchableOpacity
-              style={styles.emptyButton}
-              onPress={() => router.push("/consultation")}
-            >
-              <Text style={styles.emptyButtonText}>{t.myCare.bookNew}</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {upcoming.slice(1).map((consultation) => (
-          <UpcomingCard
-            key={consultation.id}
-            consultation={consultation}
-            onJoin={() => handleJoin(consultation)}
-            onMessage={() => handleMessage(consultation)}
-            onCancel={() => handleCancel(consultation)}
-          />
-        ))}
-
-        <Text style={styles.sectionLabel}>{t.myCare.recent}</Text>
-
-        {recent.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Ionicons name="document-text-outline" size={22} color="#B4BAC1" />
-            <Text style={styles.emptyTitle}>{t.myCare.noRecent}</Text>
-          </View>
-        ) : (
-          <View style={styles.card}>
-            {recent.map((consultation, index) => {
-              const doctor = doctorById(consultation.doctorId);
-
-              return (
-                <View
-                  key={consultation.id}
-                  style={[
-                    styles.recentRow,
-                    index !== recent.length - 1 && styles.divider,
-                  ]}
-                >
-                  <View style={styles.dateStamp}>
-                    <Text style={styles.dateStampText}>
-                      {shortDate(consultation.date, t)}
-                    </Text>
-                  </View>
-
-                  <View style={styles.recentInfo}>
-                    <Text style={styles.doctorName}>{doctor?.name}</Text>
-
-                    <Text style={styles.doctorSpecialty}>
-                      {doctor ? specialtyLabel(doctor.specialty, t) : ""}
-                    </Text>
-
-                    <View style={styles.completedPill}>
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={12}
-                        color="#4E8A58"
-                      />
-                      <Text style={styles.completedText}>
-                        {t.myCare.completed}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <TouchableOpacity
-                    style={styles.summaryButton}
-                    onPress={() => setSummary(consultation)}
+          upcoming.map((consultation) => {
+            const doctor = doctorById(consultation.doctorId);
+            if (!doctor) {
+              return null;
+            }
+            return (
+              <View key={consultation.id} style={[styles.card, { borderColor: theme.border }]}>
+                <Text style={[styles.cardKicker, { color: theme.accent }]}>
+                  {consultation.kind === 'audio' ? copy.audioConsult : copy.videoConsult}
+                </Text>
+                <Text style={[styles.cardTitle, { color: theme.text }]}>{doctor.name}</Text>
+                <Text style={[styles.meta, { color: theme.muted }]}>
+                  {specialtyLabel(doctor.specialty, t)} · {longDate(consultation.date, t)} ·{' '}
+                  {consultation.time}
+                </Text>
+                <View style={styles.actions}>
+                  <Pressable
+                    style={[styles.primary, { backgroundColor: theme.accent }]}
+                    onPress={() => join(consultation)}
                   >
-                    <Text style={styles.summaryButtonText}>
-                      {t.myCare.viewSummary}
-                    </Text>
-                  </TouchableOpacity>
+                    <Text style={styles.primaryText}>{t.myCare.join}</Text>
+                  </Pressable>
+                  <Pressable onPress={() => handleCancel(consultation)}>
+                    <Text style={[styles.link, { color: theme.muted }]}>{t.myCare.cancel}</Text>
+                  </Pressable>
                 </View>
-              );
-            })}
-          </View>
+              </View>
+            );
+          })
         )}
 
-        {followUpDate && (
-          <>
-            <Text style={styles.sectionLabel}>{t.myCare.followUp}</Text>
-
-            <View style={styles.followUpCard}>
-              <View style={styles.followUpIcon}>
-                <Ionicons name="repeat" size={19} color={BLUE} />
-              </View>
-
-              <View style={styles.followUpInfo}>
-                <Text style={styles.followUpLabel}>
-                  {t.myCare.recommended}
-                </Text>
-                <Text style={styles.followUpDate}>
-                  {longDate(followUpDate, t)}
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                style={styles.bookButton}
-                onPress={bookFollowUp}
+        <Text style={[styles.section, { color: theme.muted }]}>{t.myCare.recent}</Text>
+        {recent.length === 0 ? (
+          <Empty icon="document-text-outline" title={t.myCare.noRecent} />
+        ) : (
+          recent.map((consultation) => {
+            const doctor = doctorById(consultation.doctorId);
+            if (!doctor) {
+              return null;
+            }
+            return (
+              <Pressable
+                key={consultation.id}
+                style={[styles.card, { borderColor: theme.border }]}
+                onPress={() =>
+                  router.push({
+                    pathname: '/consultation/report',
+                    params: { id: consultation.id },
+                  })
+                }
               >
-                <Text style={styles.bookButtonText}>{t.myCare.book}</Text>
-              </TouchableOpacity>
-            </View>
-          </>
+                <Text style={[styles.cardTitle, { color: theme.text }]}>{doctor.name}</Text>
+                <Text style={[styles.meta, { color: theme.muted }]}>
+                  {longDate(consultation.date, t)} · {t.myCare.completed}
+                </Text>
+                <Text style={[styles.meta, { color: theme.accent }]}>
+                  {consultation.reportApproved
+                    ? copy.clinicianApproved
+                    : copy.pendingReview}
+                </Text>
+              </Pressable>
+            );
+          })
         )}
 
-        <View style={{ height: 28 }} />
-      </ScrollView>
-
-      <Modal
-        visible={summary !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSummary(null)}
-      >
-        <Pressable style={styles.backdrop} onPress={() => setSummary(null)}>
-          <Pressable style={styles.sheet}>
-            {summary && <SummaryBody consultation={summary} />}
-
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setSummary(null)}
+        <Text style={[styles.section, { color: theme.muted }]}>{copy.reports}</Text>
+        {approved.length === 0 ? (
+          <Empty
+            icon="document-outline"
+            title={copy.noReports}
+            hint={copy.noReportsHint}
+          />
+        ) : (
+          approved.map((consultation) => (
+            <Pressable
+              key={consultation.id}
+              style={[styles.card, { borderColor: theme.border }]}
+              onPress={() =>
+                router.push({
+                  pathname: '/consultation/report',
+                  params: { id: consultation.id },
+                })
+              }
             >
-              <Text style={styles.closeButtonText}>{t.myCare.close}</Text>
-            </TouchableOpacity>
+              <Text style={[styles.cardTitle, { color: theme.text }]}>
+                {doctorById(consultation.doctorId)?.name}
+              </Text>
+              <Text style={[styles.meta, { color: theme.accent }]}>
+                {copy.clinicianApproved}
+              </Text>
+            </Pressable>
+          ))
+        )}
+
+        <Text style={[styles.section, { color: theme.muted }]}>{copy.prescriptions}</Text>
+        {prescriptions.length === 0 ? (
+          <Empty
+            icon="medkit-outline"
+            title={copy.noPrescriptions}
+            hint={copy.noPrescriptionsHint}
+          />
+        ) : (
+          prescriptions.map((consultation) => (
+            <Pressable
+              key={consultation.id}
+              style={[styles.card, { borderColor: theme.border }]}
+              onPress={() =>
+                router.push({
+                  pathname: '/consultation/prescriptions',
+                  params: { id: consultation.id },
+                })
+              }
+            >
+              <Text style={[styles.cardTitle, { color: theme.text }]}>
+                {doctorById(consultation.doctorId)?.name}
+              </Text>
+            </Pressable>
+          ))
+        )}
+
+        <Text style={[styles.section, { color: theme.muted }]}>{copy.followUps}</Text>
+        <View style={[styles.card, { borderColor: theme.border }]}>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>{copy.nextStep}</Text>
+          <Text style={[styles.meta, { color: theme.muted }]}>{copy.nextStepBody}</Text>
+          <Text style={[styles.meta, { color: theme.muted }]}>
+            {copy.nextAppt}: {followUpDate ?? copy.notBooked}
+          </Text>
+          <Pressable
+            style={[styles.primary, { backgroundColor: theme.accent, marginTop: 12 }]}
+            onPress={() => router.push('/consultation/doctors')}
+          >
+            <Text style={styles.primaryText}>{copy.bookFollow}</Text>
           </Pressable>
-        </Pressable>
-      </Modal>
+        </View>
+
+        <Text style={[styles.note, { color: theme.muted }]}>{copy.notEmergency}</Text>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-function UpcomingCard({
-  consultation,
-  onJoin,
-  onMessage,
-  onCancel,
+function Empty({
+  icon,
+  title,
+  hint,
+  action,
+  onPress,
 }: {
-  consultation: Consultation;
-  onJoin: () => void;
-  onMessage: () => void;
-  onCancel: () => void;
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  hint?: string;
+  action?: string;
+  onPress?: () => void;
 }) {
-  const styles = useThemedStyles(baseStyles);
-  const { t } = useLanguage();
-  const doctor = doctorById(consultation.doctorId);
-  const joinable = isJoinable(consultation);
-
+  const theme = useServiceTheme('consultation');
   return (
-    <View style={styles.upcomingCard}>
-      <View style={styles.whenPill}>
-        <View style={styles.livePulse} />
-        <Text style={styles.whenText}>
-          {formatDateKey(consultation.date, t).toUpperCase()} ·{" "}
-          {consultation.time}
-        </Text>
-      </View>
-
-      <Text style={styles.upcomingName}>{doctor?.name}</Text>
-
-      <Text style={styles.upcomingSpecialty}>
-        {doctor ? specialtyLabel(doctor.specialty, t) : ""}
-      </Text>
-
-      <View style={styles.metaRow}>
-        <Ionicons name="videocam-outline" size={15} color="#8D9297" />
-        <Text style={styles.metaText}>{t.myCare.videoInfo}</Text>
-      </View>
-
-      <View style={styles.upcomingActions}>
-        <TouchableOpacity
-          style={[styles.joinButton, !joinable && styles.joinButtonWaiting]}
-          onPress={onJoin}
+    <View style={[styles.empty, { borderColor: theme.border }]}>
+      <Ionicons name={icon} size={22} color={theme.muted} />
+      <Text style={[styles.emptyTitle, { color: theme.text }]}>{title}</Text>
+      {hint ? <Text style={[styles.meta, { color: theme.muted }]}>{hint}</Text> : null}
+      {action && onPress ? (
+        <Pressable
+          style={[styles.primary, { backgroundColor: theme.accent, marginTop: 12 }]}
+          onPress={onPress}
         >
-          <Ionicons name="videocam" size={17} color="#FFFFFF" />
-          <Text style={styles.joinButtonText}>{t.myCare.join}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.messageButton}
-          onPress={onMessage}
-          accessibilityLabel={t.consultationChat.startChat}
-        >
-          <Ionicons
-            name="chatbubble-ellipses-outline"
-            size={19}
-            color={BLUE}
-          />
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity
-        style={styles.cancelLink}
-        onPress={onCancel}
-        hitSlop={8}
-      >
-        <Ionicons name="trash-outline" size={14} color="#C4626A" />
-        <Text style={styles.cancelLinkText}>{t.myCare.cancel}</Text>
-      </TouchableOpacity>
+          <Text style={styles.primaryText}>{action}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
 
-function SummaryBody({ consultation }: { consultation: Consultation }) {
-  const styles = useThemedStyles(baseStyles);
-  const { t } = useLanguage();
-  const doctor = doctorById(consultation.doctorId);
-
-  return (
-    <>
-      <Text style={styles.sheetTitle}>{t.myCare.summaryTitle}</Text>
-
-      <View style={[styles.sheetRow, styles.divider]}>
-        <Text style={styles.sheetLabel}>{t.myCare.summaryDoctor}</Text>
-        <Text style={styles.sheetValue}>{doctor?.name}</Text>
-      </View>
-
-      <View style={[styles.sheetRow, styles.divider]}>
-        <Text style={styles.sheetLabel}>{t.myCare.summarySpecialty}</Text>
-        <Text style={styles.sheetValue}>
-          {doctor ? specialtyLabel(doctor.specialty, t) : ""}
-        </Text>
-      </View>
-
-      <View style={[styles.sheetRow, styles.divider]}>
-        <Text style={styles.sheetLabel}>{t.myCare.summaryDate}</Text>
-        <Text style={styles.sheetValue}>
-          {longDate(consultation.date, t)} · {consultation.time}
-        </Text>
-      </View>
-
-      <View style={[styles.sheetRow, styles.divider]}>
-        <Text style={styles.sheetLabel}>{t.myCare.summaryDuration}</Text>
-        <Text style={styles.sheetValue}>{t.myCare.durationValue}</Text>
-      </View>
-
-      <Text style={styles.notesLabel}>{t.myCare.summaryNotesLabel}</Text>
-      <Text style={styles.notesText}>{t.myCare.summaryNotes}</Text>
-    </>
-  );
-}
-
-const baseStyles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#F4F6F8",
-  },
-
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-  },
-
-  headerLabel: {
-    fontSize: 10,
-    letterSpacing: 1.3,
-    color: BLUE,
-    fontWeight: "700",
-    marginBottom: 3,
-  },
-
-  headerTitle: {
-    fontSize: 22,
-    color: "#172B42",
-    fontWeight: "700",
-  },
-
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
-  },
-
-  sectionLabel: {
-    fontSize: 10,
-    letterSpacing: 1.3,
-    color: "#8A929B",
-    fontWeight: "700",
-    marginBottom: 10,
-  },
-
-  upcomingCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 22,
-  },
-
-  whenPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    alignSelf: "flex-start",
-    backgroundColor: "#EAF0F7",
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-
-  livePulse: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: BLUE,
-  },
-
-  whenText: {
+const styles = StyleSheet.create({
+  safe: { flex: 1 },
+  scroll: { flex: 1 },
+  header: { paddingHorizontal: 20, paddingTop: 10 },
+  kicker: { fontSize: 11, fontWeight: '700', letterSpacing: 1.2 },
+  title: { fontSize: 28, fontWeight: '800', marginTop: 4 },
+  patient: { fontSize: 13, marginTop: 4 },
+  content: { paddingHorizontal: 20, paddingBottom: 28 },
+  section: {
     fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-    color: "#41597C",
-  },
-
-  upcomingName: {
-    fontSize: 19,
-    fontWeight: "700",
-    color: "#172B42",
-    marginTop: 13,
-  },
-
-  upcomingSpecialty: {
-    fontSize: 13,
-    color: "#8D9297",
-    marginTop: 3,
-  },
-
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    marginTop: 12,
-  },
-
-  metaText: {
-    fontSize: 12,
-    color: "#8D9297",
-  },
-
-  upcomingActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginTop: 16,
-  },
-
-  joinButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    height: 48,
-    borderRadius: 13,
-    backgroundColor: BLUE,
-  },
-
-  joinButtonWaiting: {
-    backgroundColor: "#9DB0CD",
-  },
-
-  joinButtonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-  },
-
-  messageButton: {
-    width: 52,
-    height: 48,
-    borderRadius: 13,
-    backgroundColor: "#EAF0F7",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  cancelLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    alignSelf: "center",
-    marginTop: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#FCEFEF",
-  },
-
-  cancelLinkText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#C4626A",
-  },
-
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    paddingHorizontal: 15,
-    marginBottom: 22,
-  },
-
-  divider: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1EFEB",
-  },
-
-  recentRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 15,
-  },
-
-  dateStamp: {
-    width: 52,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: "#EEF2F6",
-    alignItems: "center",
-  },
-
-  dateStampText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#41597C",
-    letterSpacing: 0.4,
-  },
-
-  recentInfo: {
-    flex: 1,
-  },
-
-  doctorName: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#26394C",
-  },
-
-  doctorSpecialty: {
-    fontSize: 12,
-    color: "#8D9297",
-    marginTop: 2,
-  },
-
-  completedPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    alignSelf: "flex-start",
-    marginTop: 7,
-    backgroundColor: "#EAF6EC",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-
-  completedText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#4E8A58",
-  },
-
-  summaryButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: 20,
-    backgroundColor: "#EAF0F7",
-  },
-
-  summaryButtonText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: BLUE,
-    letterSpacing: 0.4,
-  },
-
-  followUpCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    padding: 15,
-    marginBottom: 22,
-  },
-
-  followUpIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: "#EAF0F7",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  followUpInfo: {
-    flex: 1,
-  },
-
-  followUpLabel: {
-    fontSize: 11,
-    letterSpacing: 0.6,
-    color: "#98A0A8",
-    fontWeight: "600",
-  },
-
-  followUpDate: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#172B42",
-    marginTop: 3,
-  },
-
-  bookButton: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: BLUE,
-  },
-
-  bookButtonText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    letterSpacing: 0.6,
-  },
-
-  emptyCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    alignItems: "center",
-    paddingVertical: 26,
-    paddingHorizontal: 22,
-    marginBottom: 22,
-  },
-
-  emptyTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#5C646C",
-    marginTop: 9,
-  },
-
-  emptyHint: {
-    fontSize: 12,
-    color: "#98A0A8",
-    textAlign: "center",
-    marginTop: 4,
-  },
-
-  emptyButton: {
-    marginTop: 16,
-    paddingHorizontal: 18,
-    paddingVertical: 11,
-    borderRadius: 20,
-    backgroundColor: "#EAF0F7",
-  },
-
-  emptyButtonText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: BLUE,
-  },
-
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(20, 24, 30, 0.4)",
-    justifyContent: "flex-end",
-  },
-
-  sheet: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    paddingHorizontal: 20,
-    paddingTop: 22,
-    paddingBottom: 30,
-  },
-
-  sheetTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#172B42",
+    fontWeight: '700',
+    letterSpacing: 1.1,
+    marginTop: 20,
     marginBottom: 8,
   },
-
-  sheetRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 13,
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 10,
   },
-
-  sheetLabel: {
-    fontSize: 12,
-    color: "#98A0A8",
-    letterSpacing: 0.4,
+  cardKicker: { fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 6 },
+  cardTitle: { fontSize: 16, fontWeight: '700' },
+  meta: { fontSize: 13, lineHeight: 18, marginTop: 4 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 14 },
+  primary: {
+    height: 40,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-
-  sheetValue: {
-    flex: 1,
-    textAlign: "right",
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#172B42",
-    marginLeft: 12,
+  primaryText: { color: '#FFFFFF', fontWeight: '700' },
+  link: { fontWeight: '600' },
+  empty: {
+    alignItems: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 16,
+    gap: 6,
   },
-
-  notesLabel: {
-    fontSize: 10,
-    letterSpacing: 1.2,
-    color: "#8A929B",
-    fontWeight: "700",
-    marginTop: 18,
-    marginBottom: 7,
-  },
-
-  notesText: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: "#5C646C",
-  },
-
-  closeButton: {
-    height: 48,
-    borderRadius: 13,
-    backgroundColor: "#EAF0F7",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 22,
-  },
-
-  closeButtonText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: BLUE,
-  },
+  emptyTitle: { fontSize: 15, fontWeight: '700' },
+  note: { fontSize: 12, lineHeight: 18, marginTop: 12 },
 });

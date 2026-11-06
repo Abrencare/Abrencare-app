@@ -11,7 +11,8 @@ import { Spacing } from '@/constants/theme';
 type ColorScheme = 'light' | 'dark' | null;
 
 export function WebBadge(): ReactNode {
-  const scheme: ColorScheme = useColorScheme();
+  const colorScheme = useColorScheme();
+  const scheme: ColorScheme = colorScheme === 'dark' ? 'dark' : colorScheme === 'light' ? 'light' : null;
 
   return (
     <ThemedView style={styles.container}>

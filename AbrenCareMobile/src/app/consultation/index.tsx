@@ -1,110 +1,80 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from 'react';
 import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
-} from "react-native";
+} from 'react-native';
 
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
-import ServiceBackButton from "@/components/navigation/ServiceBackButton";
-import BrandLogo from "@/components/ui/BrandLogo";
-import { useConsultations } from "@/context/ConsultationContext";
+import BrandLogo, { BrandHomeLink } from '@/components/ui/BrandLogo';
+import { fromDateKey, toDateKey } from '@/context/AppointmentsContext';
+import { useConsultations } from '@/context/ConsultationContext';
+import { useLanguage } from '@/context/LanguageContext';
 import {
-  SPECIALTIES,
+  CONSULTATION_PRICE_ETB,
+  formatEtb,
+} from '@/data/consultationPricing';
+import {
+  CONSULTATION_MINUTES,
   doctorById,
-  filterDoctors,
   mondayFirstWeekdays,
   monthGridMondayFirst,
   specialtyLabel,
-  type SpecialtyId,
-} from "@/data/doctors";
-import { monthTitle } from "@/utilities/consultationFormat";
-import { fromDateKey, toDateKey } from "@/context/AppointmentsContext";
-import { useLanguage } from "@/context/LanguageContext";
-import { useThemedStyles } from "@/theme/useThemedStyles";
+} from '@/data/doctors';
+import { monthTitle } from '@/utilities/consultationFormat';
 
-const BLUE = "#7E93A8";
+const BLUE = '#7E93A8';
 
 export default function ConsultationBooking() {
-
-  const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
   const router = useRouter();
   const { draft, setDraft, isSlotTaken } = useConsultations();
 
-  const [specialty, setSpecialty] = useState<SpecialtyId | null>(null);
-  const [query, setQuery] = useState("");
   const [time, setTime] = useState<string | null>(null);
-  const [confirmed, setConfirmed] = useState(false);
 
   const today = new Date();
   const todayKey = toDateKey(today);
-  const minutesNow = today.getHours() * 60 + today.getMinutes();
   const selectedDate = draft.date ?? todayKey;
+  const doctor = doctorById(draft.doctorId);
+  const kind = draft.kind || 'video';
 
   const [view, setView] = useState(() => {
     const start = fromDateKey(selectedDate);
     return { year: start.getFullYear(), month: start.getMonth() };
   });
 
-  const doctors = useMemo(
-    () => filterDoctors({ query, specialty }, t),
-    [query, specialty, t],
-  );
-
-  const doctor = doctorById(draft.doctorId);
-
   const slots = useMemo(() => {
     if (!doctor) {
       return [];
     }
 
-    // Hide times that have already passed when booking for today.
-    if (selectedDate !== todayKey) {
-      return doctor.slots;
-    }
-
     return doctor.slots.filter((slot) => {
-      const [hours, mins] = slot.split(":").map(Number);
+      if (isSlotTaken(doctor.id, selectedDate, slot)) {
+        return false;
+      }
+      if (selectedDate !== todayKey) {
+        return true;
+      }
+      const minutesNow = today.getHours() * 60 + today.getMinutes();
+      const [hours, mins] = slot.split(':').map(Number);
       return (hours ?? 0) * 60 + (mins ?? 0) > minutesNow;
     });
-  }, [doctor, selectedDate, todayKey, minutesNow]);
+  }, [doctor, selectedDate, todayKey, today, isSlotTaken]);
 
   const cells = monthGridMondayFirst(view.year, view.month);
   const weekdays = mondayFirstWeekdays(t);
-
   const atFirstMonth =
     view.year === today.getFullYear() && view.month === today.getMonth();
-
   const canBook = Boolean(doctor && selectedDate && time);
-
-  function pickSpecialty(next: SpecialtyId | null) {
-    setSpecialty(next);
-    setConfirmed(false);
-
-    // Drop the chosen doctor if they fall outside the new filter.
-    if (next && doctor && doctor.specialty !== next) {
-      setDraft({ doctorId: null });
-      setTime(null);
-    }
-  }
-
-  function pickDoctor(id: string) {
-    setDraft({ doctorId: draft.doctorId === id ? null : id });
-    setTime(null);
-    setConfirmed(false);
-  }
 
   function pickDate(day: number) {
     setDraft({ date: toDateKey(new Date(view.year, view.month, day)) });
     setTime(null);
-    setConfirmed(false);
   }
 
   function shiftMonth(delta: number) {
@@ -114,34 +84,17 @@ export default function ConsultationBooking() {
     });
   }
 
-  function handleBook() {
+  function handleConfirm() {
     if (!doctor || !time) {
       return;
     }
-
     router.push({
-      pathname: "/consultation/pay",
-      params: {
-        doctor: doctor.id,
-        kind: "video",
-        date: selectedDate,
-        time,
-        next: "mycare",
-      },
-    });
-  }
-
-  function startNow(kind: "video" | "message") {
-    if (!doctor) {
-      return;
-    }
-
-    router.push({
-      pathname: "/consultation/pay",
+      pathname: '/consultation/pay',
       params: {
         doctor: doctor.id,
         kind,
-        next: kind === "message" ? "chat" : "call",
+        date: selectedDate,
+        time,
       },
     });
   }
@@ -149,12 +102,10 @@ export default function ConsultationBooking() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <View style={styles.brandRow}>
-          <ServiceBackButton color={BLUE} size={32} style={styles.backButton} />
-
-          <BrandLogo size={36} />
-          <Text style={styles.headerLabel}>{t.consultation.headerLabel}</Text>
-        </View>
+        <BrandHomeLink style={styles.brandRow}>
+          <BrandLogo size={34} link={false} />
+        </BrandHomeLink>
+        <Text style={styles.headerLabel}>{t.consultation.headerLabel}</Text>
         <Text style={styles.headerTitle}>{t.consultation.title}</Text>
       </View>
 
@@ -163,203 +114,29 @@ export default function ConsultationBooking() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        {confirmed && (
-          <View style={styles.banner}>
-            <Ionicons name="checkmark-circle" size={19} color="#5A9964" />
-
-            <Text style={styles.bannerText}>
-              {t.consultation.bookedTitle}
-            </Text>
-
-            <TouchableOpacity onPress={() => router.push("/consultation/mycare")}>
-              <Text style={styles.bannerLink}>
-                {t.consultation.bookedAction}
+        {doctor ? (
+          <View style={styles.doctorCard}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{doctor.initials}</Text>
+            </View>
+            <View style={styles.doctorInfo}>
+              <Text style={styles.doctorName}>{doctor.name}</Text>
+              <Text style={styles.doctorSpecialty}>
+                {specialtyLabel(doctor.specialty, t)}
               </Text>
+            </View>
+            <TouchableOpacity onPress={() => router.push('/consultation/doctors')}>
+              <Text style={styles.changeDoctor}>{t.consultationFlow.pickDoctor}</Text>
             </TouchableOpacity>
-          </View>
-        )}
-
-        <View style={styles.searchRow}>
-          <Ionicons name="search" size={17} color="#9AA3AF" />
-
-          <TextInput
-            style={styles.searchInput}
-            value={query}
-            onChangeText={setQuery}
-            placeholder={t.doctorsPage.searchPlaceholder}
-            placeholderTextColor="#A8AEB4"
-            returnKeyType="search"
-          />
-
-          {query.length > 0 && (
-            <TouchableOpacity onPress={() => setQuery("")}>
-              <Ionicons name="close-circle" size={17} color="#C4C9CE" />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <Text style={styles.sectionLabel}>
-          {t.consultation.chooseSpecialty}
-        </Text>
-
-        <View style={styles.chipWrap}>
-          <FilterChip
-            label={t.consultation.allSpecialties}
-            selected={specialty === null}
-            onPress={() => pickSpecialty(null)}
-          />
-
-          {SPECIALTIES.map((id) => (
-            <FilterChip
-              key={id}
-              label={specialtyLabel(id, t)}
-              selected={specialty === id}
-              onPress={() => pickSpecialty(specialty === id ? null : id)}
-            />
-          ))}
-        </View>
-
-        <Text style={styles.sectionLabel}>
-          {t.consultation.availableDoctors}
-        </Text>
-
-        {doctors.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Ionicons name="person-outline" size={22} color="#B4BAC1" />
-            <Text style={styles.emptyTitle}>{t.consultation.noDoctors}</Text>
-            <Text style={styles.emptyHint}>{t.consultation.noDoctorsHint}</Text>
           </View>
         ) : (
-          <View style={styles.card}>
-            {doctors.map((item, index) => {
-              const selected = draft.doctorId === item.id;
-
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[
-                    styles.doctorRow,
-                    index !== doctors.length - 1 && styles.divider,
-                  ]}
-                  onPress={() => pickDoctor(item.id)}
-                >
-                  <View
-                    style={[styles.avatar, selected && styles.avatarSelected]}
-                  >
-                    <Text
-                      style={[
-                        styles.avatarText,
-                        selected && styles.avatarTextSelected,
-                      ]}
-                    >
-                      {item.initials}
-                    </Text>
-                  </View>
-
-                  <View style={styles.doctorInfo}>
-                    <Text style={styles.doctorName}>{item.name}</Text>
-                    <Text style={styles.doctorSpecialty}>
-                      {specialtyLabel(item.specialty, t)}
-                    </Text>
-                  </View>
-
-                  <View style={styles.doctorRight}>
-                    <View
-                      style={[
-                        styles.statusDot,
-                        {
-                          backgroundColor: item.online ? "#5A9964" : "#C9CDD2",
-                        },
-                      ]}
-                    />
-
-                    <Text style={styles.statusText}>
-                      {item.online
-                        ? t.consultation.online
-                        : t.consultation.busy}
-                    </Text>
-                  </View>
-
-                  <Ionicons
-                    name={selected ? "checkmark-circle" : "ellipse-outline"}
-                    size={20}
-                    color={selected ? BLUE : "#D6DAE0"}
-                  />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-
-        {doctor && (
-          <>
-            <Text style={styles.sectionLabel}>
-              {t.consultationChat.sectionLabel}
-            </Text>
-
-            <View style={styles.consultCard}>
-              <View style={styles.consultTop}>
-                <View style={[styles.avatar, styles.avatarSelected]}>
-                  <Text style={[styles.avatarText, styles.avatarTextSelected]}>
-                    {doctor.initials}
-                  </Text>
-                </View>
-
-                <View style={styles.doctorInfo}>
-                  <Text style={styles.doctorName}>{doctor.name}</Text>
-                  <Text style={styles.doctorSpecialty}>
-                    {specialtyLabel(doctor.specialty, t)}
-                  </Text>
-                </View>
-
-                <View style={styles.doctorRight}>
-                  <View
-                    style={[
-                      styles.statusDot,
-                      {
-                        backgroundColor: doctor.online ? "#5A9964" : "#C9CDD2",
-                      },
-                    ]}
-                  />
-                  <Text style={styles.statusText}>
-                    {doctor.online
-                      ? t.consultation.online
-                      : t.consultation.busy}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.consultHint}>
-                {t.consultationChat.sectionHint}
-              </Text>
-
-              <View style={styles.consultActions}>
-                <TouchableOpacity
-                  style={styles.consultChatButton}
-                  onPress={() => startNow("message")}
-                >
-                  <Ionicons
-                    name="chatbubble-ellipses-outline"
-                    size={17}
-                    color={BLUE}
-                  />
-                  <Text style={styles.consultChatText}>
-                    {t.consultationChat.startChat}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.consultCallButton}
-                  onPress={() => startNow("video")}
-                >
-                  <Ionicons name="videocam" size={17} color="#FFFFFF" />
-                  <Text style={styles.consultCallText}>
-                    {t.consultationChat.startCall}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </>
+          <TouchableOpacity
+            style={styles.hintCard}
+            onPress={() => router.push('/consultation/doctors')}
+          >
+            <Ionicons name="person-outline" size={17} color={BLUE} />
+            <Text style={styles.hintText}>{t.consultation.pickDoctor}</Text>
+          </TouchableOpacity>
         )}
 
         <Text style={styles.sectionLabel}>{t.consultation.selectDate}</Text>
@@ -374,7 +151,7 @@ export default function ConsultationBooking() {
               <Ionicons
                 name="chevron-back"
                 size={18}
-                color={atFirstMonth ? "#D6DAE0" : BLUE}
+                color={atFirstMonth ? '#D6DAE0' : BLUE}
               />
             </TouchableOpacity>
 
@@ -454,51 +231,49 @@ export default function ConsultationBooking() {
         ) : (
           <View style={styles.chipWrap}>
             {slots.map((slot) => {
-              const taken = isSlotTaken(doctor.id, selectedDate, slot);
               const selected = time === slot;
-
               return (
                 <TouchableOpacity
                   key={slot}
-                  style={[
-                    styles.slot,
-                    selected && styles.slotSelected,
-                    taken && styles.slotTaken,
-                  ]}
+                  style={[styles.slot, selected && styles.slotSelected]}
                   onPress={() => setTime(slot)}
-                  disabled={taken}
                 >
                   <Text
                     style={[
                       styles.slotText,
                       selected && styles.slotTextSelected,
-                      taken && styles.slotTextTaken,
                     ]}
                   >
                     {slot}
                   </Text>
-
-                  {taken && (
-                    <Text style={styles.slotTakenLabel}>
-                      {t.consultation.slotTaken}
-                    </Text>
-                  )}
                 </TouchableOpacity>
               );
             })}
           </View>
         )}
 
-        <Text style={styles.infoText}>{t.consultation.videoInfo}</Text>
+        <Text style={styles.infoText}>
+          {(kind === 'message'
+            ? t.consultationPay.messageVisit
+            : t.consultation.videoInfo
+          ).replace('30', String(CONSULTATION_MINUTES))}
+        </Text>
 
         <TouchableOpacity
           style={[styles.bookButton, !canBook && styles.bookButtonDisabled]}
-          onPress={handleBook}
+          onPress={handleConfirm}
           disabled={!canBook}
         >
-          <Ionicons name="videocam" size={17} color="#FFFFFF" />
+          <Ionicons
+            name={kind === 'message' ? 'chatbubble' : 'videocam'}
+            size={17}
+            color="#FFFFFF"
+          />
           <Text style={styles.bookButtonText}>
-            {t.consultation.confirm}
+            {t.consultation.confirm.replace(
+              '450 ETB',
+              formatEtb(CONSULTATION_PRICE_ETB),
+            )}
           </Text>
         </TouchableOpacity>
 
@@ -508,470 +283,218 @@ export default function ConsultationBooking() {
   );
 }
 
-function FilterChip({
-  label,
-  selected,
-  onPress,
-}: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  const styles = useThemedStyles(baseStyles);
-  return (
-    <TouchableOpacity
-      style={[styles.chip, selected && styles.chipSelected]}
-      onPress={onPress}
-    >
-      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-const baseStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#F4F6F8",
+    backgroundColor: '#F4F6F8',
   },
-
   header: {
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 12,
   },
-
   brandRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 4,
+    alignItems: 'center',
+    marginBottom: 10,
   },
-
-  backButton: {
-    backgroundColor: "#EDF1F6",
-    borderColor: "#DCE4EC",
-  },
-
   headerLabel: {
     fontSize: 10,
     letterSpacing: 1.3,
     color: BLUE,
-    fontWeight: "700",
-    marginBottom: 0,
+    fontWeight: '700',
+    marginBottom: 3,
   },
-
   headerTitle: {
-    fontSize: 22,
-    color: "#172B42",
-    fontWeight: "700",
+    fontSize: 24,
+    color: '#172B42',
+    fontWeight: '700',
   },
-
   scrollContent: {
     paddingHorizontal: 16,
     paddingBottom: 40,
   },
-
-  banner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 9,
-    backgroundColor: "#EAF6EC",
-    borderWidth: 1,
-    borderColor: "#C8E4CD",
-    borderRadius: 12,
-    paddingHorizontal: 13,
-    paddingVertical: 12,
+  doctorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
     marginBottom: 18,
   },
-
-  bannerText: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#3D6B45",
-  },
-
-  bannerLink: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#5A9964",
-  },
-
-  searchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 9,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    paddingHorizontal: 13,
-    height: 46,
-    marginBottom: 20,
-  },
-
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: "#172B42",
-    padding: 0,
-  },
-
-  sectionLabel: {
-    fontSize: 10,
-    letterSpacing: 1.3,
-    color: "#8A929B",
-    fontWeight: "700",
-    marginBottom: 10,
-  },
-
-  chipWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 20,
-  },
-
-  chip: {
-    paddingHorizontal: 14,
-    height: 36,
-    justifyContent: "center",
-    backgroundColor: "#EAF0F7",
-    borderRadius: 18,
-  },
-
-  chipSelected: {
-    backgroundColor: BLUE,
-  },
-
-  chipText: {
-    fontSize: 13,
-    color: "#34475D",
-  },
-
-  chipTextSelected: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-  },
-
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    marginBottom: 20,
-  },
-
-  divider: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1EFEB",
-  },
-
-  doctorRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 11,
-    paddingVertical: 13,
-  },
-
   avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: "#EAF0F7",
-    alignItems: "center",
-    justifyContent: "center",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#E4EAF1',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-
-  avatarSelected: {
-    backgroundColor: BLUE,
-  },
-
   avatarText: {
     fontSize: 14,
-    fontWeight: "700",
-    color: BLUE,
+    fontWeight: '700',
+    color: '#243040',
   },
-
-  avatarTextSelected: {
-    color: "#FFFFFF",
-  },
-
   doctorInfo: {
     flex: 1,
   },
-
   doctorName: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#26394C",
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#172B42',
   },
-
   doctorSpecialty: {
     fontSize: 12,
-    color: "#8D9297",
+    color: '#667384',
     marginTop: 2,
   },
-
-  doctorRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-
-  statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-  },
-
-  statusText: {
-    fontSize: 11,
-    color: "#8D9297",
-  },
-
-  consultCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    padding: 15,
-    marginBottom: 20,
-  },
-
-  consultTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 11,
-  },
-
-  consultHint: {
+  changeDoctor: {
     fontSize: 12,
-    lineHeight: 18,
-    color: "#8D9297",
-    marginTop: 12,
-  },
-
-  consultActions: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 14,
-  },
-
-  consultChatButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 7,
-    height: 46,
-    borderRadius: 13,
-    backgroundColor: "#EAF0F7",
-  },
-
-  consultChatText: {
-    fontSize: 13,
-    fontWeight: "700",
+    fontWeight: '700',
     color: BLUE,
   },
-
-  consultCallButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 7,
-    height: 46,
-    borderRadius: 13,
-    backgroundColor: BLUE,
+  sectionLabel: {
+    fontSize: 10,
+    letterSpacing: 1.3,
+    color: BLUE,
+    fontWeight: '700',
+    marginBottom: 10,
   },
-
-  consultCallText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#FFFFFF",
-  },
-
-  emptyCard: {
-    backgroundColor: "#FFFFFF",
+  card: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    alignItems: "center",
-    paddingVertical: 26,
-    paddingHorizontal: 20,
+    paddingHorizontal: 14,
     marginBottom: 20,
   },
-
-  emptyTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#5C646C",
-    marginTop: 9,
-  },
-
-  emptyHint: {
-    fontSize: 12,
-    color: "#98A0A8",
-    textAlign: "center",
-    marginTop: 4,
-  },
-
   calendarHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingTop: 14,
     paddingBottom: 12,
   },
-
   monthButton: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: "#EEF2F6",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: '#F4F7FB',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-
   monthTitle: {
     fontSize: 15,
-    fontWeight: "700",
-    color: "#172B42",
+    fontWeight: '700',
+    color: '#172B42',
   },
-
   weekRow: {
-    flexDirection: "row",
+    flexDirection: 'row',
     paddingBottom: 6,
   },
-
   weekday: {
-    width: `${100 / 7}%`,
-    textAlign: "center",
+    width: `${100 / 7}%` as `${number}%`,
+    textAlign: 'center',
     fontSize: 10,
     letterSpacing: 0.5,
-    color: "#A8AEB4",
-    fontWeight: "600",
+    color: '#A8AEB4',
+    fontWeight: '600',
   },
-
   dayGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     paddingBottom: 12,
   },
-
   dayCell: {
-    width: `${100 / 7}%`,
+    width: `${100 / 7}%` as `${number}%`,
     height: 42,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-
   dayInner: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-
   dayToday: {
     borderWidth: 1.5,
     borderColor: BLUE,
   },
-
   daySelected: {
     backgroundColor: BLUE,
   },
-
   dayText: {
     fontSize: 14,
-    color: "#34475D",
+    color: '#34475D',
   },
-
   dayPast: {
-    color: "#CDD2D8",
+    color: '#CDD2D8',
   },
-
   daySelectedText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
-
   hintCard: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 9,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 15,
     marginBottom: 20,
   },
-
   hintText: {
     flex: 1,
     fontSize: 13,
-    color: "#7C8389",
+    color: '#7C8389',
   },
-
+  chipWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 18,
+  },
   slot: {
     minWidth: 78,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: "#EAF0F7",
-    alignItems: "center",
+    backgroundColor: '#EAF0F7',
+    alignItems: 'center',
   },
-
   slotSelected: {
     backgroundColor: BLUE,
   },
-
-  slotTaken: {
-    backgroundColor: "#F3F3F1",
-  },
-
   slotText: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#34475D",
+    fontWeight: '600',
+    color: '#34475D',
   },
-
   slotTextSelected: {
-    color: "#FFFFFF",
+    color: '#FFFFFF',
   },
-
-  slotTextTaken: {
-    color: "#B4BAC1",
-  },
-
-  slotTakenLabel: {
-    fontSize: 9,
-    color: "#B4BAC1",
-    marginTop: 2,
-  },
-
   infoText: {
-    textAlign: "center",
+    textAlign: 'center',
     fontSize: 12,
-    color: "#98A0A8",
+    color: '#98A0A8',
     marginBottom: 14,
   },
-
   bookButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 9,
     height: 52,
-    borderRadius: 14,
+    borderRadius: 26,
     backgroundColor: BLUE,
   },
-
   bookButtonDisabled: {
-    backgroundColor: "#C3CEDF",
+    backgroundColor: '#C3CEDF',
   },
-
   bookButtonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "700",
-    letterSpacing: 0.8,
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

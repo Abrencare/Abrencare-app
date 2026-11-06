@@ -12,30 +12,29 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import {
-  Avatar,
-  Card,
-  Ring,
-  SectionHeader,
-  SegmentedBar,
-  StatusPill,
-  type PillTone,
-} from "@/components/executive/ExecutiveUI";
+import { GlassCard, glassTints } from "@/components/executive/GlassCard";
 import ServiceBackButton from "@/components/navigation/ServiceBackButton";
-import BrandLogo from "@/components/ui/BrandLogo";
+import BrandLogo, { BrandHomeLink } from "@/components/ui/BrandLogo";
 import { useAuth } from "@/context/AuthContext";
 import { useExecutiveAlerts } from "@/context/ExecutiveAlertsContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAppTheme } from "@/context/ThemeContext";
+import { useLandingType } from "@/theme/landingType";
 import {
   useExecutiveTheme,
   type ExecutivePalette,
 } from "@/theme/executiveTheme";
 
 const HERO_PHOTO = require("@/assets/images/executive-hero-bg.jpg");
+const NURSE_PHOTO = require("@/assets/images/executive-nurse-portrait.jpg");
+const DOCTOR_PHOTO = require("@/assets/images/executive-doctor-portrait.jpg");
+const COORDINATOR_PHOTO = require("@/assets/images/executive-sarah-portrait.jpg");
 
 export default function ExecutiveDashboard() {
   const c = useExecutiveTheme();
-  const styles = useMemo(() => createStyles(c), [c]);
+  const { isDark } = useAppTheme();
+  const styles = useMemo(() => createStyles(c, isDark), [c, isDark]);
+  const type = useLandingType("executive");
   const { t } = useLanguage();
   const { user } = useAuth();
   const { unreadCount } = useExecutiveAlerts();
@@ -60,156 +59,30 @@ export default function ExecutiveDashboard() {
   const openCall = (who: "doctor" | "nurse") =>
     router.push({ pathname: "/executive/call", params: { who } });
 
-  const vitals: {
-    key: string;
-    icon: keyof typeof Ionicons.glyphMap;
-    value: string;
-    unit: string;
-    label: string;
-    status: string;
-    color: string;
-    tint: string;
-  }[] = [
-    {
-      key: "bp",
-      icon: "heart-outline",
-      value: "118/76",
-      unit: copy.bpUnit,
-      label: copy.bpLabel,
-      status: t.executive.normal,
-      color: c.danger,
-      tint: c.dangerSoft,
-    },
-    {
-      key: "hr",
-      icon: "pulse-outline",
-      value: "72",
-      unit: copy.heartRateUnit,
-      label: copy.heartRateLabel,
-      status: t.executive.normal,
-      color: c.success,
-      tint: c.successSoft,
-    },
-    {
-      key: "spo2",
-      icon: "water-outline",
-      value: "98",
-      unit: "%",
-      label: copy.oxygenLabel,
-      status: t.executive.normal,
-      color: c.slate,
-      tint: c.slateSoft,
-    },
-    {
-      key: "weight",
-      icon: "speedometer-outline",
-      value: "74",
-      unit: copy.weightUnit,
-      label: copy.weightLabel,
-      status: t.executive.stable,
-      color: c.accent,
-      tint: c.accentSoft,
-    },
-  ];
-
-  const tasks: {
-    key: string;
-    label: string;
-    status: string;
-    tone: PillTone;
-    icon: keyof typeof Ionicons.glyphMap;
-    color: string;
-  }[] = [
-    {
-      key: "checkup",
-      label: copy.taskCheckup,
-      status: copy.statusCompleted,
-      tone: "success",
-      icon: "checkmark-circle",
-      color: c.success,
-    },
-    {
-      key: "labs",
-      label: copy.taskLabs,
-      status: copy.statusCompleted,
-      tone: "success",
-      icon: "checkmark-circle",
-      color: c.success,
-    },
-    {
-      key: "followUp",
-      label: copy.taskFollowUp,
-      status: copy.statusInProgress,
-      tone: "accent",
-      icon: "time-outline",
-      color: c.accent,
-    },
-    {
-      key: "lifestyle",
-      label: copy.taskLifestyle,
-      status: copy.statusPending,
-      tone: "neutral",
-      icon: "ellipse-outline",
-      color: c.faint,
-    },
-  ];
+  const openReports = () => router.push("/executive/reports");
+  const openAlerts = () => router.push("/executive/alerts");
+  const openAppointment = () => router.push("/executive/consultation");
 
   const careTeam = [
     {
       key: "doctor" as const,
-      initials: "HB",
-      tone: "accent" as const,
+      photo: DOCTOR_PHOTO,
       name: copy.doctorName,
       role: copy.doctorRole,
-      meta: copy.doctorMeta,
     },
     {
       key: "nurse" as const,
-      initials: "NS",
-      tone: "slate" as const,
+      photo: COORDINATOR_PHOTO,
       name: copy.nurseName,
       role: copy.nurseRole,
-      meta: t.executive.monitoringActive,
     },
   ];
 
-  const actions: {
-    key: string;
-    icon: keyof typeof Ionicons.glyphMap;
-    title: string;
-    subtitle: string;
-    color: string;
-    tint: string;
-    onPress: () => void;
-  }[] = [
-    {
-      key: "report",
-      icon: "document-text-outline",
-      title: copy.actionReport,
-      subtitle: copy.actionReportSub,
-      color: c.accent,
-      tint: c.accentSoft,
-      onPress: () => router.push("/executive/reports"),
-    },
-    {
-      key: "consult",
-      icon: "calendar-outline",
-      title: copy.actionConsult,
-      subtitle: copy.actionConsultSub,
-      color: c.slate,
-      tint: c.slateSoft,
-      onPress: () => router.push("/executive/consultation"),
-    },
-    {
-      key: "emergency",
-      icon: "alert-circle-outline",
-      title: copy.actionEmergency,
-      subtitle: copy.actionEmergencySub,
-      color: c.danger,
-      tint: c.dangerSoft,
-      onPress: () => router.push("/executive/emergency"),
-    },
-  ];
+  const glass = glassTints(isDark);
+  const glassTint = glass.sheen;
+  const glassBorder = glass.border;
+  const updateTint = glass.update;
+  const attentionTint = glass.attention;
 
   return (
     <ScrollView
@@ -217,7 +90,6 @@ export default function ExecutiveDashboard() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      {/* Hero */}
       <View style={[styles.hero, { paddingTop: insets.top + 16 }]}>
         <Image
           source={HERO_PHOTO}
@@ -242,19 +114,17 @@ export default function ExecutiveDashboard() {
               size={32}
             />
 
-            <BrandLogo size={34} />
-
-            <View>
+            <BrandHomeLink style={styles.brandLink}>
+              <BrandLogo size={34} link={false} />
               <Text style={styles.wordmark}>{t.auth.brand}</Text>
-              <Text style={styles.tagline}>{t.auth.tagline}</Text>
-            </View>
+            </BrandHomeLink>
           </View>
 
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t.header.notifications}
             style={styles.bellButton}
-            onPress={() => router.push("/executive/alerts")}
+            onPress={openAlerts}
           >
             <Ionicons
               name="notifications-outline"
@@ -270,260 +140,253 @@ export default function ExecutiveDashboard() {
           </Pressable>
         </View>
 
-        <Text style={styles.heroKicker}>{copy.kicker}</Text>
+        <Text style={[styles.heroKicker, { fontFamily: type.sansSemi }]}>
+          {copy.kicker}
+        </Text>
 
-        <Text style={styles.heroGreeting}>
+        <Text style={[styles.heroGreeting, { fontFamily: type.display }]}>
           {greeting}
           {firstName ? `, ${firstName}` : ""}
         </Text>
 
-        <Text style={styles.heroSubtitle}>{copy.greetingSubtitle}</Text>
-
-        <Pressable
-          style={styles.heroPill}
-          onPress={() => router.push("/executive/consultation")}
-        >
-          <Ionicons name="calendar-outline" size={14} color={c.heroText} />
-          <Text style={styles.heroPillLabel}>{copy.nextCheckup}</Text>
-          <View style={styles.heroPillDot} />
-          <Text style={styles.heroPillValue}>{copy.nextCheckupDate}</Text>
-          <Ionicons name="chevron-forward" size={14} color={c.heroMuted} />
-        </Pressable>
+        <Text style={[styles.heroSubtitle, { fontFamily: type.sans }]}>
+          {copy.greetingSubtitle}
+        </Text>
       </View>
 
       <View style={styles.body}>
-        {/* Health score */}
-        <Card style={styles.scoreCard}>
-          <View style={styles.scoreTop}>
-            <Ring
-              size={96}
-              thickness={8}
-              value="87"
-              caption={t.executive.scoreOutOf}
-              color={c.accent}
-              track={c.track}
-            />
-
-            <View style={styles.scoreCopy}>
-              <Text style={styles.scoreTitle}>{copy.scoreTitle}</Text>
-              <StatusPill label={copy.scoreStatus} tone="success" />
-              <Text style={styles.scoreBody}>{copy.scoreBody}</Text>
-            </View>
-          </View>
-
-          <Pressable
-            style={styles.scoreTrendRow}
-            onPress={() => router.push("/executive/health")}
-          >
-            <Ionicons name="trending-up" size={15} color={c.success} />
-            <Text style={styles.scoreTrend}>{copy.scoreTrend}</Text>
-            <Text style={styles.scoreTrendCaption}>
-              {copy.scoreTrendCaption}
-            </Text>
-            <Ionicons name="chevron-forward" size={16} color={c.faint} />
-          </Pressable>
-        </Card>
-
-        {/* Vitals */}
-        <View style={styles.section}>
-          <SectionHeader
-            title={copy.vitalsTitle}
-            actionLabel={copy.viewAll}
-            onAction={() => router.push("/executive/health")}
-          />
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.vitalRow}
-          >
-            {vitals.map((vital) => (
-              <Pressable
-                key={vital.key}
-                style={styles.vitalCard}
-                onPress={() => router.push("/executive/health")}
-              >
-                <View
-                  style={[styles.vitalIcon, { backgroundColor: vital.tint }]}
-                >
-                  <Ionicons name={vital.icon} size={17} color={vital.color} />
-                </View>
-
-                <View style={styles.vitalValueRow}>
-                  <Text style={styles.vitalValue}>{vital.value}</Text>
-                  <Text style={styles.vitalUnit}>{vital.unit}</Text>
-                </View>
-
-                <Text style={styles.vitalLabel}>{vital.label}</Text>
-                <StatusPill label={vital.status} tone="success" />
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Health programme */}
-        <View style={styles.section}>
-          <Card>
-            <View style={styles.programTop}>
-              <View style={styles.flexCopy}>
-                <Text style={styles.cardTitle}>{copy.programTitle}</Text>
-                <Text style={styles.cardSubtitle}>{copy.programSubtitle}</Text>
-              </View>
-
-              <Ring
-                size={64}
-                thickness={6}
-                value="3/5"
-                color={c.accent}
-                track={c.track}
-              />
-            </View>
-
-            <Text style={styles.programMeta}>{copy.tasksCompleted}</Text>
-
-            <View style={styles.programBar}>
-              <SegmentedBar
-                total={5}
-                filled={3}
-                color={c.accent}
-                track={c.track}
-              />
-            </View>
-
-            {tasks.map((task) => (
-              <Pressable
-                key={task.key}
-                style={styles.taskRow}
-                onPress={() => router.push("/executive/programme")}
-              >
-                <Ionicons name={task.icon} size={17} color={task.color} />
-                <Text style={styles.taskLabel}>{task.label}</Text>
-                <StatusPill label={task.status} tone={task.tone} />
-              </Pressable>
-            ))}
-
-            <Pressable
-              style={styles.cardLink}
-              onPress={() => router.push("/executive/programme")}
-            >
-              <Text style={styles.cardLinkText}>{copy.viewFullReport}</Text>
-              <Ionicons name="arrow-forward" size={14} color={c.accent} />
-            </Pressable>
-          </Card>
-        </View>
-
-        {/* Needs attention */}
-        <View style={styles.section}>
-          <View style={styles.attentionCard}>
-            <View style={styles.attentionHeader}>
-              <View style={styles.attentionIcon}>
-                <Ionicons name="warning-outline" size={16} color={c.danger} />
-              </View>
-
-              <Text style={styles.attentionKicker}>{copy.attentionKicker}</Text>
-            </View>
-
-            <Text style={styles.attentionTitle}>{copy.attentionTitle}</Text>
-            <Text style={styles.attentionMeta}>{copy.attentionMeta}</Text>
-
-            <Pressable
-              style={styles.attentionButton}
-              onPress={() => router.push("/executive/alerts")}
-            >
-              <Text style={styles.attentionButtonText}>{copy.viewDetails}</Text>
-              <Ionicons name="arrow-forward" size={13} color={c.danger} />
-            </Pressable>
-          </View>
-        </View>
-
-        {/* Care team */}
-        <View style={styles.section}>
-          <Card>
-            <View style={styles.careHeader}>
-              <View style={styles.flexCopy}>
-                <Text style={styles.cardTitle}>{copy.careTeamTitle}</Text>
-                <Text style={styles.cardSubtitle}>{copy.careTeamSubtitle}</Text>
-              </View>
-
-              <Pressable
-                style={styles.careAction}
-                onPress={() => router.push("/executive/consultation")}
-              >
-                <Text style={styles.careActionText}>{copy.viewAll}</Text>
-              </Pressable>
-            </View>
-
-            {careTeam.map((person, index) => (
-              <View
-                key={person.key}
-                style={[styles.personRow, index > 0 && styles.personRowDivided]}
-              >
-                <Pressable
-                  style={styles.personTop}
-                  onPress={() => openChat(person.key)}
-                >
-                  <Avatar initials={person.initials} tone={person.tone} />
-
-                  <View style={styles.flexCopy}>
-                    <Text style={styles.personName}>{person.name}</Text>
-                    <Text style={styles.personRole}>{person.role}</Text>
-                    <Text style={styles.personMeta}>{person.meta}</Text>
-                  </View>
-
-                  <Ionicons name="chevron-forward" size={16} color={c.faint} />
-                </Pressable>
-
-                <View style={styles.personActions}>
-                  <Pressable
-                    style={styles.ghostButton}
-                    onPress={() => openChat(person.key)}
-                  >
-                    <Ionicons
-                      name="chatbubble-outline"
-                      size={14}
-                      color={c.accent}
-                    />
-                    <Text style={styles.ghostButtonText}>{copy.message}</Text>
-                  </Pressable>
-
-                  <Pressable
-                    style={styles.solidButton}
-                    onPress={() => openCall(person.key)}
-                  >
-                    <Ionicons name="call" size={14} color={c.onAccent} />
-                    <Text style={styles.solidButtonText}>{copy.call}</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ))}
-          </Card>
-        </View>
-
-        {/* Quick actions */}
-        <View style={styles.section}>
-          {actions.map((action) => (
-            <Pressable
-              key={action.key}
-              style={styles.actionCard}
-              onPress={action.onPress}
-            >
-              <View
-                style={[styles.actionIcon, { backgroundColor: action.tint }]}
-              >
-                <Ionicons name={action.icon} size={19} color={action.color} />
-              </View>
-
-              <View style={styles.flexCopy}>
-                <Text style={[styles.actionTitle, { color: action.color }]}>
-                  {action.title}
+        <GlassCard
+          tint={updateTint}
+          border={glassBorder}
+          sheen={glassTint}
+          style={styles.glassCard}
+        >
+          <View style={styles.split}>
+            <View style={styles.flexCopy}>
+              <View style={styles.kickerRow}>
+                <Ionicons name="checkmark-circle" size={16} color={c.success} />
+                <Text style={[styles.updateKicker, { fontFamily: type.sansSemi }]}>
+                  {copy.careUpdateKicker}
                 </Text>
-                <Text style={styles.cardSubtitle}>{action.subtitle}</Text>
               </View>
 
-              <Ionicons name="chevron-forward" size={18} color={c.faint} />
+              <Text style={[styles.cardTitle, { fontFamily: type.sansSemi }]}>
+                {copy.careUpdateTitle}
+              </Text>
+              <Text style={[styles.cardBody, { fontFamily: type.sans }]}>
+                {copy.careUpdateBody}
+              </Text>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={copy.viewFullReport}
+                style={styles.goldButton}
+                onPress={openReports}
+              >
+                <Text style={[styles.goldButtonText, { fontFamily: type.sansSemi }]}>
+                  {copy.viewFullReport}
+                </Text>
+                <Ionicons name="arrow-forward" size={13} color={c.onAccent} />
+              </Pressable>
+            </View>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={copy.viewFullReport}
+              onPress={openReports}
+              style={styles.photoWell}
+            >
+              <Image
+                source={NURSE_PHOTO}
+                style={styles.photo}
+                resizeMode="cover"
+              />
             </Pressable>
+          </View>
+        </GlassCard>
+
+        <GlassCard
+          tint={attentionTint}
+          border={glassBorder}
+          sheen={glassTint}
+          style={styles.glassCard}
+        >
+          <View style={styles.split}>
+            <View style={styles.flexCopy}>
+              <View style={styles.kickerRow}>
+                <Ionicons name="pulse-outline" size={15} color={c.danger} />
+                <Text
+                  style={[styles.attentionKicker, { fontFamily: type.sansSemi }]}
+                >
+                  {copy.attentionKicker}
+                </Text>
+              </View>
+
+              <Text style={[styles.cardTitle, { fontFamily: type.sansSemi }]}>
+                {copy.attentionTitle}
+              </Text>
+              <Text style={[styles.cardBody, { fontFamily: type.sans }]}>
+                {copy.attentionMeta}
+              </Text>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={copy.viewDetails}
+                style={styles.goldButton}
+                onPress={openAlerts}
+              >
+                <Text style={[styles.goldButtonText, { fontFamily: type.sansSemi }]}>
+                  {copy.viewDetails}
+                </Text>
+                <Ionicons name="arrow-forward" size={13} color={c.onAccent} />
+              </Pressable>
+            </View>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${copy.bpLabel} ${copy.bpReading}`}
+              onPress={() => router.push("/executive/health")}
+              style={styles.bpWell}
+            >
+              <Ionicons name="water-outline" size={16} color={c.danger} />
+              <Text style={[styles.bpValue, { fontFamily: type.sansSemi }]}>
+                {copy.bpReading}
+              </Text>
+              <Text style={[styles.bpUnit, { fontFamily: type.sans }]}>
+                {copy.bpUnit}
+              </Text>
+              <Text style={[styles.bpWhen, { fontFamily: type.sansMedium }]}>
+                {copy.bpWhen}
+              </Text>
+            </Pressable>
+          </View>
+        </GlassCard>
+
+        <GlassCard
+          tint={glass.card}
+          border={glassBorder}
+          sheen={glassTint}
+          style={styles.glassCard}
+        >
+          <View style={styles.split}>
+            <View style={styles.flexCopy}>
+              <View style={styles.kickerRow}>
+                <Ionicons name="calendar-outline" size={15} color={c.accent} />
+                <Text
+                  style={[styles.appointmentKicker, { fontFamily: type.sansSemi }]}
+                >
+                  {copy.appointmentKicker}
+                </Text>
+              </View>
+
+              <Text style={[styles.cardTitle, { fontFamily: type.sansSemi }]}>
+                {copy.nextCheckup} — {copy.nextCheckupDate}
+              </Text>
+              <Text style={[styles.cardBody, { fontFamily: type.sans }]}>
+                {copy.appointmentWith}
+              </Text>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={copy.actionConsult}
+                style={styles.goldButton}
+                onPress={openAppointment}
+              >
+                <Text style={[styles.goldButtonText, { fontFamily: type.sansSemi }]}>
+                  {copy.actionConsult}
+                </Text>
+                <Ionicons name="arrow-forward" size={13} color={c.onAccent} />
+              </Pressable>
+            </View>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={copy.nextCheckupDate}
+              onPress={openAppointment}
+              style={styles.dateBadge}
+            >
+              <Text style={[styles.dateMonth, { fontFamily: type.sansSemi }]}>
+                {copy.appointmentMonth}
+              </Text>
+              <Text style={[styles.dateDay, { fontFamily: type.display }]}>
+                {copy.appointmentDay}
+              </Text>
+              <Text style={[styles.dateWeek, { fontFamily: type.sansSemi }]}>
+                {copy.appointmentWeekday}
+              </Text>
+            </Pressable>
+          </View>
+        </GlassCard>
+
+        <GlassCard
+          tint={glass.card}
+          border={glassBorder}
+          sheen={glassTint}
+          style={styles.glassCard}
+        >
+          <View style={styles.kickerRow}>
+            <Ionicons name="people-outline" size={15} color={c.accent} />
+            <Text style={[styles.appointmentKicker, { fontFamily: type.sansSemi }]}>
+              {copy.careTeamTitle}
+            </Text>
+          </View>
+
+          {careTeam.map((person, index) => (
+            <View
+              key={person.key}
+              style={[styles.personRow, index > 0 && styles.personRowDivided]}
+            >
+              <Pressable
+                style={styles.personIdentity}
+                onPress={() => openChat(person.key)}
+                accessibilityRole="button"
+                accessibilityLabel={person.name}
+              >
+                <Image
+                  source={person.photo}
+                  style={styles.personPhoto}
+                  resizeMode="cover"
+                />
+                <View style={styles.flexCopy}>
+                  <Text style={[styles.personName, { fontFamily: type.sansSemi }]}>
+                    {person.name}
+                  </Text>
+                  <Text style={[styles.personRole, { fontFamily: type.sans }]}>
+                    {person.role}
+                  </Text>
+                </View>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${copy.message} ${person.name}`}
+                style={styles.outlineButton}
+                onPress={() => openChat(person.key)}
+              >
+                <Ionicons name="chatbubble-outline" size={13} color={c.accent} />
+                <Text
+                  style={[styles.outlineButtonText, { fontFamily: type.sansSemi }]}
+                >
+                  {copy.message}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${copy.call} ${person.name}`}
+                style={styles.outlineButton}
+                onPress={() => openCall(person.key)}
+              >
+                <Ionicons name="call-outline" size={13} color={c.accent} />
+                <Text
+                  style={[styles.outlineButtonText, { fontFamily: type.sansSemi }]}
+                >
+                  {copy.call}
+                </Text>
+              </Pressable>
+            </View>
           ))}
-        </View>
+        </GlassCard>
       </View>
     </ScrollView>
   );
@@ -537,14 +400,14 @@ function withAlpha(hex: string, alpha: number) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-function createStyles(c: ExecutivePalette) {
+function createStyles(c: ExecutivePalette, isDark: boolean) {
   return StyleSheet.create({
     screen: {
       flex: 1,
       backgroundColor: c.page,
     },
     content: {
-      paddingBottom: 32,
+      paddingBottom: 36,
     },
 
     hero: {
@@ -552,7 +415,7 @@ function createStyles(c: ExecutivePalette) {
       borderBottomLeftRadius: 30,
       borderBottomRightRadius: 30,
       paddingHorizontal: 20,
-      paddingBottom: 46,
+      paddingBottom: 56,
       overflow: "hidden",
     },
     heroPhoto: {
@@ -580,16 +443,16 @@ function createStyles(c: ExecutivePalette) {
       alignItems: "center",
       gap: 10,
     },
+    brandLink: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
     wordmark: {
       fontSize: 14,
       fontWeight: "700",
       letterSpacing: 1.6,
       color: c.heroText,
-    },
-    tagline: {
-      fontSize: 10,
-      color: c.heroMuted,
-      marginTop: 2,
     },
     bellButton: {
       width: 38,
@@ -627,350 +490,208 @@ function createStyles(c: ExecutivePalette) {
       marginBottom: 8,
     },
     heroGreeting: {
-      fontSize: 27,
-      fontWeight: "700",
+      fontSize: 32,
       color: c.heroText,
       letterSpacing: -0.6,
     },
     heroSubtitle: {
-      fontSize: 13,
+      fontSize: 14,
       color: c.heroMuted,
-      lineHeight: 19,
-      marginTop: 8,
-      maxWidth: 270,
-    },
-    heroPill: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 7,
-      alignSelf: "flex-start",
-      backgroundColor: c.heroChip,
-      borderWidth: 1,
-      borderColor: c.heroChipBorder,
-      borderRadius: 14,
-      paddingHorizontal: 12,
-      paddingVertical: 9,
-      marginTop: 18,
-    },
-    heroPillLabel: {
-      fontSize: 11,
-      fontWeight: "600",
-      color: c.heroMuted,
-    },
-    heroPillDot: {
-      width: 3,
-      height: 3,
-      borderRadius: 2,
-      backgroundColor: c.heroMuted,
-    },
-    heroPillValue: {
-      fontSize: 11,
-      fontWeight: "700",
-      color: c.heroText,
+      lineHeight: 20,
+      marginTop: 6,
+      maxWidth: 280,
     },
 
     body: {
-      paddingHorizontal: 18,
-      marginTop: -30,
+      paddingHorizontal: 16,
+      marginTop: -38,
+      gap: 14,
     },
-    section: {
-      marginTop: 22,
+    glassCard: {
+      zIndex: 2,
+    },
+    split: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
     },
     flexCopy: {
       flex: 1,
+      minWidth: 0,
     },
-
-    scoreCard: {
-      padding: 20,
-    },
-    scoreTop: {
+    kickerRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 18,
-    },
-    scoreCopy: {
-      flex: 1,
       gap: 7,
-    },
-    scoreTitle: {
-      fontSize: 16,
-      fontWeight: "700",
-      color: c.text,
-    },
-    scoreBody: {
-      fontSize: 12,
-      color: c.muted,
-      lineHeight: 18,
-    },
-    scoreTrendRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      marginTop: 18,
-      paddingTop: 14,
-      borderTopWidth: 1,
-      borderTopColor: c.divider,
-    },
-    scoreTrend: {
-      fontSize: 13,
-      fontWeight: "700",
-      color: c.success,
-    },
-    scoreTrendCaption: {
-      flex: 1,
-      fontSize: 12,
-      color: c.muted,
-    },
-
-    vitalRow: {
-      gap: 12,
-      paddingRight: 4,
-    },
-    vitalCard: {
-      width: 132,
-      gap: 8,
-      backgroundColor: c.card,
-      borderRadius: 22,
-      borderWidth: 1,
-      borderColor: c.cardBorder,
-      padding: 14,
-    },
-    vitalIcon: {
-      width: 34,
-      height: 34,
-      borderRadius: 11,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    vitalValueRow: {
-      flexDirection: "row",
-      alignItems: "baseline",
-      gap: 4,
-    },
-    vitalValue: {
-      fontSize: 20,
-      fontWeight: "700",
-      color: c.text,
-      letterSpacing: -0.4,
-    },
-    vitalUnit: {
-      fontSize: 11,
-      color: c.faint,
-    },
-    vitalLabel: {
-      fontSize: 11,
-      color: c.muted,
-    },
-
-    cardTitle: {
-      fontSize: 16,
-      fontWeight: "700",
-      color: c.text,
-    },
-    cardSubtitle: {
-      fontSize: 12,
-      color: c.muted,
-      marginTop: 3,
-      lineHeight: 17,
-    },
-    programTop: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 14,
-    },
-    programMeta: {
-      fontSize: 10,
-      fontWeight: "700",
-      letterSpacing: 0.8,
-      color: c.faint,
-      textTransform: "uppercase",
-      marginTop: 18,
       marginBottom: 8,
     },
-    programBar: {
-      marginBottom: 6,
-    },
-    taskRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-      paddingVertical: 11,
-      borderBottomWidth: 1,
-      borderBottomColor: c.divider,
-    },
-    taskLabel: {
-      flex: 1,
-      fontSize: 13,
-      color: c.text,
-    },
-    cardLink: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      marginTop: 14,
-    },
-    cardLinkText: {
-      fontSize: 13,
-      fontWeight: "600",
-      color: c.accent,
-    },
-
-    attentionCard: {
-      backgroundColor: c.dangerSoft,
-      borderRadius: 22,
-      borderWidth: 1,
-      borderColor: c.dangerBorder,
-      padding: 18,
-    },
-    attentionHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 9,
-      marginBottom: 10,
-    },
-    attentionIcon: {
-      width: 30,
-      height: 30,
-      borderRadius: 10,
-      backgroundColor: c.card,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    attentionKicker: {
-      fontSize: 11,
-      fontWeight: "700",
-      letterSpacing: 0.6,
-      color: c.danger,
-      textTransform: "uppercase",
-    },
-    attentionTitle: {
+    cardTitle: {
       fontSize: 15,
       fontWeight: "700",
       color: c.text,
+      lineHeight: 21,
     },
-    attentionMeta: {
+    cardBody: {
       fontSize: 12,
       color: c.muted,
+      lineHeight: 17,
       marginTop: 4,
     },
-    attentionButton: {
+    updateKicker: {
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 0.8,
+      color: c.success,
+      textTransform: "uppercase",
+    },
+    attentionKicker: {
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 0.8,
+      color: c.danger,
+      textTransform: "uppercase",
+    },
+    appointmentKicker: {
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 0.8,
+      color: c.accent,
+      textTransform: "uppercase",
+    },
+    goldButton: {
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
       alignSelf: "flex-start",
-      backgroundColor: c.card,
-      borderRadius: 12,
-      paddingHorizontal: 13,
+      backgroundColor: c.accent,
+      borderRadius: 22,
+      paddingHorizontal: 14,
       paddingVertical: 9,
       marginTop: 14,
     },
-    attentionButtonText: {
-      fontSize: 12,
-      fontWeight: "700",
-      color: c.danger,
-    },
-
-    careHeader: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      gap: 10,
-      marginBottom: 6,
-    },
-    careAction: {
-      paddingTop: 2,
-    },
-    careActionText: {
-      fontSize: 13,
-      fontWeight: "600",
-      color: c.accent,
-    },
-    personRow: {
-      paddingTop: 14,
-    },
-    personRowDivided: {
-      marginTop: 14,
-      borderTopWidth: 1,
-      borderTopColor: c.divider,
-    },
-    personTop: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 12,
-    },
-    personName: {
-      fontSize: 14,
-      fontWeight: "700",
-      color: c.text,
-    },
-    personRole: {
-      fontSize: 12,
-      color: c.muted,
-      marginTop: 2,
-    },
-    personMeta: {
-      fontSize: 11,
-      color: c.faint,
-      marginTop: 2,
-    },
-    personActions: {
-      flexDirection: "row",
-      gap: 10,
-      marginTop: 12,
-    },
-    ghostButton: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 6,
-      borderRadius: 13,
-      borderWidth: 1,
-      borderColor: c.accentBorder,
-      backgroundColor: c.accentSoft,
-      paddingVertical: 11,
-    },
-    ghostButtonText: {
-      fontSize: 12,
-      fontWeight: "700",
-      color: c.accent,
-    },
-    solidButton: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 6,
-      borderRadius: 13,
-      backgroundColor: c.accent,
-      paddingVertical: 11,
-    },
-    solidButtonText: {
+    goldButtonText: {
       fontSize: 12,
       fontWeight: "700",
       color: c.onAccent,
     },
-
-    actionCard: {
+    photoWell: {
+      width: 92,
+      height: 92,
+      borderRadius: 46,
+      overflow: "hidden",
+      borderWidth: 2,
+      borderColor: isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.9)",
+    },
+    photo: {
+      width: 92,
+      height: 92,
+    },
+    bpWell: {
+      width: 86,
+      borderRadius: 22,
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      alignItems: "center",
+      backgroundColor: isDark
+        ? "rgba(255,255,255,0.06)"
+        : "rgba(255,255,255,0.55)",
+      borderWidth: 1,
+      borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.8)",
+    },
+    bpValue: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: c.text,
+      marginTop: 4,
+    },
+    bpUnit: {
+      fontSize: 10,
+      color: c.muted,
+      marginTop: 1,
+    },
+    bpWhen: {
+      fontSize: 10,
+      color: c.faint,
+      marginTop: 6,
+    },
+    dateBadge: {
+      width: 72,
+      borderRadius: 18,
+      paddingVertical: 10,
+      alignItems: "center",
+      backgroundColor: isDark
+        ? "rgba(196, 160, 90, 0.14)"
+        : "rgba(255,255,255,0.55)",
+      borderWidth: 1,
+      borderColor: isDark ? c.accentBorder : "rgba(196, 160, 90, 0.35)",
+    },
+    dateMonth: {
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 1.2,
+      color: c.accent,
+    },
+    dateDay: {
+      fontSize: 26,
+      color: c.text,
+      lineHeight: 30,
+      marginTop: 2,
+    },
+    dateWeek: {
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 1,
+      color: c.accent,
+      marginTop: 2,
+    },
+    personRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 13,
-      backgroundColor: c.card,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: c.cardBorder,
-      padding: 16,
-      marginBottom: 12,
+      gap: 8,
+      paddingTop: 12,
     },
-    actionIcon: {
-      width: 42,
-      height: 42,
-      borderRadius: 14,
+    personRowDivided: {
+      marginTop: 8,
+      borderTopWidth: 1,
+      borderTopColor: c.divider,
+    },
+    personIdentity: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: "row",
       alignItems: "center",
-      justifyContent: "center",
+      gap: 10,
     },
-    actionTitle: {
-      fontSize: 14,
+    personPhoto: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+    },
+    personName: {
+      fontSize: 13,
       fontWeight: "700",
+      color: c.text,
+    },
+    personRole: {
+      fontSize: 11,
+      color: c.muted,
+      marginTop: 2,
+    },
+    outlineButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      borderRadius: 18,
+      borderWidth: 1.5,
+      borderColor: c.accent,
+      backgroundColor: isDark ? "rgba(196, 160, 90, 0.08)" : "rgba(255,255,255,0.35)",
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+    },
+    outlineButtonText: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: c.accent,
     },
   });
 }

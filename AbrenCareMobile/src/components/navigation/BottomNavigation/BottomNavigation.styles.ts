@@ -37,10 +37,11 @@ const styles = StyleSheet.create({
   },
 
   label: {
-    marginTop: 6,
-    fontSize: 12,
-    fontWeight: "500",
+    marginTop: 4,
+    fontSize: 11,
+    fontWeight: "600",
     color: "#A8A8A8",
+    textAlign: "center",
   },
 
   activeLabel: {

@@ -8,7 +8,6 @@ import {
   type ReactNode,
 } from 'react';
 
-import { doctorById } from '@/data/doctors';
 import type { VisitKind } from '@/data/consultationPricing';
 import { addDays, fromDateKey, toDateKey } from '@/context/AppointmentsContext';
 import { loadJson, saveJson } from '@/utilities/storage';
@@ -25,15 +24,21 @@ export type Consultation = {
   kind: VisitKind;
   paid: boolean;
   completed: boolean;
+  reportApproved?: boolean;
+  prescriptionIssued?: boolean;
+  concern?: string;
 };
 
 /** What the booking screen is currently building up. */
 export type BookingDraft = {
   doctorId: string | null;
   date: string | null;
+  kind: VisitKind;
+  concern: string;
 };
 
 type ConsultationContextValue = {
+  ready: boolean;
   consultations: Consultation[];
   upcoming: Consultation[];
   recent: Consultation[];
@@ -46,7 +51,10 @@ type ConsultationContextValue = {
     date: string,
     time: string,
     kind?: VisitKind,
+    concern?: string,
   ) => Consultation;
+  consultationById: (id: string | null | undefined) => Consultation | null;
+  completeVisit: (id: string) => void;
   hasPaidVisit: (doctorId: string) => boolean;
   cancel: (id: string) => void;
   isSlotTaken: (doctorId: string, date: string, time: string) => boolean;
@@ -55,8 +63,8 @@ type ConsultationContextValue = {
 const ConsultationContext = createContext<ConsultationContextValue | null>(null);
 
 export function consultationStart(consultation: Consultation) {
-  const [hours, minutes] = consultation.time.split(':').map(Number);
-  const date = fromDateKey(consultation.date);
+  const [hours, minutes] = (consultation.time || '00:00').split(':').map(Number);
+  const date = fromDateKey(consultation.date || toDateKey(new Date()));
   date.setHours(hours ?? 0, minutes ?? 0, 0, 0);
   return date;
 }
@@ -69,44 +77,18 @@ export function isJoinable(consultation: Consultation) {
 }
 
 function seedConsultations(): Consultation[] {
-  const now = new Date();
-  const minutesNow = now.getHours() * 60 + now.getMinutes();
-
-  // Seed the upcoming visit into a slot that is still ahead today, so the
-  // card is never stale; roll over to tomorrow morning once the day is done.
-  const remaining = doctorById('abebe')?.slots.find((slot) => {
-    const [hours, mins] = slot.split(':').map(Number);
-    return (hours ?? 0) * 60 + (mins ?? 0) > minutesNow + 45;
-  });
-
-  return [
-    {
-      id: 'seed-upcoming',
-      doctorId: 'abebe',
-      date: toDateKey(remaining ? now : addDays(now, 1)),
-      time: remaining ?? '10:00',
-      kind: 'video',
-      paid: true,
-      completed: false,
-    },
-    {
-      id: 'seed-recent',
-      doctorId: 'hana',
-      date: toDateKey(addDays(now, -8)),
-      time: '09:30',
-      kind: 'video',
-      paid: true,
-      completed: true,
-    },
-  ];
+  return [];
 }
 
 export function ConsultationProvider({ children }: { children: ReactNode }) {
+  const [ready, setReady] = useState(true);
   const [consultations, setConsultations] =
     useState<Consultation[]>(seedConsultations);
   const [draft, setDraftState] = useState<BookingDraft>(() => ({
     doctorId: null,
     date: toDateKey(new Date()),
+    kind: 'video',
+    concern: '',
   }));
 
   // Set once the user edits, so a slow read can never resurrect what they
@@ -116,18 +98,37 @@ export function ConsultationProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
 
-    loadJson<Consultation[]>(STORAGE_KEY).then((stored) => {
-      if (!active || edited.current || !Array.isArray(stored)) {
-        return;
-      }
-      setConsultations(
-        stored.map((item) => ({
-          ...item,
-          kind: item.kind === 'message' ? 'message' : 'video',
-          paid: item.paid !== false,
-        })),
-      );
-    });
+    loadJson<Consultation[]>(STORAGE_KEY)
+      .then((stored) => {
+        if (!active || edited.current || !Array.isArray(stored)) {
+          return;
+        }
+        setConsultations(
+          stored
+            .filter(
+              (item) =>
+                item &&
+                typeof item.id === 'string' &&
+                typeof item.doctorId === 'string' &&
+                typeof item.date === 'string' &&
+                typeof item.time === 'string',
+            )
+            .map((item) => ({
+              ...item,
+              kind:
+                (item.kind as string) === 'message' ||
+                (item.kind as string) === 'audio'
+                  ? 'message'
+                  : 'video',
+              paid: item.paid !== false,
+            })),
+        );
+      })
+      .finally(() => {
+        if (active) {
+          setReady(true);
+        }
+      });
 
     return () => {
       active = false;
@@ -162,6 +163,7 @@ export function ConsultationProvider({ children }: { children: ReactNode }) {
     const lastVisit = recent[0];
 
     return {
+      ready,
       consultations,
       upcoming,
       recent,
@@ -172,7 +174,7 @@ export function ConsultationProvider({ children }: { children: ReactNode }) {
       setDraft: (patch) => {
         setDraftState((current) => ({ ...current, ...patch }));
       },
-      book: (doctorId, date, time, kind = 'video') => {
+      book: (doctorId, date, time, kind = 'video', concern = '') => {
         const created: Consultation = {
           id: `consultation-${Date.now()}`,
           doctorId,
@@ -181,9 +183,21 @@ export function ConsultationProvider({ children }: { children: ReactNode }) {
           kind,
           paid: true,
           completed: false,
+          concern: concern.trim() || undefined,
         };
         commit([...consultations, created]);
         return created;
+      },
+      consultationById: (id) =>
+        consultations.find((consultation) => consultation.id === id) ?? null,
+      completeVisit: (id) => {
+        commit(
+          consultations.map((consultation) =>
+            consultation.id === id
+              ? { ...consultation, completed: true }
+              : consultation,
+          ),
+        );
       },
       hasPaidVisit: (doctorId) =>
         consultations.some(
@@ -205,7 +219,7 @@ export function ConsultationProvider({ children }: { children: ReactNode }) {
             consultation.time === time,
         ),
     };
-  }, [consultations, draft]);
+  }, [consultations, draft, ready]);
 
   return (
     <ConsultationContext.Provider value={value}>

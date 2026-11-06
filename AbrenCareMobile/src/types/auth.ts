@@ -66,6 +66,8 @@ export type AuthUser = {
   frequency: MonitorFrequency;
   executiveOnboarded: boolean;
   consultationOnboarded: boolean;
+  /** Brief health concern collected during Digital Consultation setup. */
+  healthConcern: string;
   /** Required before Family Care can show private health information. */
   emailVerified: boolean;
 };
@@ -94,6 +96,7 @@ export function emptyUser(partial: Pick<AuthUser, 'name' | 'email'> & Partial<Au
     frequency: 'managed',
     executiveOnboarded: false,
     consultationOnboarded: false,
+    healthConcern: '',
     emailVerified: true,
     ...partial,
   };

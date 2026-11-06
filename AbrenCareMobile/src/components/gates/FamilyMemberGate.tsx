@@ -12,10 +12,14 @@ export default function FamilyMemberGate({
 }) {
   const { user, selectFamilyMember } = useAuth();
   const params = useGlobalSearchParams();
+  const members = user?.familyMembers ?? [];
   const requested =
     typeof params.member === 'string' ? params.member : user?.activeFamilyMemberId;
   const member =
-    user?.familyMembers.find((item) => item.id === requested) ?? null;
+    members.find((item) => item.id === requested) ??
+    members.find((item) => item.status === 'active') ??
+    members[0] ??
+    null;
 
   useEffect(() => {
     if (member && user?.activeFamilyMemberId !== member.id) {
@@ -24,6 +28,9 @@ export default function FamilyMemberGate({
   }, [member, user?.activeFamilyMemberId, selectFamilyMember]);
 
   if (!member) {
+    if (!user?.familyOnboarded) {
+      return <Replace href="/family-setup" />;
+    }
     return <Replace href="/family-home" />;
   }
 

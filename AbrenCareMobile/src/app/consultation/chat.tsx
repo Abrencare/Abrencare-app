@@ -19,7 +19,6 @@ import ConsultationPaymentGate from "@/components/gates/ConsultationPaymentGate"
 import { useConsultations } from "@/context/ConsultationContext";
 import { doctorById, specialtyLabel } from "@/data/doctors";
 import { useLanguage } from "@/context/LanguageContext";
-import { useThemedStyles } from "@/theme/useThemedStyles";
 
 const BLUE = "#7E93A8";
 
@@ -48,8 +47,6 @@ function nowTime() {
 }
 
 export default function ConsultationChat() {
-
-  const styles = useThemedStyles(baseStyles);
   const { t } = useLanguage();
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -61,26 +58,7 @@ export default function ConsultationChat() {
   const doctor = doctorById(doctorId ?? draft.doctorId);
   const paid = params.paid === "1";
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "m1",
-      from: "them",
-      time: "10:52 AM",
-      text: t.consultationChat.message1,
-    },
-    {
-      id: "m2",
-      from: "me",
-      time: "11:04 AM",
-      text: t.consultationChat.message2,
-    },
-    {
-      id: "m3",
-      from: "them",
-      time: "11:06 AM",
-      text: t.consultationChat.message3,
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -104,10 +82,6 @@ export default function ConsultationChat() {
   function shareFile(kind: FileKind, name: string, size: string) {
     setSheetOpen(false);
     append({ from: "me", file: { name, size, kind } });
-
-    setTimeout(() => {
-      append({ from: "them", text: t.consultationChat.fileReply });
-    }, 1200);
   }
 
   const attachments: {
@@ -171,16 +145,16 @@ export default function ConsultationChat() {
           <View
             style={[
               styles.presenceDot,
-              { backgroundColor: doctor?.online ? "#5A9964" : "#C9CDD2" },
+              { backgroundColor: doctor?.availableNow ? "#5A9964" : "#C9CDD2" },
             ]}
           />
           <Text
             style={[
               styles.presenceText,
-              { color: doctor?.online ? "#4E8A58" : "#8D9297" },
+              { color: doctor?.availableNow ? "#4E8A58" : "#8D9297" },
             ]}
           >
-            {doctor?.online
+            {doctor?.availableNow
               ? t.consultationChat.online
               : t.consultationChat.offline}
           </Text>
@@ -204,12 +178,12 @@ export default function ConsultationChat() {
 
       <View style={styles.noticeBar}>
         <Ionicons
-          name={doctor?.online ? "chatbubble-ellipses-outline" : "time-outline"}
+          name={doctor?.availableNow ? "chatbubble-ellipses-outline" : "time-outline"}
           size={14}
           color="#8D9297"
         />
         <Text style={styles.noticeText}>
-          {doctor?.online
+          {doctor?.availableNow
             ? t.consultationChat.replyTime
             : t.consultationChat.awayNotice}
         </Text>
@@ -361,7 +335,6 @@ function FileCard({
   openLabel: string;
   outgoing?: boolean;
 }) {
-  const styles = useThemedStyles(baseStyles);
   return (
     <View style={styles.fileRow}>
       <View style={[styles.fileIcon, outgoing && styles.fileIconOutgoing]}>
@@ -393,7 +366,7 @@ function FileCard({
   );
 }
 
-const baseStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F4F6F8",

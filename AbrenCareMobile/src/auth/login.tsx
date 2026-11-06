@@ -3,7 +3,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,14 +10,17 @@ import {
 } from 'react-native';
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/context/AuthContext';
+import { useAppTheme } from '@/context/ThemeContext';
 import { parseService } from '@/service/parseService';
 import { dashboardFor, onboardingPath, useServiceTheme } from '@/service/serviceTheme';
 import AuthField from '@/auth/AuthField';
 import AuthNav from '@/auth/AuthNav';
-import MedicalDecor from '@/auth/MedicalDecor';
 import BrandLogo from '@/components/ui/BrandLogo';
+import FlowGlassHero, { FLOW_CHIP, FLOW_MUTED } from '@/components/ui/FlowGlassHero';
+import { GlassCard, glassShadow, glassTints } from '@/components/executive/GlassCard';
 import Replace from '@/components/gates/Replace';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -29,6 +31,9 @@ export default function LoginScreen() {
   const params = useLocalSearchParams();
   const service = parseService(params.service);
   const theme = useServiceTheme(service);
+  const { isDark } = useAppTheme();
+  const glass = glassTints(isDark, service);
+  const insets = useSafeAreaInsets();
 
   const copy =
     service === 'family'
@@ -46,41 +51,40 @@ export default function LoginScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
-      <MedicalDecor color={theme.accent} />
+    <View style={[styles.safeArea, { backgroundColor: theme.background }]}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, { paddingBottom: 36 + insets.bottom }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <AuthNav
+          <FlowGlassHero
             service={service}
-            active="signin"
-            accent={theme.accent}
-            muted={theme.muted}
-            card={theme.card}
+            kicker={copy.service}
+            title={t.auth.loginTitle}
+            subtitle={t.auth.loginSubtitle}
+            top={
+              <AuthNav
+                service={service}
+                active="signin"
+                accent={theme.accent}
+                muted={FLOW_MUTED[service]}
+                card={FLOW_CHIP}
+              />
+            }
           />
 
-          <View
-            style={[
-              styles.card,
-              { backgroundColor: theme.card, borderColor: theme.border },
-            ]}
-          >
+          <View style={styles.body}>
+            <GlassCard
+              tint={glass.card}
+              border={glass.border}
+              sheen={glass.sheen}
+              shadowColor={glassShadow(service)}
+            >
             <BrandLogo size={64} style={styles.cardLogo} />
-            <Text style={[styles.title, { color: theme.text }]}>
-              {t.auth.loginTitle}
-            </Text>
-            <Text style={[styles.subtitle, { color: theme.muted }]}>
-              {t.auth.loginSubtitle}
-            </Text>
-            <Text style={[styles.serviceHint, { color: theme.accent }]}>
-              {copy.service}
-            </Text>
 
             <AuthField
               theme={theme}
@@ -113,14 +117,25 @@ export default function LoginScreen() {
                   return;
                 }
                 const next = signIn(email, service);
-                const onboarded =
-                  service === 'family'
-                    ? next.familyOnboarded || next.familyMembers.length > 0
-                    : service === 'executive'
-                      ? next.executiveOnboarded
-                      : next.consultationOnboarded;
+                if (service === 'family' || service === 'executive') {
+                  const granted = next.services.includes(service);
+                  if (!granted) {
+                    router.replace('/(tabs)');
+                    return;
+                  }
+                  const onboarded =
+                    service === 'family'
+                      ? next.familyOnboarded || next.familyMembers.length > 0
+                      : next.executiveOnboarded;
+                  router.replace(
+                    onboarded ? dashboardFor(service) : onboardingPath(service),
+                  );
+                  return;
+                }
                 router.replace(
-                  onboarded ? dashboardFor(service) : onboardingPath(service),
+                  next.consultationOnboarded
+                    ? dashboardFor(service)
+                    : onboardingPath(service),
                 );
               }}
               disabled={!canSubmit}
@@ -143,10 +158,11 @@ export default function LoginScreen() {
                 </Text>
               </Pressable>
             </View>
+            </GlassCard>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -155,46 +171,18 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: {
     flexGrow: 1,
+    width: '100%',
+  },
+  body: {
+    marginTop: -36,
     paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 36,
     maxWidth: 480,
     width: '100%',
     alignSelf: 'center',
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    paddingHorizontal: 22,
-    paddingTop: 26,
-    paddingBottom: 22,
-    shadowColor: '#2A2622',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 4,
-  },
   cardLogo: {
     alignSelf: 'center',
     marginBottom: 14,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  subtitle: {
-    fontSize: 14,
-    lineHeight: 21,
-    marginBottom: 8,
-  },
-  serviceHint: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-    marginBottom: 18,
   },
   button: {
     height: 50,

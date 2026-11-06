@@ -5,8 +5,11 @@ import { Ionicons } from '@expo/vector-icons';
 import ServiceAccessGate from '@/components/gates/ServiceAccessGate';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { CONSULT_TEAL } from '@/theme/consultation';
 
 type TabIconProps = { color: string; size: number; focused: boolean };
+
+const hidden = { href: null as null };
 
 export default function ConsultationLayout() {
   const { t } = useLanguage();
@@ -17,7 +20,7 @@ export default function ConsultationLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: '#7E93A8',
+          tabBarActiveTintColor: CONSULT_TEAL,
           tabBarInactiveTintColor: colors.navInactive,
           tabBarStyle: {
             height: 70,
@@ -91,9 +94,20 @@ export default function ConsultationLayout() {
             ),
           }}
         />
-        <Tabs.Screen name="chat" options={{ href: null }} />
-        <Tabs.Screen name="call" options={{ href: null }} />
-        <Tabs.Screen name="pay" options={{ href: null }} />
+        <Tabs.Screen name="chat" options={hidden} />
+        <Tabs.Screen
+          name="call"
+          options={{
+            href: null,
+            tabBarStyle: { display: 'none' },
+          }}
+        />
+        <Tabs.Screen name="pay" options={hidden} />
+        <Tabs.Screen name="consult-now" options={hidden} />
+        <Tabs.Screen name="confirmed" options={hidden} />
+        <Tabs.Screen name="waiting" options={hidden} />
+        <Tabs.Screen name="report" options={hidden} />
+        <Tabs.Screen name="prescriptions" options={hidden} />
       </Tabs>
     </ServiceAccessGate>
   );

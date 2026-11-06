@@ -1,32 +1,28 @@
-import { Image, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+import { GlassCard, glassTints } from '@/components/executive/GlassCard';
 import { useAuth } from '@/context/AuthContext';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useLanguage } from '@/context/LanguageContext';
 
 import styles from './HeroCard.styles';
 
-const HERO_PHOTO = require('@/assets/images/home-hero-instruments.jpg');
-
 export default function HeroCard() {
   const { t } = useLanguage();
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
   const { user } = useAuth();
+  const glass = glassTints(isDark, 'family');
   const firstName = user?.name?.split(' ')[0];
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <Image source={HERO_PHOTO} style={styles.backgroundPhoto} resizeMode="cover" />
-      <LinearGradient
-        colors={colors.heroFade}
-        locations={[0, 0.42, 0.72, 1]}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={styles.fade}
-      />
-
+    <GlassCard
+      tint={glass.card}
+      border={glass.border}
+      sheen={glass.sheen}
+      shadowColor="#16332C"
+      style={styles.card}
+    >
       <View style={styles.copy}>
         <Text style={[styles.greeting, { color: colors.navActive }]}>
           {t.home.greeting}
@@ -50,6 +46,6 @@ export default function HeroCard() {
           </View>
         </View>
       </View>
-    </View>
+    </GlassCard>
   );
 }

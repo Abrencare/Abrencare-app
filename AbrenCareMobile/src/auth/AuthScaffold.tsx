@@ -13,7 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-import BrandLogo from '@/components/ui/BrandLogo';
+import BrandLogo, { BrandHomeLink } from '@/components/ui/BrandLogo';
 import type { ServiceTheme } from '@/service/serviceTheme';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -62,15 +62,15 @@ export default function AuthScaffold({
             <Ionicons name="chevron-back" size={20} color={theme.muted} />
           </Pressable>
 
-          <View style={styles.brand}>
-            <BrandLogo size={72} style={styles.brandLogo} />
+          <BrandHomeLink style={styles.brand}>
+            <BrandLogo size={72} link={false} style={styles.brandLogo} />
             <Text style={[styles.brandName, { color: theme.accent }]}>
               {t.auth.brand}
             </Text>
             <Text style={[styles.serviceLabel, { color: theme.text }]}>
               {serviceLabel}
             </Text>
-          </View>
+          </BrandHomeLink>
 
           <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
           {subtitle.trim().length > 0 && (

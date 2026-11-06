@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import FamilyRequestChrome from '@/auth/FamilyRequestChrome';
 import Replace from '@/components/gates/Replace';
+import { glassField } from '@/components/executive/GlassCard';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAppTheme } from '@/context/ThemeContext';
 import {
@@ -28,7 +29,8 @@ export default function FamilyProposalComposeScreen() {
   const { t } = useLanguage();
   const copy = t.familyPlan;
   const type = useLandingType('family');
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
+  const fieldStyle = glassField(isDark);
   const [inquiry, setInquiry] = useState<FamilyInquiry | null | undefined>(undefined);
   const [recipient, setRecipient] = useState('');
   const [services, setServices] = useState('');
@@ -97,11 +99,7 @@ export default function FamilyProposalComposeScreen() {
         value={value}
         onChangeText={onChange}
         multiline
-        style={[
-          styles.input,
-          type.body,
-          { color: colors.text, borderColor: colors.border, backgroundColor: colors.button },
-        ]}
+        style={[styles.input, type.body, fieldStyle, { color: colors.text }]}
         placeholderTextColor={colors.muted}
         {...extra}
       />
@@ -109,10 +107,9 @@ export default function FamilyProposalComposeScreen() {
   );
 
   return (
-    <FamilyRequestChrome>
-      <Text style={[styles.title, type.headline, { color: colors.text }]}>{copy.composeTitle}</Text>
-      <Text style={[styles.subtitle, type.body, { color: colors.muted }]}>{copy.composeSubtitle}</Text>
-
+    <FamilyRequestChrome
+      hero={{ title: copy.composeTitle, subtitle: copy.composeSubtitle }}
+    >
       {field(copy.careFor, recipient, setRecipient)}
       {field(copy.servicesTitle, services, setServices)}
       {field(copy.frequencyTitle, visitFrequency, setVisitFrequency)}

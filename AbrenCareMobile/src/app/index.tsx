@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 
 import {
   Dimensions,
@@ -13,22 +13,26 @@ import {
   View,
 } from "react-native";
 
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 
 import BrandLogo from "@/components/ui/BrandLogo";
 import { useLanguage } from "@/context/LanguageContext";
+import { useLandingType } from "@/theme/landingType";
 
 import colors from "@/theme/colors";
 
 const INITIAL_SIZE = Dimensions.get("window");
 
 const slides = [
-  require("@/assets/images/welcome-hero-first.png"),
-  require("@/assets/images/welcome-hero.png"),
+  require("@/assets/images/welcome-care-home-hq.jpg"),
+  require("@/assets/images/welcome-care-reading.jpg"),
 ];
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const type = useLandingType("family");
+  const listRef = useRef<FlatList<(typeof slides)[number]>>(null);
 
   const {
     t,
@@ -41,6 +45,12 @@ export default function WelcomeScreen() {
     height: INITIAL_SIZE.height,
   });
   const [activeIndex, setActiveIndex] = useState(0);
+
+  const isLastSlide = activeIndex >= slides.length - 1;
+  const kicker = isLastSlide ? t.welcome.offerKicker : t.welcome.kicker;
+  const title = isLastSlide ? t.welcome.offerTitle : t.welcome.title;
+  const body = isLastSlide ? t.welcome.offerBody : t.welcome.location;
+  const cta = isLastSlide ? t.welcome.getStarted : t.welcome.next;
 
   const changeLanguage = (newLanguage: "en" | "am") => {
     setLanguage(newLanguage);
@@ -55,6 +65,16 @@ export default function WelcomeScreen() {
 
     setActiveIndex(nextIndex);
   };
+
+  function handlePrimary() {
+    if (!isLastSlide) {
+      const nextIndex = activeIndex + 1;
+      listRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+      setActiveIndex(nextIndex);
+      return;
+    }
+    router.replace("/(tabs)");
+  }
 
   return (
     <View
@@ -71,6 +91,7 @@ export default function WelcomeScreen() {
       }}
     >
       <FlatList
+        ref={listRef}
         data={slides}
         keyExtractor={(_, index) => String(index)}
         horizontal
@@ -109,129 +130,99 @@ export default function WelcomeScreen() {
         )}
       />
 
-      {activeIndex === 1 && (
-        <View style={styles.overlay} pointerEvents="none" />
-      )}
+      <LinearGradient
+        colors={["rgba(12, 16, 14, 0)", "rgba(12, 16, 14, 0.28)", "rgba(12, 16, 14, 0.82)"]}
+        locations={[0.42, 0.62, 1]}
+        style={styles.overlay}
+        pointerEvents="none"
+      />
 
       <SafeAreaView style={styles.uiLayer} pointerEvents="box-none">
-
-        {/* =====================================
-            TOP LANGUAGE NAVIGATION
-        ===================================== */}
-
         <View style={styles.topSection} pointerEvents="box-none">
-          <BrandLogo size={48} style={styles.welcomeLogo} />
-          {activeIndex === 1 && (
-            <View style={styles.languageContainer}>
-
-              {/* English */}
-
-              <Pressable
-                onPress={() => changeLanguage("en")}
-                hitSlop={10}
-              >
-                <Text
-                  style={[
-                    styles.languageText,
-                    language === "en" && styles.activeLanguage,
-                  ]}
-                >
-                  English
-                </Text>
-              </Pressable>
-
-              {/* Divider */}
-
-              <Text style={styles.languageDivider}>
-                ·
-              </Text>
-
-              {/* Amharic */}
-
-              <Pressable
-                onPress={() => changeLanguage("am")}
-                hitSlop={10}
-              >
-                <Text
-                  style={[
-                    styles.languageText,
-                    language === "am" && styles.activeLanguage,
-                  ]}
-                >
-                  አማርኛ
-                </Text>
-              </Pressable>
-
-            </View>
-          )}
-        </View>
-
-        {/* =====================================
-            BOTTOM BUTTON
-        ===================================== */}
-
-        <View style={styles.bottomSection} pointerEvents="box-none">
-
-          <View
-            style={[
-              styles.bottomContent,
-              activeIndex !== 1 && styles.firstBottomContent,
-            ]}
-          >
-
-            <View style={styles.dotsRow}>
-              {slides.map((_, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.dot,
-                    index === activeIndex && styles.activeDot,
-                  ]}
-                />
-              ))}
-            </View>
-
-            {activeIndex === 1 && (
-              <Pressable
-                onPress={() => router.replace("/(tabs)")}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  pressed && styles.buttonPressed,
+          <View style={styles.brandRow}>
+            <BrandLogo size={48} style={styles.welcomeLogo} />
+            <Text style={[styles.brandWordmark, type.label]}>
+              {t.welcome.brand}
+            </Text>
+          </View>
+          <View style={styles.languageContainer}>
+            <Pressable
+              onPress={() => changeLanguage("en")}
+              hitSlop={10}
+            >
+              <Text
+                style={[
+                  styles.languageText,
+                  language === "en" && styles.activeLanguage,
                 ]}
               >
-                <Text style={styles.primaryButtonText}>
-                  {t.welcome.getStarted}
-                </Text>
-              </Pressable>
-            )}
+                English
+              </Text>
+            </Pressable>
 
+            <Text style={styles.languageDivider}>
+              ·
+            </Text>
+
+            <Pressable
+              onPress={() => changeLanguage("am")}
+              hitSlop={10}
+            >
+              <Text
+                style={[
+                  styles.languageText,
+                  language === "am" && styles.activeLanguage,
+                ]}
+              >
+                አማርኛ
+              </Text>
+            </Pressable>
           </View>
-
         </View>
 
+        <View style={styles.bottomSection} pointerEvents="box-none">
+          <View style={styles.copy}>
+            <Text style={[styles.kicker, type.kicker]}>{kicker}</Text>
+            <Text style={[styles.title, type.headline]}>{title}</Text>
+            {body.trim().length > 0 ? (
+              <Text style={[styles.subtitle, type.body]}>{body}</Text>
+            ) : null}
+          </View>
+
+          <View style={styles.dotsRow}>
+            {slides.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.dot,
+                  index === activeIndex && styles.activeDot,
+                ]}
+              />
+            ))}
+          </View>
+
+          <Pressable
+            onPress={handlePrimary}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              pressed && styles.buttonPressed,
+            ]}
+          >
+            <Text style={[styles.primaryButtonText, type.button]}>
+              {cta}
+            </Text>
+          </Pressable>
+        </View>
       </SafeAreaView>
     </View>
   );
 }
 
-/* =====================================================
-   STYLES
-===================================================== */
-
 const styles = StyleSheet.create({
-
-  /* =====================================
-     SCREEN
-  ===================================== */
-
   safeArea: {
     flex: 1,
     backgroundColor: "#000",
   },
-
-  /* =====================================
-     SLIDES
-  ===================================== */
 
   slider: {
     flex: 1,
@@ -242,19 +233,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
 
-  /* =====================================
-     IMAGE OVERLAY
-  ===================================== */
-
   overlay: {
     ...StyleSheet.absoluteFill,
-
-    backgroundColor: "rgba(0, 0, 0, 0.08)",
   },
-
-  /* =====================================
-     TOP SECTION
-  ===================================== */
 
   topSection: {
     flexDirection: "row",
@@ -262,78 +243,83 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 22,
     paddingTop: 12,
-  },
-  welcomeLogo: {
-    marginRight: 12,
+    gap: 12,
   },
 
-  /* =====================================
-     LANGUAGE
-  ===================================== */
+  brandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexShrink: 1,
+    gap: 10,
+  },
+
+  welcomeLogo: {
+    flexShrink: 0,
+  },
+
+  brandWordmark: {
+    color: "#FFFFFF",
+    flexShrink: 1,
+  },
 
   languageContainer: {
     flexDirection: "row",
-
     alignItems: "center",
-
     paddingVertical: 8,
-
     paddingHorizontal: 12,
-
     borderRadius: 20,
-
     backgroundColor: "rgba(255, 255, 255, 0.78)",
   },
 
   languageText: {
     color: "#6B7280",
-
     fontSize: 13,
-
     fontWeight: "500",
   },
 
   activeLanguage: {
     color: colors.primary,
-
     fontWeight: "700",
   },
 
   languageDivider: {
     color: "#9CA3AF",
-
     fontSize: 15,
-
     marginHorizontal: 8,
   },
 
-  /* =====================================
-     BOTTOM SECTION
-  ===================================== */
-
   bottomSection: {
     width: "100%",
+    paddingHorizontal: 22,
+    paddingBottom: 24,
   },
 
-  bottomContent: {
-    paddingHorizontal: 20,
-
-    paddingTop: 28,
-
-    paddingBottom: 20,
-
-    backgroundColor: "rgba(0, 0, 0, 0.30)",
+  copy: {
+    marginBottom: 22,
+    maxWidth: 360,
   },
 
-  firstBottomContent: {
-    paddingTop: 12,
+  kicker: {
+    color: "#E6D3A8",
+    letterSpacing: 1.4,
+    marginBottom: 10,
+  },
 
-    backgroundColor: "transparent",
+  title: {
+    color: "#FFFFFF",
+    fontSize: 34,
+    lineHeight: 40,
+    marginBottom: 10,
+  },
+
+  subtitle: {
+    color: "rgba(255, 255, 255, 0.82)",
+    maxWidth: 340,
+    lineHeight: 22,
   },
 
   dotsRow: {
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
     marginBottom: 18,
     gap: 8,
@@ -351,39 +337,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
 
-  /* =====================================
-     GET STARTED BUTTON
-  ===================================== */
-
   primaryButton: {
     width: "100%",
-
     height: 58,
-
     borderRadius: 18,
-
     backgroundColor: colors.primary,
-
     alignItems: "center",
-
     justifyContent: "center",
   },
 
   primaryButtonText: {
     color: colors.white,
-
-    fontSize: 16,
-
-    fontWeight: "700",
   },
-
-  /* =====================================
-     PRESS EFFECT
-  ===================================== */
 
   buttonPressed: {
     opacity: 0.85,
-
     transform: [
       {
         scale: 0.985,

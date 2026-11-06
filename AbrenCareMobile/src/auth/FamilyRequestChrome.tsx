@@ -12,21 +12,34 @@ import {
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import BrandLogo from '@/components/ui/BrandLogo';
+import { GlassCard, glassTints } from '@/components/executive/GlassCard';
+import BrandLogo, { BrandHomeLink } from '@/components/ui/BrandLogo';
+import FlowGlassHero, {
+  FLOW_CHIP,
+  FLOW_CHIP_BORDER,
+  FLOW_INK,
+  FLOW_MUTED,
+} from '@/components/ui/FlowGlassHero';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useLandingType } from '@/theme/landingType';
 
 type HeaderProps = {
   showBack?: boolean;
+  tone?: 'page' | 'hero';
 };
 
-export function FamilyFlowHeader({ showBack = true }: HeaderProps) {
+export function FamilyFlowHeader({ showBack = true, tone = 'page' }: HeaderProps) {
   const router = useRouter();
   const type = useLandingType('family');
   const { t, language, setLanguage } = useLanguage();
   const { colors } = useAppTheme();
+  const ink = tone === 'hero' ? FLOW_INK.family : colors.text;
+  const muted = tone === 'hero' ? FLOW_MUTED.family : colors.muted;
+  const chip = tone === 'hero' ? FLOW_CHIP : colors.card;
+  const chipBorder = tone === 'hero' ? FLOW_CHIP_BORDER : colors.border;
 
   function goBack() {
     if (router.canGoBack()) {
@@ -37,28 +50,26 @@ export function FamilyFlowHeader({ showBack = true }: HeaderProps) {
   }
 
   const brand = (
-    <View style={styles.brandMark}>
-      <BrandLogo size={32} />
-      <Text style={[styles.brandName, { fontFamily: type.display, color: colors.text }]}>
+    <BrandHomeLink style={styles.brandMark}>
+      <BrandLogo size={32} link={false} />
+      <Text style={[styles.brandName, { fontFamily: type.display, color: ink }]}>
         AbrenCare
       </Text>
-    </View>
+    </BrandHomeLink>
   );
 
   return (
-    <View style={styles.topBar}>
+    <View style={[styles.topBar, tone === 'hero' && styles.topBarHero]}>
       {showBack ? (
         <Pressable
           onPress={goBack}
           hitSlop={12}
-          style={[styles.backButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+          style={[styles.backButton, { backgroundColor: chip, borderColor: chipBorder }]}
         >
-          <Ionicons name="chevron-back" size={20} color={colors.muted} />
+          <Ionicons name="chevron-back" size={20} color={muted} />
         </Pressable>
       ) : (
-        <Pressable onPress={goBack} style={styles.brandMark} hitSlop={8}>
-          {brand}
-        </Pressable>
+        brand
       )}
 
       {showBack ? <View style={styles.brandCenter}>{brand}</View> : <View style={styles.flex} />}
@@ -72,17 +83,17 @@ export function FamilyFlowHeader({ showBack = true }: HeaderProps) {
           style={[
             styles.langText,
             type.caption,
-            { color: language === 'en' ? colors.text : colors.muted },
+            { color: language === 'en' ? ink : muted },
           ]}
         >
           EN
         </Text>
-        <Text style={[styles.langDot, { color: colors.muted }]}>·</Text>
+        <Text style={[styles.langDot, { color: muted }]}>·</Text>
         <Text
           style={[
             styles.langText,
             type.caption,
-            { color: language === 'am' ? colors.text : colors.muted },
+            { color: language === 'am' ? ink : muted },
           ]}
         >
           {t.common.amharic}
@@ -95,26 +106,66 @@ export function FamilyFlowHeader({ showBack = true }: HeaderProps) {
 type Props = {
   children: ReactNode;
   showBack?: boolean;
+  hero?: { kicker?: string; title?: string; subtitle?: string };
 };
 
-export default function FamilyRequestChrome({ children, showBack = true }: Props) {
-  const { colors } = useAppTheme();
+export default function FamilyRequestChrome({ children, showBack = true, hero }: Props) {
+  const { colors, isDark } = useAppTheme();
+  const glass = glassTints(isDark, 'family');
+  const insets = useSafeAreaInsets();
+
+  if (!hero) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: colors.page }]}>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <FamilyFlowHeader showBack={showBack} />
+          <ScrollView
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {children}
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.page }]}>
+    <View style={[styles.safe, { backgroundColor: colors.page }]}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <FamilyFlowHeader showBack={showBack} />
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.heroContent, { paddingBottom: 36 + insets.bottom }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {children}
+          <FlowGlassHero
+            service="family"
+            kicker={hero.kicker}
+            title={hero.title}
+            subtitle={hero.subtitle}
+            top={<FamilyFlowHeader showBack={showBack} tone="hero" />}
+          />
+          <View style={styles.glassBody}>
+            <GlassCard
+              tint={glass.card}
+              border={glass.border}
+              sheen={glass.sheen}
+              shadowColor="#16332C"
+              clip={false}
+            >
+              {children}
+            </GlassCard>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -129,6 +180,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 8,
     paddingBottom: 8,
+  },
+  topBarHero: {
+    paddingHorizontal: 0,
+    paddingTop: 0,
+    marginBottom: 16,
   },
   backButton: {
     width: 40,
@@ -145,10 +201,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   brandCenter: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
-    pointerEvents: 'none',
+    pointerEvents: 'box-none',
   },
   brandName: {
     fontSize: 22,
@@ -173,6 +229,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingTop: 10,
     paddingBottom: 36,
+    maxWidth: 520,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  heroContent: {
+    flexGrow: 1,
+    width: '100%',
+  },
+  glassBody: {
+    marginTop: -36,
+    paddingHorizontal: 22,
     maxWidth: 520,
     width: '100%',
     alignSelf: 'center',

@@ -7,7 +7,7 @@ import FamilyRequestChrome from '@/auth/FamilyRequestChrome';
 import Replace from '@/components/gates/Replace';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { onboardingPath } from '@/service/serviceTheme';
+import { dashboardFor, onboardingPath } from '@/service/serviceTheme';
 import { useLandingType } from '@/theme/landingType';
 
 const FILL = '#1A3A32';
@@ -27,19 +27,27 @@ export default function VerifyEmailScreen() {
   }
 
   if (user.emailVerified) {
-    return <Replace href={onboardingPath('family')} />;
+    return (
+      <Replace
+        href={
+          user.familyOnboarded
+            ? dashboardFor('family')
+            : onboardingPath('family')
+        }
+      />
+    );
   }
 
   const canSubmit = code.replace(/\D/g, '').length === 6;
 
   return (
-    <FamilyRequestChrome>
-      <Text style={[styles.kicker, type.kicker]}>{copy.kicker}</Text>
-      <Text style={[styles.title, type.headline, { color: INK }]}>{copy.title}</Text>
-      <Text style={[styles.body, type.body, { color: MUTED }]}>
-        {copy.body} {user.email}
-      </Text>
-
+    <FamilyRequestChrome
+      hero={{
+        kicker: copy.kicker,
+        title: copy.title,
+        subtitle: `${copy.body} ${user.email}`,
+      }}
+    >
       <Text style={[styles.label, type.label, { color: INK }]}>{copy.code}</Text>
       <TextInput
         value={code}
@@ -64,7 +72,11 @@ export default function VerifyEmailScreen() {
             return;
           }
           verifyEmail();
-          router.replace(onboardingPath('family'));
+          router.replace(
+            user.familyOnboarded
+              ? dashboardFor('family')
+              : onboardingPath('family'),
+          );
         }}
       >
         <Text style={[styles.primaryText, type.button]}>{copy.submit}</Text>
@@ -89,12 +101,12 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#D5DDD8',
+    borderColor: 'rgba(255,255,255,0.8)',
     borderRadius: 22,
     minHeight: 50,
     paddingHorizontal: 16,
     marginBottom: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.55)',
     color: INK,
     letterSpacing: 4,
   },

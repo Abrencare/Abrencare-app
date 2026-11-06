@@ -8,6 +8,7 @@ import { useServiceTheme } from '@/service/serviceTheme';
 import AuthScaffold from '@/auth/AuthScaffold';
 import Replace from '@/components/gates/Replace';
 import { useLanguage } from '@/context/LanguageContext';
+import { activateExecutiveCare } from '@/data/executiveInquiry';
 
 export default function ExecutiveReadyScreen() {
   const router = useRouter();
@@ -60,6 +61,7 @@ export default function ExecutiveReadyScreen() {
           pressed && styles.pressed,
         ]}
         onPress={() => {
+          activateExecutiveCare();
           completeExecutiveOnboarding();
           router.replace('/executive');
         }}

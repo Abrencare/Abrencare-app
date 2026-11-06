@@ -32,12 +32,15 @@ const styles = StyleSheet.create({
   },
 
   slide: {
-    paddingVertical: 12,
-    shadowColor: "#2A2622",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.14,
-    shadowRadius: 18,
-    elevation: 8,
+    paddingVertical: 4,
+  },
+
+  glowWash: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
 
   card: {
@@ -45,10 +48,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 20,
     paddingTop: 18,
-    minHeight: 390,
-    borderWidth: 1.5,
+    borderWidth: 1,
     overflow: "hidden",
-    position: "relative",
   },
 
   backgroundPhoto: {
@@ -60,7 +61,7 @@ const styles = StyleSheet.create({
   },
 
   backgroundFade: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
 
   cardContent: {

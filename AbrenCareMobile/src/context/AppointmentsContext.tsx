@@ -10,13 +10,15 @@ import {
 
 import { loadJson, saveJson } from '@/utilities/storage';
 
-const STORAGE_KEY = 'abrencare-appointments';
+const STORAGE_KEY = 'abrencare-appointments-v2';
 
 export type AppointmentType =
   | 'homeVisit'
   | 'nurseCheck'
   | 'doctorVisit'
   | 'labSample';
+
+export type AppointmentStatus = 'pending' | 'approved';
 
 export type Appointment = {
   id: string;
@@ -27,13 +29,17 @@ export type Appointment = {
   type: AppointmentType;
   withName: string;
   reminderMinutes: number | null;
+  status: AppointmentStatus;
 };
 
 type AppointmentsContextValue = {
   appointments: Appointment[];
   nextAppointment: Appointment | null;
-  bookAppointment: (input: Omit<Appointment, 'id'>) => Appointment;
+  bookAppointment: (
+    input: Omit<Appointment, 'id' | 'status'> & { status?: AppointmentStatus },
+  ) => Appointment;
   cancelAppointment: (id: string) => void;
+  approveAppointment: (id: string) => void;
   setReminder: (id: string, reminderMinutes: number | null) => void;
   isSlotTaken: (date: string, time: string) => boolean;
 };
@@ -70,6 +76,32 @@ function sortAppointments(items: Appointment[]) {
   );
 }
 
+function normalizeAppointment(value: unknown): Appointment | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const item = value as Partial<Appointment>;
+  if (
+    typeof item.id !== 'string' ||
+    typeof item.date !== 'string' ||
+    typeof item.time !== 'string' ||
+    typeof item.type !== 'string' ||
+    typeof item.withName !== 'string'
+  ) {
+    return null;
+  }
+  return {
+    id: item.id,
+    date: item.date,
+    time: item.time,
+    type: item.type as AppointmentType,
+    withName: item.withName,
+    reminderMinutes:
+      typeof item.reminderMinutes === 'number' ? item.reminderMinutes : null,
+    status: item.status === 'pending' ? 'pending' : 'approved',
+  };
+}
+
 function seedAppointments(): Appointment[] {
   const today = new Date();
 
@@ -81,6 +113,7 @@ function seedAppointments(): Appointment[] {
       type: 'homeVisit',
       withName: 'Nurse Meron Girma',
       reminderMinutes: 60,
+      status: 'pending',
     },
     {
       id: 'seed-lab-sample',
@@ -89,6 +122,7 @@ function seedAppointments(): Appointment[] {
       type: 'labSample',
       withName: 'AbrenCare Lab',
       reminderMinutes: null,
+      status: 'pending',
     },
   ];
 }
@@ -105,11 +139,17 @@ export function AppointmentsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
 
-    loadJson<Appointment[]>(STORAGE_KEY).then((stored) => {
+    loadJson<unknown[]>(STORAGE_KEY).then((stored) => {
       if (!active || edited.current || !Array.isArray(stored)) {
         return;
       }
-      setAppointments(sortAppointments(stored));
+      const normalized = stored
+        .map(normalizeAppointment)
+        .filter((item): item is Appointment => item !== null);
+      if (normalized.length === 0) {
+        return;
+      }
+      setAppointments(sortAppointments(normalized));
     });
 
     return () => {
@@ -139,12 +179,22 @@ export function AppointmentsProvider({ children }: { children: ReactNode }) {
         const created: Appointment = {
           ...input,
           id: `appointment-${Date.now()}`,
+          status: input.status ?? 'pending',
         };
         commit([...appointments, created]);
         return created;
       },
       cancelAppointment: (id) => {
         commit(appointments.filter((appointment) => appointment.id !== id));
+      },
+      approveAppointment: (id) => {
+        commit(
+          appointments.map((appointment) =>
+            appointment.id === id
+              ? { ...appointment, status: 'approved' }
+              : appointment,
+          ),
+        );
       },
       setReminder: (id, reminderMinutes) => {
         commit(

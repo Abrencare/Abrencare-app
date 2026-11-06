@@ -1,4 +1,4 @@
-import type { CareService } from '@/types/auth';
+import type { AuthUser, CareService } from '@/types/auth';
 import { useAppTheme } from '@/context/ThemeContext';
 
 export type ServiceTheme = {
@@ -76,7 +76,7 @@ export function useServiceTheme(service: CareService): ServiceTheme {
 
 export function dashboardFor(service: CareService) {
   if (service === 'family') {
-    return '/family-home';
+    return '/family';
   }
   if (service === 'executive') {
     return '/executive';
@@ -84,12 +84,43 @@ export function dashboardFor(service: CareService) {
   return '/consultation';
 }
 
+export function familyCareEntry(
+  user: AuthUser | null,
+  hasService: (service: CareService) => boolean,
+  needsOnboarding: (service: CareService) => boolean,
+) {
+  if (!user || !hasService('family')) {
+    return '/signup?service=family';
+  }
+  if (!user.emailVerified) {
+    return '/verify-email';
+  }
+  if (needsOnboarding('family')) {
+    return onboardingPath('family');
+  }
+  return dashboardFor('family');
+}
+
+export function executiveCareEntry(
+  user: AuthUser | null,
+  hasService: (service: CareService) => boolean,
+  needsOnboarding: (service: CareService) => boolean,
+) {
+  if (!user || !hasService('executive')) {
+    return '/signup?service=executive';
+  }
+  if (needsOnboarding('executive')) {
+    return onboardingPath('executive');
+  }
+  return dashboardFor('executive');
+}
+
 export function onboardingPath(service: CareService) {
   if (service === 'family') {
     return '/family-setup';
   }
   if (service === 'executive') {
-    return '/executive-advisor';
+    return '/executive-profile';
   }
   return '/consultation-profile';
 }

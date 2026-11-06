@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router/build/useFocusEffect';
 
 import FamilyRequestChrome from '@/auth/FamilyRequestChrome';
 import FamilyIconWell from '@/components/family/FamilyIconWell';
@@ -14,11 +15,20 @@ import { useAppTheme } from '@/context/ThemeContext';
 import { CARE_LINE } from '@/data/contact';
 import {
   acceptFamilyProposal,
+  activateFamilyCare,
   loadFamilyInquiry,
+  markFamilySetupStarted,
+  type FamilyCaregiverRelationshipId,
   type FamilyInquiry,
 } from '@/data/familyInquiry';
-import { dashboardFor, onboardingPath } from '@/service/serviceTheme';
+import { dashboardFor, familyCareEntry } from '@/service/serviceTheme';
 import { useLandingType } from '@/theme/landingType';
+import {
+  kindFromRelationship,
+  type FamilyMember,
+  type FamilyRelationship,
+} from '@/types/auth';
+import { ageYearsFromIso } from '@/utilities/birthInput';
 import { activeFamilyMember } from '@/utilities/familyMember';
 
 const SERVICE_ICONS = [
@@ -28,13 +38,80 @@ const SERVICE_ICONS = [
   'document-text-outline',
 ] as const;
 
+const CITY_LABELS: Record<string, string> = {
+  addis: 'Addis Ababa',
+  direDawa: 'Dire Dawa',
+  hawassa: 'Hawassa',
+  bahirDar: 'Bahir Dar',
+  mekelle: 'Mekelle',
+  gondar: 'Gondar',
+  other: 'Another city in Ethiopia',
+};
+
+/** Form option is who the patient is to the account holder (Mother = patient is mother). */
+function patientRelationshipFromCaregiver(
+  relationship: FamilyCaregiverRelationshipId | undefined,
+): FamilyRelationship {
+  switch (relationship) {
+    case 'mother':
+      return 'mother';
+    case 'father':
+      return 'father';
+    case 'parent':
+      return 'parent';
+    case 'spouse':
+      return 'spouse';
+    case 'child':
+      return 'child';
+    default:
+      return 'parent';
+  }
+}
+
+function memberFromInquiry(
+  inquiry: FamilyInquiry | null,
+  fallbackName: string,
+): FamilyMember {
+  const relationship = patientRelationshipFromCaregiver(
+    inquiry?.caregiverRelationship,
+  );
+  const patientName =
+    inquiry?.patientName?.trim() ||
+    inquiry?.name?.trim() ||
+    fallbackName.trim() ||
+    'Loved one';
+  const cityId = inquiry?.city ?? 'addis';
+  const dateOfBirth = inquiry?.patientDateOfBirth?.trim() || '';
+  return {
+    id: `member-${Date.now()}`,
+    kind: kindFromRelationship(relationship),
+    name: patientName,
+    relationship,
+    dateOfBirth,
+    ageYears: ageYearsFromIso(dateOfBirth),
+    phone: inquiry?.patientPhone?.trim() || '',
+    city: CITY_LABELS[cityId] ?? CITY_LABELS.addis,
+    address: '',
+    emergencyPhone: inquiry?.phone?.trim() || '',
+    careNeeds: ['general'],
+    preferredLanguage: '',
+    notes: '',
+    status:
+      inquiry?.status === 'accepted' ||
+      inquiry?.status === 'setup' ||
+      inquiry?.status === 'active'
+        ? 'active'
+        : 'pending',
+  };
+}
+
 export default function FamilyCarePlanScreen() {
   const router = useRouter();
   const { t } = useLanguage();
   const copy = t.familyPlan;
   const type = useLandingType('family');
   const { colors, isDark } = useAppTheme();
-  const { user, hasService, needsOnboarding } = useAuth();
+  const { user, hasService, needsOnboarding, completeFamilyOnboarding } = useAuth();
   const [inquiry, setInquiry] = useState<FamilyInquiry | null | undefined>(undefined);
   const [accepting, setAccepting] = useState(false);
 
@@ -83,16 +160,27 @@ export default function FamilyCarePlanScreen() {
     Linking.openURL(`https://wa.me/${number}`).catch(() => Linking.openURL(`tel:${CARE_LINE}`));
   };
 
-  const goToSetup = () => {
-    if (user && hasService('family')) {
-      if (!user.emailVerified) {
-        router.push('/verify-email');
-        return;
-      }
-      router.push(needsOnboarding('family') ? onboardingPath('family') : dashboardFor('family'));
+  const goToFamilyHome = async () => {
+    if (!user || !hasService('family')) {
+      router.push({ pathname: '/signup', params: { service: 'family' } });
       return;
     }
-    router.push('/signup?service=family');
+    if (!user.emailVerified) {
+      router.push('/verify-email');
+      return;
+    }
+    const fresh = await loadFamilyInquiry();
+    if (needsOnboarding('family') || user.familyMembers.length === 0) {
+      completeFamilyOnboarding([
+        memberFromInquiry(fresh, user.name || 'Loved one'),
+      ]);
+    }
+    const careId = fresh?.id ?? inquiry?.id;
+    if (careId) {
+      await markFamilySetupStarted(careId);
+      await activateFamilyCare(careId);
+    }
+    router.replace(dashboardFor('family'));
   };
 
   const onAccept = () => {
@@ -101,7 +189,24 @@ export default function FamilyCarePlanScreen() {
     }
     setAccepting(true);
     acceptFamilyProposal(inquiry.id)
-      .then(() => goToSetup())
+      .then(async () => {
+        if (!user || !hasService('family')) {
+          router.replace({ pathname: '/signup', params: { service: 'family' } });
+          return;
+        }
+        if (!user.emailVerified) {
+          router.replace('/verify-email');
+          return;
+        }
+        if (needsOnboarding('family') || user.familyMembers.length === 0) {
+          completeFamilyOnboarding([
+            memberFromInquiry(inquiry, user.name || 'Loved one'),
+          ]);
+        }
+        await markFamilySetupStarted(inquiry.id);
+        await activateFamilyCare(inquiry.id);
+        router.replace(dashboardFor('family'));
+      })
       .finally(() => setAccepting(false));
   };
 
@@ -130,7 +235,7 @@ export default function FamilyCarePlanScreen() {
           <Text style={[styles.subtitle, type.body, { color: colors.muted }]}>{copy.subtitle}</Text>
 
           <View style={[styles.personCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <FamilyProfilePhoto size={64} />
+            <FamilyProfilePhoto size={52} name={careName} />
             <View style={styles.personCopy}>
               <Text style={[styles.personName, type.section, { color: colors.text }]}>
                 {careName}
@@ -161,6 +266,7 @@ export default function FamilyCarePlanScreen() {
             </View>
           </View>
 
+          {proposal.quoteAmount ? (
           <View style={[styles.priceCard, { backgroundColor: colors.card, borderColor: isDark ? colors.border : '#D5E3DC' }]}>
             <View style={[styles.priceHead, { backgroundColor: isDark ? colors.continue : '#E7EEEA' }]}>
               <Ionicons name="pricetag-outline" size={16} color={isDark ? '#C9E4D8' : '#5E7A62'} />
@@ -186,6 +292,7 @@ export default function FamilyCarePlanScreen() {
               </Pressable>
             </View>
           </View>
+          ) : null}
         </View>
       ) : waiting ? (
         <View style={[styles.waitCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -206,9 +313,20 @@ export default function FamilyCarePlanScreen() {
       {canContinueSetup ? (
         <Pressable
           style={({ pressed }) => [styles.primary, { backgroundColor: colors.continue }, pressed && styles.pressed]}
-          onPress={goToSetup}
+          onPress={() => {
+            void goToFamilyHome();
+          }}
         >
           <Text style={[styles.primaryText, type.button]}>{copy.continueSetup}</Text>
+        </Pressable>
+      ) : null}
+
+      {inquiry.status === 'received' ? (
+        <Pressable
+          style={({ pressed }) => [styles.primary, { backgroundColor: colors.continue }, pressed && styles.pressed]}
+          onPress={() => router.push(familyCareEntry(user, hasService, needsOnboarding))}
+        >
+          <Text style={[styles.primaryText, type.button]}>{copy.goHome}</Text>
         </Pressable>
       ) : null}
 

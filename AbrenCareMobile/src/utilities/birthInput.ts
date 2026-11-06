@@ -172,3 +172,12 @@ export function parseBirthInput(raw: string): BirthInput {
 export function isBirthInputAccepted(raw: string) {
   return parseBirthInput(raw).status === 'valid';
 }
+
+/** Age in whole years from an ISO YYYY-MM-DD date, or null if invalid. */
+export function ageYearsFromIso(isoDate: string): number | null {
+  const parsed = parseBirthInput(isoDate.trim());
+  if (parsed.status !== 'valid' || parsed.kind !== 'date') {
+    return null;
+  }
+  return parsed.ageYears;
+}

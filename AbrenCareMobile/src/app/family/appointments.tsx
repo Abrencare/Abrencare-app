@@ -26,9 +26,12 @@ import {
   reminderLabel,
   typeIcons,
 } from '@/utilities/familyFormat';
+import { GlassCard, glassTints } from '@/components/executive/GlassCard';
+import { FamilyHero } from '@/components/family/FamilyHero';
 import FamilyMemberHeader from '@/components/family/FamilyMemberHeader';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAppTheme } from '@/context/ThemeContext';
 import { activeFamilyMember } from '@/utilities/familyMember';
 import { useThemedStyles } from '@/theme/useThemedStyles';
 
@@ -45,6 +48,8 @@ function timeRange(time: string) {
 export default function FamilyAppointments() {
 
   const styles = useThemedStyles(baseStyles);
+  const { isDark } = useAppTheme();
+  const glass = glassTints(isDark, 'family');
   const { t } = useLanguage();
   const { user } = useAuth();
   const memberName = activeFamilyMember(user)?.name ?? '';
@@ -52,6 +57,7 @@ export default function FamilyAppointments() {
     appointments,
     bookAppointment,
     cancelAppointment,
+    approveAppointment,
     setReminder,
     isSlotTaken,
   } = useAppointments();
@@ -107,6 +113,7 @@ export default function FamilyAppointments() {
       type: selectedType,
       withName: t.familyAppointments.staff[selectedType],
       reminderMinutes,
+      status: 'pending',
     });
 
     setSelectedTime(null);
@@ -140,21 +147,29 @@ export default function FamilyAppointments() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      <FamilyMemberHeader />
-      <Text style={styles.headerLabel}>{t.familyAppointments.headerLabel}</Text>
-      <Text style={styles.title}>{t.familyAppointments.title}</Text>
-      <Text style={styles.subtitle}>
-        {t.familyAppointments.subtitle.replace('{name}', memberName)}
-      </Text>
+      <FamilyHero
+        kicker={t.familyAppointments.headerLabel}
+        title={t.familyAppointments.title}
+        subtitle={t.familyAppointments.subtitle.replace('{name}', memberName)}
+      />
 
-      {confirmation && (
-        <View style={styles.confirmBanner}>
-          <Ionicons name="checkmark-circle" size={18} color="#8B9A7C" />
+      <View style={styles.body}>
+      <FamilyMemberHeader />
+
+      {confirmation ? (
+        <GlassCard
+          tint={glass.update}
+          border={glass.border}
+          sheen={glass.sheen}
+          shadowColor="#16332C"
+          style={styles.confirmBanner}
+        >
+          <Ionicons name="time-outline" size={18} color="#8B9A7C" />
           <Text style={styles.confirmText}>
-            {t.familyAppointments.syncNote}
+            {t.familyAppointments.syncNotePending}
           </Text>
-        </View>
-      )}
+        </GlassCard>
+      ) : null}
 
       {/* Upcoming appointments */}
       <Text style={styles.sectionTitle}>{t.familyAppointments.upcomingTitle}</Text>
@@ -162,15 +177,28 @@ export default function FamilyAppointments() {
 
       <View>
         {appointments.length === 0 ? (
-          <View style={styles.card}>
+          <GlassCard
+            tint={glass.card}
+            border={glass.border}
+            sheen={glass.sheen}
+            shadowColor="#16332C"
+          >
             <Text style={styles.empty}>{t.familyAppointments.empty}</Text>
-          </View>
+          </GlassCard>
         ) : (
           appointments.map((appointment) => {
             const when = fromDateKey(appointment.date);
             const extra = appointment.type === 'labSample';
+            const approved = appointment.status === 'approved';
             return (
-            <View key={appointment.id} style={[styles.card, styles.visitCard]}>
+            <GlassCard
+              key={appointment.id}
+              tint={glass.card}
+              border={glass.border}
+              sheen={glass.sheen}
+              shadowColor="#16332C"
+              style={styles.visitCard}
+            >
               <View style={styles.dateBox}>
                 <Text style={styles.dateBoxDay}>{when.getDate()}</Text>
                 <Text style={styles.dateBoxMonth}>
@@ -179,22 +207,33 @@ export default function FamilyAppointments() {
               </View>
 
               <View style={styles.appointmentInfo}>
-                <View
-                  style={[
-                    styles.statusChip,
-                    extra ? styles.statusExtra : styles.statusConfirmed,
-                  ]}
-                >
-                  <Text
+                <View style={styles.statusRow}>
+                  <View
                     style={[
-                      styles.statusChipText,
-                      extra ? styles.statusExtraText : styles.statusConfirmedText,
+                      styles.statusChip,
+                      approved ? styles.statusApproved : styles.statusPending,
                     ]}
                   >
-                    {extra
-                      ? t.familyAppointments.statusExtra
-                      : t.familyAppointments.statusConfirmed}
-                  </Text>
+                    <Text
+                      style={[
+                        styles.statusChipText,
+                        approved
+                          ? styles.statusApprovedText
+                          : styles.statusPendingText,
+                      ]}
+                    >
+                      {approved
+                        ? t.familyAppointments.statusApproved
+                        : t.familyAppointments.statusPending}
+                    </Text>
+                  </View>
+                  {extra ? (
+                    <View style={[styles.statusChip, styles.statusExtra]}>
+                      <Text style={[styles.statusChipText, styles.statusExtraText]}>
+                        {t.familyAppointments.statusExtra}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
                 <Text style={styles.appointmentType}>
                   {t.familyAppointments.types[appointment.type]}
@@ -207,6 +246,26 @@ export default function FamilyAppointments() {
                 ) : (
                   <Text style={styles.appointmentMeta}>{appointment.withName}</Text>
                 )}
+
+                <AppointmentProgress approved={approved} />
+                <Text style={styles.progressNote}>
+                  {approved
+                    ? t.familyAppointments.approvedNote
+                    : t.familyAppointments.pendingNote}
+                </Text>
+
+                {!approved ? (
+                  <TouchableOpacity
+                    style={styles.approveChip}
+                    onPress={() => approveAppointment(appointment.id)}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="checkmark-circle-outline" size={14} color="#2F9E6B" />
+                    <Text style={styles.approveChipText}>
+                      {t.familyAppointments.statusApproved}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
 
                 <View style={styles.appointmentActions}>
                   <TouchableOpacity
@@ -255,7 +314,7 @@ export default function FamilyAppointments() {
                   </TouchableOpacity>
                 </View>
               </View>
-            </View>
+            </GlassCard>
             );
           })
         )}
@@ -264,7 +323,12 @@ export default function FamilyAppointments() {
       {/* Booking */}
       <Text style={styles.sectionTitle}>{t.familyAppointments.bookTitle}</Text>
 
-      <View style={styles.card}>
+      <GlassCard
+        tint={glass.card}
+        border={glass.border}
+        sheen={glass.sheen}
+        shadowColor="#16332C"
+      >
         <Text style={styles.fieldLabel}>{t.familyAppointments.chooseType}</Text>
 
         <View style={styles.chipWrap}>
@@ -439,7 +503,7 @@ export default function FamilyAppointments() {
             );
           })}
         </View>
-      </View>
+      </GlassCard>
 
       <TouchableOpacity
         style={[styles.button, !selectedTime && styles.buttonDisabled]}
@@ -455,7 +519,70 @@ export default function FamilyAppointments() {
       </TouchableOpacity>
 
       <Text style={styles.footnote}>{t.familyAppointments.syncNote}</Text>
+      </View>
     </ScrollView>
+  );
+}
+
+function AppointmentProgress({ approved }: { approved: boolean }) {
+  const styles = useThemedStyles(baseStyles);
+  const { t } = useLanguage();
+  const steps = [
+    t.familyAppointments.progressRequested,
+    t.familyAppointments.progressPending,
+    t.familyAppointments.progressApproved,
+  ] as const;
+  const activeIndex = approved ? 2 : 1;
+
+  return (
+    <View style={styles.progressRow}>
+      {steps.map((label, index) => {
+        const done = index <= activeIndex;
+        const current = index === activeIndex;
+        return (
+          <View key={label} style={styles.progressStep}>
+            <View style={styles.progressTrack}>
+              {index > 0 ? (
+                <View
+                  style={[
+                    styles.progressLine,
+                    index <= activeIndex && styles.progressLineOn,
+                  ]}
+                />
+              ) : (
+                <View style={styles.progressLineSpacer} />
+              )}
+              <View
+                style={[
+                  styles.progressDot,
+                  done && styles.progressDotOn,
+                  current && styles.progressDotCurrent,
+                ]}
+              />
+              {index < steps.length - 1 ? (
+                <View
+                  style={[
+                    styles.progressLine,
+                    index < activeIndex && styles.progressLineOn,
+                  ]}
+                />
+              ) : (
+                <View style={styles.progressLineSpacer} />
+              )}
+            </View>
+            <Text
+              style={[
+                styles.progressLabel,
+                done && styles.progressLabelOn,
+                current && styles.progressLabelCurrent,
+              ]}
+            >
+              {label}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
   );
 }
 
@@ -466,41 +593,19 @@ const baseStyles = StyleSheet.create({
   },
 
   content: {
-    paddingHorizontal: 18,
-    paddingTop: 55,
-    paddingBottom: 48,
+    paddingBottom: 88,
   },
-
-  headerLabel: {
-    fontSize: 11,
-    color: '#6F6A64',
-    letterSpacing: 1,
-    fontWeight: '600',
-  },
-
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#2A2622',
-    marginTop: 2,
-  },
-
-  subtitle: {
-    fontSize: 13,
-    color: '#6F6A64',
-    marginTop: 6,
-    marginBottom: 16,
-    lineHeight: 19,
+  body: {
+    paddingHorizontal: 16,
+    marginTop: -38,
+    gap: 4,
   },
 
   confirmBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#E8EDE4',
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 16,
+    marginBottom: 8,
   },
 
   confirmText: {
@@ -518,12 +623,6 @@ const baseStyles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 20,
-  },
   upcomingSub: {
     marginTop: -8,
     marginBottom: 12,
@@ -535,14 +634,41 @@ const baseStyles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 12,
   },
+  statusRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 6,
+  },
   statusChip: {
     alignSelf: 'flex-start',
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    marginBottom: 6,
+  },
+  approveChip: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EAF6EA',
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    marginBottom: 10,
+  },
+  approveChipText: {
+    color: '#2F9E6B',
+    fontSize: 12,
+    fontWeight: '700',
   },
   statusConfirmed: {
+    backgroundColor: '#EAF6EA',
+  },
+  statusPending: {
+    backgroundColor: '#F4EFE2',
+  },
+  statusApproved: {
     backgroundColor: '#EAF6EA',
   },
   statusExtra: {
@@ -554,6 +680,73 @@ const baseStyles = StyleSheet.create({
   },
   statusConfirmedText: {
     color: '#2F9E6B',
+  },
+  statusPendingText: {
+    color: '#9A7B3C',
+  },
+  statusApprovedText: {
+    color: '#2F9E6B',
+  },
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  progressStep: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  progressTrack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 6,
+  },
+  progressLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: '#E2E8E4',
+  },
+  progressLineOn: {
+    backgroundColor: '#8B9A7C',
+  },
+  progressLineSpacer: {
+    flex: 1,
+  },
+  progressDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#D5DED8',
+  },
+  progressDotOn: {
+    backgroundColor: '#8B9A7C',
+  },
+  progressDotCurrent: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#5E7A62',
+  },
+  progressLabel: {
+    fontSize: 10,
+    color: '#9AA3AF',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  progressLabelOn: {
+    color: '#5C6B65',
+  },
+  progressLabelCurrent: {
+    color: '#1A3A32',
+    fontWeight: '700',
+  },
+  progressNote: {
+    fontSize: 11,
+    color: '#5C6B65',
+    marginBottom: 8,
+    lineHeight: 15,
   },
   statusExtraText: {
     color: '#5C6B65',

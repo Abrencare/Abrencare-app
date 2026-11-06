@@ -8,14 +8,37 @@ export const styles = StyleSheet.create({
     backgroundColor: '#F7F8F6',
     flex: 1,
   },
+  hero: {
+    backgroundColor: '#1A3A32',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    paddingBottom: 52,
+    overflow: 'hidden',
+  },
+  heroPhoto: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  heroFade: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
   headerWrap: {
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 4,
   },
   content: {
     paddingBottom: 120,
+  },
+  body: {
+    marginTop: -36,
     paddingHorizontal: 20,
-    paddingTop: 4,
     gap: 16,
   },
   continueCard: {
@@ -239,6 +262,22 @@ export const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 13,
     marginLeft: 8,
+  },
+  legalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  legalLink: {
+    fontSize: 12,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  legalDot: {
+    fontSize: 12,
   },
   bottomNav: {
     backgroundColor: colors.card,

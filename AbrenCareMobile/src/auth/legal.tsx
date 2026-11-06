@@ -2,7 +2,8 @@ import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router/build/useFocusEffect';
 
 import FamilyRequestChrome from '@/auth/FamilyRequestChrome';
 import { useAppTheme } from '@/context/ThemeContext';

@@ -3,13 +3,19 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-import BrandLogo from '@/components/ui/BrandLogo';
+import BrandLogo, { BrandHomeLink } from '@/components/ui/BrandLogo';
+import {
+  FLOW_CHIP,
+  FLOW_CHIP_BORDER,
+  FLOW_INK,
+  FLOW_MUTED,
+} from '@/components/ui/FlowGlassHero';
 import { useAuth } from '@/context/AuthContext';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useHomeNotifications } from '@/hooks/useHomeNotifications';
 
-export default function Header() {
+export default function Header({ tone = 'page' }: { tone?: 'page' | 'hero' }) {
   const router = useRouter();
   const { t, language, setLanguage } = useLanguage();
   const { colors, isDark, toggleTheme } = useAppTheme();
@@ -17,6 +23,12 @@ export default function Header() {
   const notices = useHomeNotifications();
   const [menuOpen, setMenuOpen] = useState(false);
   const hasDot = notices.length > 0;
+  const onHero = tone === 'hero';
+  const ink = onHero ? FLOW_INK.family : colors.text;
+  const muted = onHero ? FLOW_MUTED.family : colors.muted;
+  const icon = onHero ? FLOW_INK.family : colors.icon;
+  const button = onHero ? FLOW_CHIP : colors.button;
+  const buttonBorder = onHero ? FLOW_CHIP_BORDER : colors.buttonBorder;
 
   function openNotice(href: string) {
     setMenuOpen(false);
@@ -25,26 +37,26 @@ export default function Header() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.leftSection}>
-        <BrandLogo size={42} />
+      <BrandHomeLink style={styles.leftSection}>
+        <BrandLogo size={42} link={false} />
         <View>
-          <Text style={[styles.brandName, { color: colors.text }]}>{t.header.brand}</Text>
+          <Text style={[styles.brandName, { color: ink }]}>{t.header.brand}</Text>
           <View style={styles.locationRow}>
-            <Ionicons name="location-outline" size={11} color={colors.muted} />
-            <Text style={[styles.locationText, { color: colors.muted }]}>{t.header.location}</Text>
+            <Ionicons name="location-outline" size={11} color={muted} />
+            <Text style={[styles.locationText, { color: muted }]}>{t.header.location}</Text>
           </View>
         </View>
-      </View>
+      </BrandHomeLink>
 
       <View style={styles.rightSection}>
         <Pressable
           onPress={() => setLanguage(language === 'en' ? 'am' : 'en')}
           style={[
             styles.iconButton,
-            { backgroundColor: colors.button, borderColor: colors.buttonBorder },
+            { backgroundColor: button, borderColor: buttonBorder },
           ]}
         >
-          <Text style={[styles.langText, { color: colors.text }]}>
+          <Text style={[styles.langText, { color: ink }]}>
             {language === 'en' ? 'EN' : 'አማ'}
           </Text>
         </Pressable>
@@ -54,23 +66,23 @@ export default function Header() {
           onPress={toggleTheme}
           style={[
             styles.iconButton,
-            { backgroundColor: colors.button, borderColor: colors.buttonBorder },
+            { backgroundColor: button, borderColor: buttonBorder },
           ]}
         >
           <Ionicons
             name={isDark ? 'sunny-outline' : 'moon-outline'}
             size={18}
-            color={colors.icon}
+            color={icon}
           />
         </Pressable>
         <Pressable
           onPress={() => setMenuOpen(true)}
           style={[
             styles.iconButton,
-            { backgroundColor: colors.button, borderColor: colors.buttonBorder },
+            { backgroundColor: button, borderColor: buttonBorder },
           ]}
         >
-          <Ionicons name="notifications-outline" size={18} color={colors.icon} />
+          <Ionicons name="notifications-outline" size={18} color={icon} />
           {hasDot ? (
             <View style={[styles.notificationDot, { borderColor: colors.button }]} />
           ) : null}

@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router/build/useFocusEffect';
 
 import FamilyRequestChrome from '@/auth/FamilyRequestChrome';
 import { useLanguage } from '@/context/LanguageContext';
@@ -65,16 +66,20 @@ export default function FamilyInboxScreen() {
             style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
           >
             <Text style={[type.caption, { color: colors.muted }]}>{statusLabel(item.status)}</Text>
-            <Text style={[type.label, { color: colors.text, marginTop: 6 }]}>{item.name}</Text>
-            <Text style={[styles.line, type.bodySmall, { color: colors.muted }]}>{item.phone}</Text>
-            {item.email ? (
-              <Text style={[styles.line, type.bodySmall, { color: colors.muted }]}>{item.email}</Text>
-            ) : null}
-            <Text style={[styles.line, type.bodySmall, { color: colors.muted }]}>
-              {t.countries[item.country]} · {copy.cities[item.city]}
+            <Text style={[type.label, { color: colors.text, marginTop: 6 }]}>
+              {item.patientName}
             </Text>
             <Text style={[styles.line, type.bodySmall, { color: colors.muted }]}>
-              {copy.supports[item.support]} · {copy.contacts[item.contact]}
+              {copy.patientSection}: {item.patientPhone} · {t.countries[item.patientCountry]}
+            </Text>
+            <Text style={[styles.line, type.bodySmall, { color: colors.muted }]}>
+              {copy.caregiverSection}: {item.name} · {item.phone}
+            </Text>
+            <Text style={[styles.line, type.bodySmall, { color: colors.muted }]}>
+              {t.countries[item.country]} · {copy.relationships[item.caregiverRelationship]}
+            </Text>
+            <Text style={[styles.line, type.bodySmall, { color: colors.muted }]}>
+              {copy.supports[item.support]}
             </Text>
             <Text style={[styles.time, type.caption, { color: colors.muted }]}>
               {new Date(item.submittedAt).toLocaleString()}

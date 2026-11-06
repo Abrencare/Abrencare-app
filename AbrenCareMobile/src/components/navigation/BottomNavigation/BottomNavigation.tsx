@@ -33,7 +33,7 @@ export default function BottomNavigation() {
       icon: "home-outline",
       activeIcon: "home",
       active: true,
-      route: "/(tabs)",
+      route: routes.home,
     },
     {
       key: "myCare",

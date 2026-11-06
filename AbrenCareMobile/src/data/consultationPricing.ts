@@ -13,3 +13,10 @@ export function formatEtb(amount: number) {
 export function priceLabel(kind: VisitKind) {
   return kind === 'video' ? 'Video visit' : 'Message visit';
 }
+
+export function parseVisitKind(value: unknown): VisitKind {
+  if (value === 'message' || value === 'audio') {
+    return 'message';
+  }
+  return 'video';
+}

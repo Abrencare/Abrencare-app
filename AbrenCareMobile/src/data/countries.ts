@@ -129,3 +129,57 @@ export function isPhoneValueComplete(value: string) {
   const { country, national } = splitPhone(value);
   return isPhoneComplete(country, national);
 }
+
+/**
+ * Keeps national input within the selected country's digit budget.
+ * Strips a pasted dial code (e.g. 251… for Ethiopia) and optional leading 0.
+ * Ethiopia local style: 09XXXXXXXX (10 chars) → 9 significant digits after +251.
+ */
+export function limitNationalInput(country: Country, raw: string) {
+  let digits = digitsOf(raw);
+  const dial = digitsOf(country.dialCode);
+
+  if (dial && digits.startsWith(`00${dial}`)) {
+    digits = digits.slice(2 + dial.length);
+  } else if (dial && digits.startsWith(dial) && digits.length > dial.length) {
+    digits = digits.slice(dial.length);
+  }
+
+  const hadTrunk = digits.startsWith('0');
+  const significant = digits.replace(/^0+/, '');
+  const overLimit = significant.length > country.maxDigits;
+  const clipped = significant.slice(0, country.maxDigits);
+  const national =
+    hadTrunk && clipped.length > 0 ? `0${clipped}` : clipped;
+
+  return { national, overLimit, significantLength: clipped.length };
+}
+
+/** Soft max characters shown in the national field (allows one trunk 0). */
+export function nationalInputMaxLength(country: Country) {
+  return country.maxDigits + 1;
+}
+
+export type PhoneIssue = 'empty' | 'incomplete' | 'tooLong' | null;
+
+export function phoneIssueFor(country: Country, national: string): PhoneIssue {
+  const digits = nationalDigits(national);
+  if (!digits) {
+    return 'empty';
+  }
+  if (digits.length > country.maxDigits) {
+    return 'tooLong';
+  }
+  if (digits.length < country.minDigits) {
+    return 'incomplete';
+  }
+  return null;
+}
+
+export function phoneIssueForValue(value: string): PhoneIssue {
+  if (!value.trim()) {
+    return 'empty';
+  }
+  const { country, national } = splitPhone(value);
+  return phoneIssueFor(country, national);
+}

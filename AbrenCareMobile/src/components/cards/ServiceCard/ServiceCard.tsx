@@ -7,17 +7,15 @@ import { useLandingType } from "@/theme/landingType";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   Dimensions,
-  Image,
-  type ImageSourcePropType,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
   Text,
   View,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   Extrapolation,
   interpolate,
@@ -26,6 +24,8 @@ import Animated, {
   useSharedValue,
   type SharedValue,
 } from "react-native-reanimated";
+
+import { GlassCard, glassTints, withAlpha } from "@/components/executive/GlassCard";
 
 import styles from "./ServiceCard.styles";
 
@@ -42,16 +42,8 @@ type ServiceItem = {
   accentColor: string;
   iconBackground: string;
   cardBackground: string;
-  backgroundPhoto?: ImageSourcePropType;
   tags?: string[];
 };
-
-function withAlpha(hex: string, alpha: number) {
-  const raw = hex.replace("#", "");
-  const full = raw.length === 3 ? raw.split("").map((part) => part + part).join("") : raw;
-  const value = Number.parseInt(full, 16);
-  return `rgba(${(value >> 16) & 255},${(value >> 8) & 255},${value & 255},${alpha})`;
-}
 
 type Props = {
   services?: ServiceItem[];
@@ -61,6 +53,7 @@ export default function ServiceCard({ services }: Props) {
   const router = useRouter();
   const { t } = useLanguage();
   const { colors, isDark } = useAppTheme();
+  const homeGlass = glassTints(isDark, "family");
   const homeType = useLandingType("family");
   const { hasService, needsOnboarding } = useAuth();
   const familyTheme = getServiceTheme("family", isDark);
@@ -82,7 +75,6 @@ export default function ServiceCard({ services }: Props) {
       accentColor: familyTheme.accent,
       iconBackground: familyTheme.accent,
       cardBackground: familyTheme.card,
-      backgroundPhoto: require("@/assets/images/service-family-bg.jpg"),
       tags: [...t.home.familyTags],
     },
     {
@@ -95,7 +87,6 @@ export default function ServiceCard({ services }: Props) {
       accentColor: executiveTheme.accent,
       iconBackground: executiveTheme.accent,
       cardBackground: executiveTheme.card,
-      backgroundPhoto: require("@/assets/images/service-executive-bg.jpg"),
       tags: [...t.home.executiveTags],
     },
     {
@@ -108,7 +99,6 @@ export default function ServiceCard({ services }: Props) {
       accentColor: consultationTheme.accent,
       iconBackground: consultationTheme.accent,
       cardBackground: consultationTheme.card,
-      backgroundPhoto: require("@/assets/images/service-consultation-bg.jpg"),
       tags: [...t.home.consultationTags],
     },
   ];
@@ -129,6 +119,10 @@ export default function ServiceCard({ services }: Props) {
   };
 
   const handleChoose = (service: CareService) => {
+    if (service === "consultation") {
+      router.push({ pathname: "/service", params: { service } });
+      return;
+    }
     if (hasService(service) && !needsOnboarding(service)) {
       router.push(dashboardFor(service));
       return;
@@ -155,7 +149,16 @@ export default function ServiceCard({ services }: Props) {
           <Text style={[styles.headerTitle, homeType.kicker, { color: colors.muted }]}>{t.home.ourServices}</Text>
           <Text style={[styles.headerHint, homeType.caption, { color: colors.muted }]}>{t.home.swipeHint}</Text>
         </View>
-        <View style={[styles.swipeCue, { backgroundColor: colors.card }]}>
+        <View
+          style={[
+            styles.swipeCue,
+            {
+              backgroundColor: homeGlass.well,
+              borderColor: homeGlass.wellBorder,
+              borderWidth: 1,
+            },
+          ]}
+        >
           <Ionicons name="swap-horizontal" size={16} color={colors.iconMuted} />
         </View>
       </View>
@@ -198,6 +201,7 @@ export default function ServiceCard({ services }: Props) {
             bodyColor={colors.muted}
             featureColor={colors.text}
             onChoose={() => handleChoose(item.id as CareService)}
+            isDark={isDark}
           />
         )}
       />
@@ -218,7 +222,13 @@ export default function ServiceCard({ services }: Props) {
         ))}
       </View>
 
-      <View style={[styles.statsContainer, { backgroundColor: colors.card }]}>
+      <GlassCard
+        tint={homeGlass.card}
+        border={homeGlass.border}
+        sheen={homeGlass.sheen}
+        shadowColor="#16332C"
+        style={[styles.statsContainer, { backgroundColor: homeGlass.card }]}
+      >
         <View style={styles.statItem}>
           <Text style={[styles.statNumber, homeType.section, { color: colors.text }]}>+500</Text>
           <Text style={[styles.statLabel, homeType.caption, { color: colors.muted }]}>{t.home.familiesServed}</Text>
@@ -237,7 +247,7 @@ export default function ServiceCard({ services }: Props) {
           <Text style={[styles.statNumber, homeType.section, { color: colors.text }]}>16yr</Text>
           <Text style={[styles.statLabel, homeType.caption, { color: colors.muted }]}>{t.home.gapClosing}</Text>
         </View>
-      </View>
+      </GlassCard>
 
       <View style={styles.footer}>
         <Ionicons name="shield-checkmark-outline" size={17} color={colors.iconMuted} />
@@ -257,6 +267,7 @@ function ServiceSlide({
   bodyColor,
   featureColor,
   onChoose,
+  isDark,
 }: {
   item: ServiceItem;
   index: number;
@@ -267,8 +278,10 @@ function ServiceSlide({
   bodyColor: string;
   featureColor: string;
   onChoose: () => void;
+  isDark: boolean;
 }) {
   const type = useLandingType(item.id as CareService);
+  const glass = glassTints(isDark, item.id as CareService);
   const step = cardWidth + CARD_GAP;
 
   const cardStyle = useAnimatedStyle(() => {
@@ -321,7 +334,6 @@ function ServiceSlide({
         {
           width: cardWidth,
           marginRight: CARD_GAP,
-          boxShadow: "0 10px 28px rgba(42, 38, 34, 0.14)",
         },
       ]}
     >
@@ -330,33 +342,23 @@ function ServiceSlide({
         style={[
           styles.card,
           {
-            backgroundColor: item.cardBackground,
-            borderColor: item.accentColor + "99",
+            backgroundColor: item.cardBackground || glass.card,
+            borderColor: withAlpha(item.accentColor, isDark ? 0.28 : 0.18),
           },
         ]}
       >
-        {item.backgroundPhoto ? (
-          <>
-            <Image
-              source={item.backgroundPhoto}
-              style={styles.backgroundPhoto}
-              resizeMode="cover"
-            />
-            <LinearGradient
-              colors={[
-                item.cardBackground,
-                withAlpha(item.cardBackground, 0.96),
-                withAlpha(item.cardBackground, 0.55),
-                withAlpha(item.cardBackground, 0.08),
-              ]}
-              locations={[0, 0.36, 0.62, 1]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={styles.backgroundFade}
-            />
-          </>
-        ) : null}
-
+        <LinearGradient
+          colors={[
+            withAlpha(item.accentColor, isDark ? 0.14 : 0.08),
+            withAlpha(item.accentColor, 0.02),
+            "rgba(255,255,255,0)",
+          ]}
+          locations={[0, 0.42, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.glowWash}
+          pointerEvents="none"
+        />
         <View style={styles.cardContent}>
         <View style={styles.cardHeader}>
           <Animated.View
@@ -400,7 +402,7 @@ function ServiceSlide({
                 key={`${item.id}-tag-${tagIndex}`}
                 style={[
                   styles.tag,
-                  { backgroundColor: `${item.accentColor}22` },
+                  { backgroundColor: withAlpha(item.accentColor, isDark ? 0.22 : 0.12) },
                 ]}
               >
                 <Text style={[styles.tagText, type.kicker, { color: item.accentColor }]}>
