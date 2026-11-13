@@ -43,7 +43,7 @@ import { isValidEmail } from '@/utilities/validation';
 
 const FILL = '#1A3A32';
 const DANGER = '#D64545';
-const PAGES = [0, 1, 2] as const;
+const PAGES = [0, 1] as const;
 
 const COMMON_DOMAINS: Record<string, string> = {
   'gmai.com': 'gmail.com',
@@ -54,6 +54,14 @@ const COMMON_DOMAINS: Record<string, string> = {
   'yaho.com': 'yahoo.com',
   'yahooo.com': 'yahoo.com',
   'yaho.co': 'yahoo.com',
+  'yahho.com': 'yahoo.com',
+  'yaoo.com': 'yahoo.com',
+  'yahu.com': 'yahoo.com',
+  'yaaho.com': 'yahoo.com',
+  'yahoo.con': 'yahoo.com',
+  'yahoo.co': 'yahoo.com',
+  'yahoo.cm': 'yahoo.com',
+  'yahoo.om': 'yahoo.com',
   'yhoo.com': 'yahoo.com',
   'outlok.com': 'outlook.com',
   'outlook.co': 'outlook.com',
@@ -129,10 +137,12 @@ export default function FamilyRequestScreen() {
   const pageRef = useRef(0);
   const pageWidthRef = useRef(0);
   const heightAnim = useRef(new Animated.Value(0)).current;
+  const programmaticScrollRef = useRef(false);
+  const programmaticTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [page, setPage] = useState(0);
   const [pageWidth, setPageWidth] = useState(0);
-  const [pageHeights, setPageHeights] = useState<number[]>([0, 0, 0]);
+  const [pageHeights, setPageHeights] = useState<number[]>([0, 0]);
   const [familyName, setFamilyName] = useState('');
   const [familyPhone, setFamilyPhone] = useState('');
   const [familyEmail, setFamilyEmail] = useState('');
@@ -178,7 +188,7 @@ export default function FamilyRequestScreen() {
   const emailDomainOk = isEmailDomainValid(emailTrimmed);
   const emailOk = emailFormatOk && emailDomainOk;
   const emailSuggestion = suggestEmailCorrection(emailTrimmed);
-  const emailShowError = touched.familyEmail && emailTrimmed.length > 0 && !emailOk;
+  const emailShowError = emailTrimmed.length > 0 && !emailOk;
   const familyNameOk = familyName.trim().length > 1;
   const patientNameOk = patientName.trim().length > 1;
   const patientDobOk = isValidIsoDateOfBirth(patientDateOfBirth);
@@ -221,8 +231,25 @@ export default function FamilyRequestScreen() {
     setOpen(null);
     const width = pageWidthRef.current;
     if (width > 0) {
+      // Ignore onScroll updates while our own animated scroll is running,
+      // otherwise the in-between offsets would flip the page back and forth.
+      programmaticScrollRef.current = true;
+      if (programmaticTimerRef.current) clearTimeout(programmaticTimerRef.current);
+      programmaticTimerRef.current = setTimeout(() => {
+        programmaticScrollRef.current = false;
+      }, 600);
       scrollRef.current?.scrollTo({ x: clamped * width, animated: true });
     }
+  }
+
+  // On web (trackpad / mouse swipe) onMomentumScrollEnd often never fires, which
+  // left `page` stuck on 0 while page 2 was on screen, so the card kept page 1's
+  // height and clipped the support section. Track the page while scrolling too.
+  function onPagerScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
+    if (programmaticScrollRef.current) return;
+    const width = pageWidthRef.current;
+    if (width <= 0) return;
+    applyPage(Math.round(event.nativeEvent.contentOffset.x / width));
   }
 
   function onPagerLayout(event: LayoutChangeEvent) {
@@ -292,12 +319,20 @@ export default function FamilyRequestScreen() {
             showsHorizontalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             scrollEventThrottle={16}
+            onScroll={onPagerScroll}
             onMomentumScrollEnd={onPagerSettle}
             style={{ width: pageWidth }}
-            contentContainerStyle={Platform.OS === 'web' ? webScrollContent : undefined}
+            contentContainerStyle={[
+              { alignItems: 'flex-start' },
+              Platform.OS === 'web' ? webScrollContent : null,
+            ]}
           >
             {/* Page 0: Family Member Details */}
-            <View onLayout={(e) => onPageContentLayout(0, e)} style={[styles.page, { width: pageWidth }]}>
+            <MeasuredPage
+              width={pageWidth}
+              height={pageHeights[0]}
+              onContentLayout={(e) => onPageContentLayout(0, e)}
+            >
               <FormSection
                 title={copy.familyMemberTitle}
                 subtitle={copy.familyMemberSubtitle}
@@ -316,7 +351,12 @@ export default function FamilyRequestScreen() {
                   placeholder={copy.yourNamePlaceholder}
                   placeholderTextColor={theme.muted}
                   autoCapitalize="words"
-                  style={[styles.input, type.body, field, invalidField(touched.familyName && !familyNameOk, theme.text)]}
+                  style={[
+                    styles.input,
+                    type.body,
+                    field,
+                    invalidField(touched.familyName && !familyNameOk, theme.text),
+                  ]}
                 />
                 {touched.familyName && !familyNameOk ? (
                   <Text style={styles.fieldError}>{t.validation.required}</Text>
@@ -362,7 +402,9 @@ export default function FamilyRequestScreen() {
                 />
                 {emailShowError ? (
                   <Text style={styles.fieldError}>
-                    {!emailFormatOk ? t.validation.emailInvalid : 'Please check your email domain spelling (e.g., yahoo.com)'}
+                    {!emailFormatOk
+                      ? t.validation.emailInvalid
+                      : 'Please check your email domain spelling (e.g., yahoo.com)'}
                   </Text>
                 ) : null}
 
@@ -378,10 +420,14 @@ export default function FamilyRequestScreen() {
                   </Pressable>
                 ) : null}
               </FormSection>
-            </View>
+            </MeasuredPage>
 
-            {/* Page 1: Patient Details */}
-            <View onLayout={(e) => onPageContentLayout(1, e)} style={[styles.page, { width: pageWidth }]}>
+            {/* Page 1: Patient Details + Support Requirements */}
+            <MeasuredPage
+              width={pageWidth}
+              height={pageHeights[1]}
+              onContentLayout={(e) => onPageContentLayout(1, e)}
+            >
               <FormSection
                 title={copy.patientTitle}
                 subtitle={copy.patientSubtitle}
@@ -400,7 +446,12 @@ export default function FamilyRequestScreen() {
                   placeholder={copy.patientNamePlaceholder}
                   placeholderTextColor={theme.muted}
                   autoCapitalize="words"
-                  style={[styles.input, type.body, field, invalidField(touched.patientName && !patientNameOk, theme.text)]}
+                  style={[
+                    styles.input,
+                    type.body,
+                    field,
+                    invalidField(touched.patientName && !patientNameOk, theme.text),
+                  ]}
                 />
                 {touched.patientName && !patientNameOk ? (
                   <Text style={styles.fieldError}>{t.validation.required}</Text>
@@ -444,37 +495,37 @@ export default function FamilyRequestScreen() {
                   placeholder="9XXXXXXXX"
                   showValidation
                 />
-              </FormSection>
-            </View>
 
-            {/* Page 2: Support Requirements */}
-            <View onLayout={(e) => onPageContentLayout(2, e)} style={[styles.page, { width: pageWidth }]}>
-              <FormSection
-                title={copy.supportTitle}
-                subtitle={copy.supportSubtitle}
-                caption={copy.supportCaption}
-                titleColor={theme.text}
-                muted={theme.muted}
-                type={type}
-                cardTint={glass.card}
-                cardBorder={glass.border}
-              >
-                <Select
-                  label={copy.support}
-                  value={support ? copy.supports[support] : copy.selectSupport}
-                  placeholder={!support}
-                  open={open === 'support'}
-                  onToggle={() => setOpen(open === 'support' ? null : 'support')}
-                  options={SUPPORTS.map((id) => ({ id, label: copy.supports[id] }))}
-                  onSelect={(id) => {
-                    setSupport(id as FamilySupportId);
-                    setOpen(null);
-                  }}
-                  theme={theme}
-                  type={type}
-                />
+                {/* Support requirements (previously its own page) */}
+                <View style={[styles.subSection, { borderTopColor: glass.border }]}>
+                  <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                    {copy.supportTitle}
+                  </Text>
+                  <Text style={[styles.sectionSubtitle, { color: theme.muted }]}>
+                    {copy.supportSubtitle}
+                  </Text>
+
+                  <Select
+                    label={copy.support}
+                    value={support ? copy.supports[support] : copy.selectSupport}
+                    placeholder={!support}
+                    open={open === 'support'}
+                    onToggle={() => setOpen(open === 'support' ? null : 'support')}
+                    options={SUPPORTS.map((id) => ({ id, label: copy.supports[id] }))}
+                    onSelect={(id) => {
+                      setSupport(id as FamilySupportId);
+                      setOpen(null);
+                    }}
+                    theme={theme}
+                    type={type}
+                  />
+
+                  <Text style={[styles.subSectionCaption, type.caption, { color: theme.muted }]}>
+                    {copy.supportCaption}
+                  </Text>
+                </View>
               </FormSection>
-            </View>
+            </MeasuredPage>
           </ScrollView>
         ) : null}
       </Animated.View>
@@ -605,6 +656,32 @@ export default function FamilyRequestScreen() {
         <Text style={[type.button, { color: theme.text }]}>{t.common.back}</Text>
       </Pressable>
     </ServiceFlowShell>
+  );
+}
+
+/**
+ * A pager page whose height is driven by its own content.
+ * The content is measured inside an absolutely positioned wrapper, so the
+ * measurement is always the content's natural height and can never be
+ * stretched (or clipped) by the pager's current height.
+ */
+function MeasuredPage({
+  width,
+  height,
+  onContentLayout,
+  children,
+}: {
+  width: number;
+  height: number;
+  onContentLayout: (event: LayoutChangeEvent) => void;
+  children: ReactNode;
+}) {
+  return (
+    <View style={[styles.page, { width, height: height > 0 ? height : undefined }]}>
+      <View onLayout={onContentLayout} style={styles.pageMeasure}>
+        {children}
+      </View>
+    </View>
   );
 }
 
@@ -743,7 +820,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   page: {
-    paddingRight: 2,
+    alignSelf: 'flex-start',
+    overflow: 'hidden',
+  },
+  pageMeasure: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 2,
   },
   sectionTitle: {
     fontSize: 15,
@@ -766,6 +850,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 12,
     lineHeight: 16,
+  },
+  subSection: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    marginTop: 6,
+    paddingTop: 18,
+  },
+  subSectionCaption: {
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: -6,
   },
   noteCard: {
     flexDirection: 'row',

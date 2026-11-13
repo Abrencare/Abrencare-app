@@ -8,8 +8,13 @@ import ExecutiveWizardChrome from '@/auth/ExecutiveWizardChrome';
 import Replace from '@/components/gates/Replace';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { loadExecutiveInquiry, type ExecutiveInquiry } from '@/data/executiveInquiry';
-import { executiveCareEntry } from '@/service/serviceTheme';
+import {
+  activateExecutiveCare,
+  loadExecutiveInquiry,
+  markExecutiveSetupStarted,
+  type ExecutiveInquiry,
+} from '@/data/executiveInquiry';
+import { dashboardFor } from '@/service/serviceTheme';
 import { useLandingType } from '@/theme/landingType';
 import { useExecutiveTheme } from '@/theme/executiveTheme';
 
@@ -17,14 +22,48 @@ export default function ExecutiveRequestStatusScreen() {
   const router = useRouter();
   const { t } = useLanguage();
   const flow = t.executiveFlow;
+  const request = t.executiveRequest;
   const type = useLandingType('executive');
   const c = useExecutiveTheme();
-  const { user, hasService, needsOnboarding } = useAuth();
+  const { user, hasService } = useAuth();
   const [inquiry, setInquiry] = useState<ExecutiveInquiry | null | undefined>(undefined);
 
   useEffect(() => {
-    loadExecutiveInquiry().then(setInquiry);
-  }, []);
+    let cancelled = false;
+
+    async function load() {
+      const current = await loadExecutiveInquiry();
+      if (cancelled) {
+        return;
+      }
+
+      // Once the request is accepted, activate care and open the executive dashboard.
+      if (
+        current &&
+        (current.status === 'accepted' ||
+          current.status === 'setup' ||
+          current.status === 'active') &&
+        user &&
+        hasService('executive')
+      ) {
+        if (current.status !== 'active') {
+          await markExecutiveSetupStarted(current.id);
+          await activateExecutiveCare(current.id);
+        }
+        if (!cancelled) {
+          router.replace(dashboardFor('executive'));
+        }
+        return;
+      }
+
+      setInquiry(current);
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [hasService, router, user]);
 
   if (inquiry === undefined) {
     return (
@@ -50,22 +89,34 @@ export default function ExecutiveRequestStatusScreen() {
       showProgress={false}
       showBack={false}
       footer={
-        <Pressable
-          style={({ pressed }) => [
-            styles.primary,
-            { backgroundColor: c.accent },
-            pressed && styles.pressed,
-          ]}
-          onPress={() => {
-            if (user && hasService('executive')) {
-              router.push(executiveCareEntry(user, hasService, needsOnboarding));
-              return;
-            }
-            router.replace('/(tabs)');
-          }}
-        >
-          <Text style={[styles.primaryText, type.button, { color: c.onAccent }]}>{flow.backToHome}</Text>
-        </Pressable>
+        <View style={styles.footer}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.primary,
+              { backgroundColor: c.accent },
+              pressed && styles.pressed,
+            ]}
+            onPress={() => router.push('/executive-care-plan')}
+          >
+            <Text style={[styles.primaryText, type.button, { color: c.onAccent }]}>
+              {request.viewPlan}
+            </Text>
+            <Ionicons name="document-text-outline" size={16} color={c.onAccent} />
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.secondary,
+              { borderColor: c.divider, backgroundColor: c.accentSoft },
+              pressed && styles.pressed,
+            ]}
+            onPress={() => router.replace('/(tabs)')}
+          >
+            <Text style={[styles.secondaryText, type.button, { color: c.text }]}>
+              {flow.backToHome}
+            </Text>
+          </Pressable>
+        </View>
       }
     >
       <View style={styles.hero}>
@@ -104,7 +155,6 @@ export default function ExecutiveRequestStatusScreen() {
           );
         })}
       </View>
-
     </ExecutiveWizardChrome>
   );
 }
@@ -155,12 +205,25 @@ const styles = StyleSheet.create({
   pointText: {
     flex: 1,
   },
+  footer: {
+    gap: 10,
+  },
   primary: {
     height: 54,
     borderRadius: 27,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  primaryText: {},
+  secondary: {
+    height: 54,
+    borderRadius: 27,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryText: {},
+  secondaryText: {},
   pressed: { opacity: 0.88 },
 });

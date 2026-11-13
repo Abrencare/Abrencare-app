@@ -21,14 +21,17 @@ function familyProposal(name: string): Omit<FamilyProposal, 'sharedAt'> {
   return {
     recipient: name,
     services: 'Home visits, health checks, follow-up and visit reports',
-    visitFrequency: 'As discussed with your care advisor',
-    planDuration: 'Prepared after consultation',
-    quoteAmount: '',
-    quoteCurrency: '',
-    billingPeriod: 'Private quotation shared by your care advisor.',
-    exclusions: '',
-    paymentTerms: '',
-    cancellationTerms: 'Accepting this plan does not start visits. Care is set up after registration.',
+    visitFrequency: '1 nurse visit per week',
+    planDuration: '3 months',
+    quoteAmount: '12,500',
+    quoteCurrency: 'ETB',
+    billingPeriod: 'Billed monthly in advance',
+    exclusions:
+      'Lab tests, specialist fees, extra visits outside the weekly schedule, and emergency transport are not included.',
+    paymentTerms:
+      'Pay the monthly fee before each billing period starts. Receipts are shared with the account holder.',
+    cancellationTerms:
+      'Cancel with 14 days notice. Visits already completed remain payable. Accepting this plan does not start visits until registration is complete.',
   };
 }
 
@@ -36,14 +39,17 @@ function executiveProposal(name: string): Omit<ExecutiveProposal, 'sharedAt'> {
   return {
     recipient: name,
     services: 'Home or office check-ins, physician review and health follow-up',
-    visitFrequency: 'As discussed with your care advisor',
-    planDuration: 'Prepared after consultation',
-    quoteAmount: '',
-    quoteCurrency: '',
-    billingPeriod: 'Private quotation shared by your care advisor.',
-    exclusions: '',
-    paymentTerms: '',
-    cancellationTerms: 'Accepting this plan does not start visits. Care is set up after registration.',
+    visitFrequency: '2 physician-led visits per month',
+    planDuration: '3 months',
+    quoteAmount: '28,500',
+    quoteCurrency: 'ETB',
+    billingPeriod: 'Billed monthly in advance',
+    exclusions:
+      'Lab tests, specialist referrals, hospital admissions, and travel outside Addis Ababa are not included.',
+    paymentTerms:
+      'Pay the monthly fee before each billing period starts. Receipts are shared with the account holder.',
+    cancellationTerms:
+      'Cancel with 14 days notice. Visits already completed remain payable. Accepting this plan does not start visits until registration is complete.',
   };
 }
 
@@ -57,7 +63,10 @@ export async function prepareFamilyPlan(id: string): Promise<FamilyInquiry | nul
     await markFamilyContacted(id);
     item = (await loadFamilyInquiryById(id)) ?? item;
   }
-  if (item.status === 'contacted') {
+  if (
+    item.status === 'contacted' ||
+    (item.status === 'proposed' && !item.proposal?.quoteAmount?.trim())
+  ) {
     await shareFamilyProposal(
       id,
       familyProposal(item.patientName || item.name),
@@ -76,7 +85,10 @@ export async function prepareExecutivePlan(id: string): Promise<ExecutiveInquiry
     await markExecutiveContacted(id);
     item = (await loadExecutiveInquiryById(id)) ?? item;
   }
-  if (item.status === 'contacted') {
+  if (
+    item.status === 'contacted' ||
+    (item.status === 'proposed' && !item.proposal?.quoteAmount?.trim())
+  ) {
     await shareExecutiveProposal(id, executiveProposal(item.name));
     item = (await loadExecutiveInquiryById(id)) ?? item;
   }

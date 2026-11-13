@@ -68,7 +68,7 @@ function executiveNotice(
       color: '#C4A05A',
       title: t.header.careAccepted,
       body: t.header.planApprovedExecutive,
-      href: '/open-care?service=executive',
+      href: '/signup?service=executive',
     };
   }
   return null;

@@ -78,7 +78,7 @@ function AuthField({
 export default memo(AuthField);
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: 14 },
+  wrap: { marginBottom: 16 },
   label: {
     fontSize: 11,
     fontWeight: '700',
@@ -96,6 +96,8 @@ const styles = StyleSheet.create({
   icon: { marginRight: 8 },
   input: {
     flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
     fontSize: 15,
     paddingVertical: 14,
   },

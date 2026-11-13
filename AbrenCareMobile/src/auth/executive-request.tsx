@@ -25,6 +25,63 @@ import {
 import { dashboardFor, onboardingPath, useServiceTheme } from '@/service/serviceTheme';
 import { useLandingType } from '@/theme/landingType';
 import { useExecutiveTheme } from '@/theme/executiveTheme';
+import { isValidEmail } from '@/utilities/validation';
+
+const DANGER = '#D64545';
+
+const COMMON_DOMAINS: Record<string, string> = {
+  'gmai.com': 'gmail.com',
+  'gmal.com': 'gmail.com',
+  'gamil.com': 'gmail.com',
+  'gnail.com': 'gmail.com',
+  'gmaill.com': 'gmail.com',
+  'yaho.com': 'yahoo.com',
+  'yahooo.com': 'yahoo.com',
+  'yaho.co': 'yahoo.com',
+  'yahho.com': 'yahoo.com',
+  'yaoo.com': 'yahoo.com',
+  'yahu.com': 'yahoo.com',
+  'yaaho.com': 'yahoo.com',
+  'yahoo.con': 'yahoo.com',
+  'yahoo.co': 'yahoo.com',
+  'yahoo.cm': 'yahoo.com',
+  'yahoo.om': 'yahoo.com',
+  'outlok.com': 'outlook.com',
+  'outloo.com': 'outlook.com',
+  'hotmai.com': 'hotmail.com',
+  'hotmal.com': 'hotmail.com',
+  'iclod.com': 'icloud.com',
+  'icoud.com': 'icloud.com',
+};
+
+function suggestEmailCorrection(email: string): string | null {
+  const parts = email.trim().toLowerCase().split('@');
+  if (parts.length !== 2) return null;
+  const [user, domain] = parts;
+  if (COMMON_DOMAINS[domain]) {
+    return `${user}@${COMMON_DOMAINS[domain]}`;
+  }
+  return null;
+}
+
+function isEmailDomainValid(email: string): boolean {
+  const trimmed = email.trim().toLowerCase();
+  const parts = trimmed.split('@');
+  if (parts.length !== 2) return false;
+  const domain = parts[1];
+  if (COMMON_DOMAINS[domain]) {
+    return false;
+  }
+  return true;
+}
+
+function invalidField(invalid: boolean, textColor: string) {
+  return {
+    color: invalid ? DANGER : textColor,
+    borderColor: invalid ? DANGER : undefined,
+    backgroundColor: invalid ? 'rgba(214,69,69,0.06)' : undefined,
+  };
+}
 
 const METHODS: { id: ExecutiveContactId; icon: keyof typeof Ionicons.glyphMap; label: 'contactPhone' | 'contactEmail' | 'contactWhatsapp' }[] = [
   { id: 'call', icon: 'call-outline', label: 'contactPhone' },
@@ -61,6 +118,7 @@ export default function ExecutiveRequestScreen() {
   const [draft, setDraft] = useState<ExecutiveRequestDraft>(emptyExecutiveDraft(detected));
   const [open, setOpen] = useState<'day' | 'slot' | null>(null);
   const [ready, setReady] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
 
   useEffect(() => {
     loadExecutiveRequestDraft().then((stored) => {
@@ -79,11 +137,19 @@ export default function ExecutiveRequestScreen() {
     return <Replace href={onboardingPath('executive')} />;
   }
 
+  const emailTrimmed = draft.email.trim();
+  const emailFormatOk = isValidEmail(emailTrimmed);
+  const emailDomainOk = isEmailDomainValid(emailTrimmed);
+  const emailOk = emailFormatOk && emailDomainOk;
+  const emailSuggestion = suggestEmailCorrection(emailTrimmed);
+  // Show as soon as the user has typed an email.
+  const emailShowError = emailTrimmed.length > 0 && !emailOk;
+
   const canNext =
     ready &&
     draft.name.trim().length > 1 &&
     isPhoneValueComplete(draft.phone) &&
-    draft.email.includes('@');
+    emailOk;
 
   function patch(update: Partial<ExecutiveRequestDraft>) {
     setDraft((current) => ({ ...current, ...update }));
@@ -149,18 +215,47 @@ export default function ExecutiveRequestScreen() {
         value={draft.phone}
         onChange={(phone) => patch({ phone })}
         placeholder={flow.phonePlaceholder}
+        showValidation
       />
 
       <Text style={[styles.label, type.label, { color: c.text }]}>{flow.emailAddress}</Text>
       <TextInput
         value={draft.email}
-        onChangeText={(email) => patch({ email })}
+        onChangeText={(email) => {
+          patch({ email });
+          if (email.trim().length > 0) {
+            setEmailTouched(true);
+          }
+        }}
+        onBlur={() => setEmailTouched(true)}
         placeholder={flow.emailPlaceholder}
         placeholderTextColor={c.muted}
         keyboardType="email-address"
         autoCapitalize="none"
-        style={[styles.input, type.body, field, { color: c.text }]}
+        autoCorrect={false}
+        style={[styles.input, type.body, field, invalidField(emailShowError, c.text)]}
       />
+      {emailShowError ? (
+        <Text style={styles.fieldError}>
+          {!emailFormatOk
+            ? t.validation.emailInvalid
+            : 'Please check your email domain spelling (e.g., yahoo.com)'}
+        </Text>
+      ) : null}
+      {emailSuggestion ? (
+        <Pressable
+          style={styles.suggestionBox}
+          onPress={() => {
+            patch({ email: emailSuggestion });
+            setEmailTouched(true);
+          }}
+        >
+          <Ionicons name="sparkles" size={14} color={c.accent} />
+          <Text style={[styles.suggestionText, { color: c.text }]}>
+            Did you mean <Text style={styles.suggestionBold}>{emailSuggestion}</Text>?
+          </Text>
+        </Pressable>
+      ) : null}
 
       <Text style={[styles.label, type.label, { color: c.text }]}>{flow.method}</Text>
       <View style={styles.optionRow}>
@@ -312,6 +407,31 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginBottom: 16,
     fontSize: 15,
+  },
+  fieldError: {
+    color: DANGER,
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: -8,
+    marginBottom: 12,
+  },
+  suggestionBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: -6,
+    marginBottom: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(196,160,90,0.12)',
+  },
+  suggestionText: {
+    fontSize: 13,
+    flexShrink: 1,
+  },
+  suggestionBold: {
+    fontWeight: '700',
   },
   optionRow: {
     flexDirection: 'row',

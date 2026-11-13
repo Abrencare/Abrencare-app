@@ -52,7 +52,7 @@ export default function ServiceHeroLanding({
 }: Props) {
   const router = useRouter();
   const type = useLandingType(service);
-  const { language, setLanguage } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
 
   return (
     <View style={styles.root}>
@@ -72,7 +72,15 @@ export default function ServiceHeroLanding({
 
       <SafeAreaView style={styles.ui} pointerEvents="box-none">
         <View style={styles.top} pointerEvents="box-none">
-          <BrandLogo size={48} />
+          <View style={styles.brandRow}>
+            <BrandLogo size={40} style={styles.brandLogo} link={false} />
+            <Text
+              style={[styles.brandWordmark, type.label]}
+              numberOfLines={2}
+            >
+              {t.welcome.brand}
+            </Text>
+          </View>
           <View style={styles.language}>
             <Pressable onPress={() => setLanguage('en')} hitSlop={10}>
               <Text style={[styles.langText, language === 'en' && { color: primaryColor, fontWeight: '700' }]}>
@@ -160,10 +168,31 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 22,
     paddingTop: 12,
+    gap: 12,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
+    gap: 10,
+    marginRight: 8,
+  },
+  brandLogo: {
+    flexShrink: 0,
+  },
+  brandWordmark: {
+    color: '#FFFFFF',
+    flex: 1,
+    minWidth: 0,
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: '700',
   },
   language: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 0,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 20,

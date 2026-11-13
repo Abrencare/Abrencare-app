@@ -212,7 +212,7 @@ export function phoneFieldIsValid(value: string) {
 const DANGER = '#D64545';
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: 14 },
+  wrap: { marginBottom: 16 },
   labelCaps: {
     fontSize: 11,
     fontWeight: '700',
@@ -226,9 +226,10 @@ const styles = StyleSheet.create({
   },
   field: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     borderWidth: 1,
     minHeight: 50,
+    overflow: 'hidden',
   },
   code: {
     flexDirection: 'row',
@@ -236,13 +237,13 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingLeft: 12,
     paddingRight: 10,
-    paddingVertical: 14,
     borderRightWidth: StyleSheet.hairlineWidth,
   },
   flag: { fontSize: 18 },
   codeText: { fontSize: 15, fontWeight: '600' },
   input: {
     flex: 1,
+    minWidth: 0,
     fontSize: 16,
     letterSpacing: 0.3,
     paddingHorizontal: 12,

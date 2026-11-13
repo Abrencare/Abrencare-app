@@ -2,7 +2,7 @@ import type { en } from '@/i18n/translations';
 
 type Copy = typeof en;
 
-export type ReportPeriod = 'week' | 'month';
+export type ReportPeriod = 'week' | 'month' | 'days60' | 'days90' | 'months6';
 
 export type ResultTone = 'normal' | 'borderline' | 'elevated' | 'monitoring';
 
@@ -77,15 +77,57 @@ const series: Record<
     hr: [77, 75, 74, 72],
     labels: (t) => t.executiveReports.weekLabels,
   },
+  days60: {
+    bp: [142, 138, 134, 128, 124, 120, 118, 118],
+    hr: [78, 77, 76, 75, 74, 73, 72, 72],
+    labels: (t) => t.executiveReports.days60Labels,
+  },
+  days90: {
+    bp: [144, 140, 136, 132, 128, 124, 120, 118, 118],
+    hr: [79, 78, 77, 76, 75, 74, 73, 72, 72],
+    labels: (t) => t.executiveReports.days90Labels,
+  },
+  months6: {
+    bp: [148, 142, 136, 130, 124, 118],
+    hr: [80, 78, 76, 75, 73, 72],
+    labels: (t) => t.executiveReports.months6Labels,
+  },
+};
+
+const PERIOD_META: Record<
+  ReportPeriod,
+  { range: (copy: Copy['executiveReports']) => string; trend: (copy: Copy['executiveReports']) => string }
+> = {
+  week: {
+    range: (copy) => copy.rangeWeek,
+    trend: (copy) => copy.trend7,
+  },
+  month: {
+    range: (copy) => copy.rangeMonth,
+    trend: (copy) => copy.trend30,
+  },
+  days60: {
+    range: (copy) => copy.range60,
+    trend: (copy) => copy.trend60,
+  },
+  days90: {
+    range: (copy) => copy.range90,
+    trend: (copy) => copy.trend90,
+  },
+  months6: {
+    range: (copy) => copy.range6Months,
+    trend: (copy) => copy.trend6Months,
+  },
 };
 
 export function buildWeeklyReport(t: Copy, period: ReportPeriod): WeeklyReport {
   const copy = t.executiveReports;
   const picked = series[period];
+  const meta = PERIOD_META[period];
 
   return {
     label: copy.weeklyLabel,
-    range: period === 'week' ? copy.rangeWeek : copy.rangeMonth,
+    range: meta.range(copy),
     physician: PHYSICIAN,
     statusTitle: copy.stable,
     statusSummary: copy.overallSummary,
@@ -145,7 +187,7 @@ export function buildWeeklyReport(t: Copy, period: ReportPeriod): WeeklyReport {
         tone: 'elevated',
       },
     ],
-    trendTitle: period === 'week' ? copy.trend7 : copy.trend30,
+    trendTitle: meta.trend(copy),
     trends: [
       {
         title: copy.bpChartTitle,

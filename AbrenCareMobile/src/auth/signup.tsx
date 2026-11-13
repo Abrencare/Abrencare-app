@@ -37,7 +37,11 @@ import {
   type FamilyCaregiverRelationshipId,
   type FamilyInquiry,
 } from '@/data/familyInquiry';
-import { loadExecutiveInquiry, markExecutiveSetupStarted } from '@/data/executiveInquiry';
+import {
+  activateExecutiveCare,
+  loadExecutiveInquiry,
+  markExecutiveSetupStarted,
+} from '@/data/executiveInquiry';
 import {
   kindFromRelationship,
   type FamilyMember,
@@ -152,9 +156,11 @@ export default function SignupScreen() {
 
   const formFields = (
     <>
-      {service === 'family' ? (
+      {service === 'family' || service === 'executive' ? (
         <Text style={[styles.accountNote, { color: theme.muted }]}>
-          {t.familySignup.accountNote}
+          {service === 'family'
+            ? t.familySignup.accountNote
+            : t.executiveSignup.accountNote}
         </Text>
       ) : null}
       <AuthField
@@ -296,18 +302,32 @@ export default function SignupScreen() {
             return;
           }
           if (service === 'executive') {
-            loadExecutiveInquiry()
-              .then((inquiry) => {
-                if (
-                  inquiry &&
-                  (inquiry.status === 'accepted' || inquiry.status === 'setup')
-                ) {
-                  return markExecutiveSetupStarted(inquiry.id);
+            void loadExecutiveInquiry()
+              .then(async (inquiry) => {
+                if (!inquiry) {
+                  router.replace('/executive-request-status');
+                  return;
                 }
-                return null;
+                if (
+                  inquiry.status === 'accepted' ||
+                  inquiry.status === 'setup' ||
+                  inquiry.status === 'active'
+                ) {
+                  if (inquiry.status !== 'active') {
+                    await markExecutiveSetupStarted(inquiry.id);
+                    await activateExecutiveCare(inquiry.id);
+                  }
+                  router.replace(
+                    needsOnboarding('executive')
+                      ? onboardingPath('executive')
+                      : dashboardFor('executive'),
+                  );
+                  return;
+                }
+                router.replace('/executive-request-status');
               })
-              .finally(() => {
-                router.replace(onboardingPath('executive'));
+              .catch(() => {
+                router.replace('/executive-request-status');
               });
             return;
           }
@@ -388,7 +408,13 @@ export default function SignupScreen() {
             service={service}
             kicker={copy.service}
             title={copy.title}
-            subtitle={service === 'family' ? t.familySignup.subtitle : undefined}
+            subtitle={
+              service === 'family'
+                ? t.familySignup.subtitle
+                : service === 'executive'
+                  ? t.executiveSignup.subtitle
+                  : undefined
+            }
             top={
               <AuthNav
                 service={service}

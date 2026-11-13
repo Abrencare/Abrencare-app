@@ -8,7 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { dashboardFor, onboardingPath, useServiceTheme } from '@/service/serviceTheme';
 
-const HERO = require('@/assets/images/executive-landing-full.jpg');
+const HERO = require('@/assets/images/executive-welcome-portrait.jpg');
 
 export default function ExecutiveLanding() {
   const router = useRouter();

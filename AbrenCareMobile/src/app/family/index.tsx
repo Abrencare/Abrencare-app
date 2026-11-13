@@ -158,19 +158,14 @@ export default function FamilyOverview() {
             body: t.family.visitSubtitle,
           }
         : {
-            kicker: t.family.visitTodayLabel,
+            kicker: t.family.latestUpdate,
             title: t.family.visitTodayTitle.replace('{time}', formatClock(visit.arrivedAt, t)),
             body: t.family.visitTodayBody.replace('{nurse}', nurse),
           };
 
   const concern = visit.concern;
-  const concernOpen =
-    serviceStarted &&
-    concern !== null &&
-    concern.review !== 'reviewed' &&
-    visitStatus !== 'upcoming';
   const concernStatus = !concern
-    ? ''
+    ? t.family.concernPending
     : concern.review === 'notified' && concern.reviewerName
       ? t.family.concernNotified.replace('{reviewer}', concern.reviewerName)
       : concern.review === 'reviewed' && concern.reviewerName
@@ -208,6 +203,13 @@ export default function FamilyOverview() {
               sheen={glass.sheen}
               shadowColor="#16332C"
             >
+              <View style={styles.kickerRow}>
+                <Ionicons name="checkmark-circle" size={16} color={GREEN} />
+                <Text style={[styles.updateKicker, type.kicker]}>
+                  {t.family.latestUpdate}
+                </Text>
+              </View>
+
               <View style={styles.visitMain}>
                 {visitStatus === 'live' ? (
                   <View style={styles.visitIcon}>
@@ -223,7 +225,6 @@ export default function FamilyOverview() {
                 )}
 
                 <View style={styles.visitCopy}>
-                  <Text style={[styles.kicker, type.kicker]}>{visitCopy.kicker}</Text>
                   <Text style={[styles.visitTitle, { fontFamily: type.sansSemi }]}>{visitCopy.title}</Text>
                   <Text style={[styles.visitBody, type.bodySmall]}>{visitCopy.body}</Text>
 
@@ -240,22 +241,25 @@ export default function FamilyOverview() {
               </View>
             </GlassCard>
 
-            {concernOpen ? (
-              <GlassCard
-                tint={glass.attention}
-                border={glass.border}
-                sheen={glass.sheen}
-                shadowColor="#16332C"
-              >
-                <View style={styles.attentionTop}>
-                  <FamilyIconWell name="warning-outline" tone="warn" />
-                  <View style={styles.attentionCopy}>
-                    <Text style={[styles.attentionKicker, type.kicker]}>{t.family.attentionLabel}</Text>
-                    <Text style={styles.attentionTitle}>{t.family.attentionTitle}</Text>
-                    <Text style={styles.attentionBody}>{t.family.attentionBody}</Text>
-                    <Text style={styles.attentionStatus}>{concernStatus}</Text>
-                  </View>
-                </View>
+            <GlassCard
+              tint={glass.attention}
+              border={glass.border}
+              sheen={glass.sheen}
+              shadowColor="#16332C"
+            >
+              <View style={styles.kickerRow}>
+                <Ionicons name="pulse-outline" size={15} color="#C97A2E" />
+                <Text style={[styles.attentionKicker, type.kicker]}>
+                  {t.family.attentionLabel}
+                </Text>
+              </View>
+
+              <View style={styles.attentionCopy}>
+                <Text style={styles.attentionTitle}>{t.family.attentionTitle}</Text>
+                <Text style={styles.attentionBody}>{t.family.attentionBody}</Text>
+                <Text style={styles.attentionStatus}>{concernStatus}</Text>
+              </View>
+              <View style={styles.attentionActionRow}>
                 <TouchableOpacity
                   style={styles.attentionButton}
                   onPress={() => router.push('/family/reports')}
@@ -264,8 +268,8 @@ export default function FamilyOverview() {
                   <Text style={styles.attentionButtonText}>{t.family.attentionAction}</Text>
                   <Ionicons name="chevron-forward" size={13} color="#C97A2E" />
                 </TouchableOpacity>
-              </GlassCard>
-            ) : null}
+              </View>
+            </GlassCard>
 
             <GlassCard
               tint={glass.card}
@@ -273,10 +277,16 @@ export default function FamilyOverview() {
               sheen={glass.sheen}
               shadowColor="#16332C"
             >
+              <View style={styles.kickerRow}>
+                <Ionicons name="calendar-outline" size={15} color={GREEN} />
+                <Text style={[styles.updateKicker, type.kicker]}>
+                  {t.family.nextAppointment}
+                </Text>
+              </View>
+
               <View style={styles.nextTop}>
                 <FamilyIconWell name="calendar-outline" />
                 <View style={styles.nextCopy}>
-                  <Text style={[styles.kicker, type.kicker]}>{t.family.nextAppointment}</Text>
                   {nextAppointment ? (
                     <>
                       <Text style={styles.nextTitle}>
@@ -304,7 +314,6 @@ export default function FamilyOverview() {
               </TouchableOpacity>
             </GlassCard>
 
-            <Text style={[styles.sectionLabel, type.kicker]}>{t.family.careTeam}</Text>
             <GlassCard
               tint={glass.card}
               border={glass.border}
@@ -312,6 +321,12 @@ export default function FamilyOverview() {
               shadowColor="#16332C"
               style={styles.teamCard}
             >
+              <View style={styles.kickerRow}>
+                <Ionicons name="people-outline" size={15} color={GREEN} />
+                <Text style={[styles.updateKicker, type.kicker]}>
+                  {t.family.careTeam}
+                </Text>
+              </View>
               <View style={[styles.teamRow, styles.teamDivider]}>
                 <View style={styles.teamAvatar}>
                   <Text style={styles.teamAvatarText}>MG</Text>
@@ -437,6 +452,7 @@ const baseStyles = StyleSheet.create({
   content: {
     paddingBottom: 88,
   },
+  // The body overlaps the hero by 38px; every card is separated by the 14px gap.
   body: {
     paddingHorizontal: 16,
     marginTop: -38,
@@ -464,8 +480,11 @@ const baseStyles = StyleSheet.create({
     fontWeight: '600',
     color: '#F4F6F3',
   },
+  // "Latest update" card: icon + text row. minWidth: 0 on the text column is what
+  // lets long text wrap inside the card instead of pushing past its edge.
   visitMain: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: 12,
     zIndex: 1,
   },
@@ -476,9 +495,11 @@ const baseStyles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.72)',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   visitCopy: {
     flex: 1,
+    minWidth: 0,
   },
   kicker: {
     color: '#7A877F',
@@ -489,25 +510,30 @@ const baseStyles = StyleSheet.create({
     lineHeight: 22,
     color: '#16332C',
     marginBottom: 4,
+    flexShrink: 1,
   },
   visitBody: {
     color: '#5C6B65',
     marginBottom: 12,
+    flexShrink: 1,
   },
   visitAction: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
+    maxWidth: '100%',
     gap: 6,
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 12,
-    height: 34,
+    paddingVertical: 6,
+    minHeight: 34,
     borderRadius: 17,
   },
   visitActionText: {
     fontSize: 13,
     fontWeight: '600',
     color: GREEN,
+    flexShrink: 1,
   },
   dotWrap: {
     width: 10,
@@ -542,10 +568,12 @@ const baseStyles = StyleSheet.create({
     fontWeight: '700',
     color: '#16332C',
     marginBottom: 3,
+    flexShrink: 1,
   },
   nextMeta: {
     fontSize: 13,
     color: '#7A877F',
+    flexShrink: 1,
   },
   beforeBody: {
     color: '#5C6B65',
@@ -556,10 +584,12 @@ const baseStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
+    maxWidth: '100%',
     gap: 4,
     backgroundColor: '#E8EDE4',
     paddingHorizontal: 12,
-    height: 34,
+    paddingVertical: 6,
+    minHeight: 34,
     borderRadius: 17,
     marginTop: 12,
   },
@@ -567,60 +597,68 @@ const baseStyles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: GREEN,
+    flexShrink: 1,
   },
-  attentionTop: {
+  // Small icon + label row at the top of a card (same pattern as the dashboard).
+  kickerRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
+    alignItems: 'center',
+    gap: 7,
+    marginBottom: 10,
+  },
+  updateKicker: {
+    color: GREEN,
+    marginBottom: 0,
   },
   attentionCopy: {
-    flex: 1,
+    minWidth: 0,
   },
   attentionKicker: {
     color: '#C97A2E',
-    marginBottom: 4,
+    marginBottom: 0,
   },
   attentionTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: '#16332C',
     marginBottom: 4,
+    flexShrink: 1,
   },
   attentionBody: {
     fontSize: 13,
     lineHeight: 19,
     color: '#8A7454',
+    flexShrink: 1,
   },
   attentionStatus: {
     fontSize: 13,
     lineHeight: 19,
     color: '#8A7454',
     marginTop: 4,
+    flexShrink: 1,
+  },
+  attentionActionRow: {
+    flexDirection: 'row',
+    marginTop: 12,
   },
   attentionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
+    flexShrink: 1,
     gap: 4,
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 12,
-    height: 34,
+    paddingVertical: 6,
+    minHeight: 34,
     borderRadius: 17,
-    marginTop: 12,
-    marginLeft: 52,
   },
   attentionButtonText: {
     fontSize: 13,
     fontWeight: '600',
     color: '#C97A2E',
+    flexShrink: 1,
   },
-  sectionLabel: {
-    color: '#7A877F',
-    marginBottom: 10,
-  },
-  teamCard: {
-    paddingVertical: 4,
-  },
+  teamCard: {},
   teamRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -646,6 +684,7 @@ const baseStyles = StyleSheet.create({
   },
   teamInfo: {
     flex: 1,
+    minWidth: 0,
   },
   teamName: {
     fontSize: 15,

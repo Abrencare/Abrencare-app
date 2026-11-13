@@ -25,7 +25,7 @@ import Animated, {
   type SharedValue,
 } from "react-native-reanimated";
 
-import { GlassCard, glassTints, withAlpha } from "@/components/executive/GlassCard";
+import { glassTints, withAlpha } from "@/components/executive/GlassCard";
 
 import styles from "./ServiceCard.styles";
 
@@ -221,33 +221,6 @@ export default function ServiceCard({ services }: Props) {
           />
         ))}
       </View>
-
-      <GlassCard
-        tint={homeGlass.card}
-        border={homeGlass.border}
-        sheen={homeGlass.sheen}
-        shadowColor="#16332C"
-        style={[styles.statsContainer, { backgroundColor: homeGlass.card }]}
-      >
-        <View style={styles.statItem}>
-          <Text style={[styles.statNumber, homeType.section, { color: colors.text }]}>+500</Text>
-          <Text style={[styles.statLabel, homeType.caption, { color: colors.muted }]}>{t.home.familiesServed}</Text>
-        </View>
-
-        <View style={[styles.statDivider, { backgroundColor: colors.divider }]} />
-
-        <View style={styles.statItem}>
-          <Text style={[styles.statNumber, homeType.section, { color: colors.text }]}>24/7</Text>
-          <Text style={[styles.statLabel, homeType.caption, { color: colors.muted }]}>{t.home.supportAvailable}</Text>
-        </View>
-
-        <View style={[styles.statDivider, { backgroundColor: colors.divider }]} />
-
-        <View style={styles.statItem}>
-          <Text style={[styles.statNumber, homeType.section, { color: colors.text }]}>16yr</Text>
-          <Text style={[styles.statLabel, homeType.caption, { color: colors.muted }]}>{t.home.gapClosing}</Text>
-        </View>
-      </GlassCard>
 
       <View style={styles.footer}>
         <Ionicons name="shield-checkmark-outline" size={17} color={colors.iconMuted} />

@@ -13,6 +13,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAppTheme } from '@/context/ThemeContext';
 import { CARE_LINE } from '@/data/contact';
+import { prepareFamilyPlan } from '@/data/demoCareAccess';
 import {
   acceptFamilyProposal,
   activateFamilyCare,
@@ -113,14 +114,23 @@ export default function FamilyCarePlanScreen() {
   const { user, hasService, needsOnboarding, completeFamilyOnboarding } = useAuth();
   const [inquiry, setInquiry] = useState<FamilyInquiry | null | undefined>(undefined);
   const [accepting, setAccepting] = useState(false);
+  const [priceOpen, setPriceOpen] = useState(false);
 
   const refresh = useCallback(() => {
     let active = true;
-    loadFamilyInquiry().then((data) => {
+    (async () => {
+      let data = await loadFamilyInquiry();
+      if (
+        data?.status === 'proposed' &&
+        data.proposal &&
+        !data.proposal.quoteAmount.trim()
+      ) {
+        data = (await prepareFamilyPlan(data.id)) ?? data;
+      }
       if (active) {
         setInquiry(data);
       }
-    });
+    })();
     return () => {
       active = false;
     };
@@ -276,33 +286,145 @@ export default function FamilyCarePlanScreen() {
             </View>
           </View>
 
-          {proposal.quoteAmount ? (
-            <View style={[styles.priceCard, { backgroundColor: colors.card, borderColor: isDark ? colors.border : '#D5E3DC' }]}>
-              <View style={[styles.priceHead, { backgroundColor: isDark ? colors.continue : '#E7EEEA' }]}>
-                <Ionicons name="pricetag-outline" size={16} color={isDark ? '#C9E4D8' : '#5E7A62'} />
-                <Text style={[styles.priceHeadText, type.label, { color: isDark ? '#E7EEEA' : '#1A3A32' }]}>
+          <View
+            style={[
+              styles.priceCard,
+              {
+                backgroundColor: colors.card,
+                borderColor: isDark ? colors.border : '#D5E3DC',
+              },
+            ]}
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded: priceOpen }}
+              onPress={() => setPriceOpen((open) => !open)}
+              style={({ pressed }) => [
+                styles.priceHead,
+                { backgroundColor: isDark ? colors.continue : '#E7EEEA' },
+                pressed && styles.pressed,
+              ]}
+            >
+              <Ionicons
+                name="pricetag-outline"
+                size={16}
+                color={isDark ? '#C9E4D8' : '#5E7A62'}
+              />
+              <View style={styles.priceHeadCopy}>
+                <Text
+                  style={[
+                    styles.priceHeadText,
+                    type.label,
+                    { color: isDark ? '#E7EEEA' : '#1A3A32' },
+                  ]}
+                >
                   {copy.priceTitle}
                 </Text>
+                {!priceOpen && proposal.quoteAmount ? (
+                  <Text
+                    style={[
+                      styles.pricePreview,
+                      type.bodySmall,
+                      { color: isDark ? '#C9E4D8' : '#5E7A62' },
+                    ]}
+                  >
+                    {proposal.quoteAmount}
+                    {proposal.quoteCurrency ? ` ${proposal.quoteCurrency}` : ''}
+                  </Text>
+                ) : null}
               </View>
+              <Ionicons
+                name={priceOpen ? 'chevron-up' : 'chevron-down'}
+                size={18}
+                color={isDark ? '#C9E4D8' : '#5E7A62'}
+              />
+            </Pressable>
+
+            {priceOpen ? (
               <View style={styles.priceBody}>
-                <Text style={[styles.feeLabel, type.caption, { color: colors.muted }]}>{copy.monthlyFee}</Text>
-                <View style={styles.amountRow}>
-                  <Text style={[styles.quoteAmount, { color: colors.text }]}>{proposal.quoteAmount}</Text>
-                  <View style={[styles.currencyChip, { backgroundColor: isDark ? colors.continue : '#1A3A32' }]}>
-                    <Text style={styles.currencyText}>{proposal.quoteCurrency}</Text>
+                {proposal.quoteAmount ? (
+                  <>
+                    <Text style={[styles.feeLabel, type.caption, { color: colors.muted }]}>
+                      {copy.monthlyFee}
+                    </Text>
+                    <View style={styles.amountRow}>
+                      <Text style={[styles.quoteAmount, { color: colors.text }]}>
+                        {proposal.quoteAmount}
+                      </Text>
+                      {proposal.quoteCurrency ? (
+                        <View
+                          style={[
+                            styles.currencyChip,
+                            {
+                              backgroundColor: isDark ? colors.continue : '#1A3A32',
+                            },
+                          ]}
+                        >
+                          <Text style={styles.currencyText}>
+                            {proposal.quoteCurrency}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </>
+                ) : null}
+
+                {proposal.billingPeriod ? (
+                  <View style={styles.priceRow}>
+                    <Text style={[styles.feeLabel, type.caption, { color: colors.muted }]}>
+                      {copy.billing}
+                    </Text>
+                    <Text style={[styles.sectionBody, type.bodySmall, { color: colors.text }]}>
+                      {proposal.billingPeriod}
+                    </Text>
                   </View>
-                </View>
-                <Text style={[styles.sectionBody, type.bodySmall, { color: colors.muted }]}>{proposal.billingPeriod}</Text>
-                <Text style={[styles.sectionBody, type.bodySmall, { color: colors.muted }]}>
-                  {proposal.cancellationTerms}
-                </Text>
-                <Pressable style={styles.termsRow} onPress={() => router.push('/legal?doc=terms')}>
-                  <Text style={[styles.termsLink, type.bodySmall]}>{copy.termsLink}</Text>
+                ) : null}
+
+                {proposal.exclusions ? (
+                  <View style={styles.priceRow}>
+                    <Text style={[styles.feeLabel, type.caption, { color: colors.muted }]}>
+                      {copy.exclusionsTitle}
+                    </Text>
+                    <Text style={[styles.sectionBody, type.bodySmall, { color: colors.text }]}>
+                      {proposal.exclusions}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {proposal.paymentTerms ? (
+                  <View style={styles.priceRow}>
+                    <Text style={[styles.feeLabel, type.caption, { color: colors.muted }]}>
+                      {copy.paymentTitle}
+                    </Text>
+                    <Text style={[styles.sectionBody, type.bodySmall, { color: colors.text }]}>
+                      {proposal.paymentTerms}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {proposal.cancellationTerms ? (
+                  <View style={styles.priceRow}>
+                    <Text style={[styles.feeLabel, type.caption, { color: colors.muted }]}>
+                      {copy.cancelTitle}
+                    </Text>
+                    <Text style={[styles.sectionBody, type.bodySmall, { color: colors.text }]}>
+                      {proposal.cancellationTerms}
+                    </Text>
+                  </View>
+                ) : null}
+
+                <Pressable
+                  style={styles.termsRow}
+                  onPress={() => router.push('/legal?doc=terms')}
+                >
+                  <Text style={[styles.termsLink, type.bodySmall]}>
+                    {copy.termsLink}
+                  </Text>
                   <Ionicons name="chevron-forward" size={14} color="#3D7A9A" />
                 </Pressable>
               </View>
-            </View>
-          ) : null}
+            ) : null}
+          </View>
         </View>
       ) : waiting ? (
         <View style={[styles.waitCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -438,8 +560,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
-  priceHeadText: {
+  priceHeadCopy: {
     flex: 1,
+    gap: 2,
+  },
+  priceHeadText: {
+    flexShrink: 1,
+  },
+  pricePreview: {
+    fontWeight: '600',
   },
   priceBody: {
     paddingHorizontal: 16,
@@ -465,6 +594,10 @@ const styles = StyleSheet.create({
   },
   feeLabel: {
     letterSpacing: 0.2,
+    marginBottom: 4,
+  },
+  priceRow: {
+    marginTop: 12,
   },
   termsRow: {
     marginTop: 14,

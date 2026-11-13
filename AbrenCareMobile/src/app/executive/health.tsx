@@ -1,11 +1,11 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 import { ExecutiveHero } from "@/components/executive/ExecutiveHero";
 import { GlassCard, glassTints } from "@/components/executive/GlassCard";
-import { Ring, StatusPill, type PillTone } from "@/components/executive/ExecutiveUI";
+import { StatusPill, type PillTone } from "@/components/executive/ExecutiveUI";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAppTheme } from "@/context/ThemeContext";
 import { useLandingType } from "@/theme/landingType";
@@ -14,8 +14,6 @@ import {
   type ExecutivePalette,
 } from "@/theme/executiveTheme";
 
-type Range = "week" | "month";
-
 export default function ExecutiveHealth() {
   const c = useExecutiveTheme();
   const { isDark } = useAppTheme();
@@ -23,7 +21,6 @@ export default function ExecutiveHealth() {
   const type = useLandingType("executive");
   const { t } = useLanguage();
   const router = useRouter();
-  const [range, setRange] = useState<Range>("week");
   const glass = glassTints(isDark);
 
   const copy = t.executiveHealth;
@@ -31,71 +28,13 @@ export default function ExecutiveHealth() {
 
   const trends: {
     key: string;
-    icon: keyof typeof Ionicons.glyphMap;
     label: string;
-    value: string;
-    unit: string;
-    trend: string;
-    color: string;
-    tint: string;
-    bars: Record<Range, number[]>;
+    icon: keyof typeof Ionicons.glyphMap;
   }[] = [
-    {
-      key: "bp",
-      icon: "heart-outline",
-      label: home.bpLabel,
-      value: "118/76",
-      unit: home.bpUnit,
-      trend: copy.improving,
-      color: c.danger,
-      tint: c.dangerSoft,
-      bars: {
-        week: [0.62, 0.78, 0.9, 0.7, 0.55, 0.6, 0.48],
-        month: [0.8, 0.72, 0.85, 0.6, 0.52, 0.45, 0.42],
-      },
-    },
-    {
-      key: "hr",
-      icon: "pulse-outline",
-      label: home.heartRateLabel,
-      value: "72",
-      unit: home.heartRateUnit,
-      trend: copy.steady,
-      color: c.success,
-      tint: c.successSoft,
-      bars: {
-        week: [0.55, 0.6, 0.52, 0.58, 0.61, 0.54, 0.57],
-        month: [0.5, 0.58, 0.55, 0.6, 0.56, 0.59, 0.54],
-      },
-    },
-    {
-      key: "spo2",
-      icon: "water-outline",
-      label: home.oxygenLabel,
-      value: "98",
-      unit: "%",
-      trend: copy.steady,
-      color: c.slate,
-      tint: c.slateSoft,
-      bars: {
-        week: [0.9, 0.94, 0.92, 0.96, 0.93, 0.95, 0.97],
-        month: [0.88, 0.9, 0.93, 0.91, 0.95, 0.94, 0.96],
-      },
-    },
-    {
-      key: "weight",
-      icon: "speedometer-outline",
-      label: home.weightLabel,
-      value: "74",
-      unit: home.weightUnit,
-      trend: copy.improving,
-      color: c.accent,
-      tint: c.accentSoft,
-      bars: {
-        week: [0.72, 0.7, 0.71, 0.68, 0.66, 0.67, 0.64],
-        month: [0.82, 0.78, 0.76, 0.73, 0.7, 0.68, 0.64],
-      },
-    },
+    { key: "bp", label: home.bpLabel, icon: "heart-outline" },
+    { key: "hr", label: home.heartRateLabel, icon: "pulse-outline" },
+    { key: "spo2", label: home.oxygenLabel, icon: "water-outline" },
+    { key: "weight", label: home.weightLabel, icon: "scale-outline" },
   ];
 
   const readings: {
@@ -149,59 +88,6 @@ export default function ExecutiveHealth() {
       <ExecutiveHero title={copy.title} subtitle={copy.subtitle} />
 
       <View style={styles.body}>
-        <GlassCard tint={glass.card} border={glass.border} sheen={glass.sheen}>
-          <View style={styles.scoreRow}>
-            <Ring
-              size={88}
-              thickness={8}
-              value="87"
-              caption={t.executive.scoreOutOf}
-              color={c.accent}
-              track={c.track}
-            />
-            <View style={styles.scoreCopy}>
-              <Text style={[styles.scoreLabel, { fontFamily: type.sansSemi }]}>
-                {copy.scoreLabel}
-              </Text>
-              <StatusPill label={home.scoreStatus} tone="success" />
-              <View style={styles.trendRow}>
-                <Ionicons name="trending-up" size={14} color={c.success} />
-                <Text
-                  style={[styles.trendValue, { fontFamily: type.sansSemi }]}
-                >
-                  {home.scoreTrend}
-                </Text>
-                <Text style={[styles.trendCaption, { fontFamily: type.sans }]}>
-                  {home.scoreTrendCaption}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </GlassCard>
-
-        <View style={styles.rangeRow}>
-          {(["week", "month"] as Range[]).map((option) => (
-            <Pressable
-              key={option}
-              onPress={() => setRange(option)}
-              style={[
-                styles.rangeOption,
-                range === option && styles.rangeOptionActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.rangeLabel,
-                  { fontFamily: type.sansSemi },
-                  range === option && styles.rangeLabelActive,
-                ]}
-              >
-                {option === "week" ? copy.thisWeek : copy.thisMonth}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
         <Text style={[styles.sectionKicker, { fontFamily: type.sansSemi }]}>
           {copy.trendsTitle}
         </Text>
@@ -216,54 +102,15 @@ export default function ExecutiveHealth() {
               border={glass.border}
               sheen={glass.sheen}
             >
-              <View style={styles.trendHeader}>
-                <View
-                  style={[styles.trendIcon, { backgroundColor: trend.tint }]}
+              <View style={styles.trendRow}>
+                <View style={[styles.trendIcon, { borderColor: c.accent }]}>
+                  <Ionicons name={trend.icon} size={16} color={c.accent} />
+                </View>
+                <Text
+                  style={[styles.trendLabel, { fontFamily: type.sansSemi }]}
                 >
-                  <Ionicons name={trend.icon} size={17} color={trend.color} />
-                </View>
-                <View style={styles.flexCopy}>
-                  <Text
-                    style={[styles.trendLabel, { fontFamily: type.sansSemi }]}
-                  >
-                    {trend.label}
-                  </Text>
-                  <Text style={[styles.trendMeta, { fontFamily: type.sans }]}>
-                    {copy.measuredToday}
-                  </Text>
-                </View>
-                <View style={styles.trendValueBlock}>
-                  <Text
-                    style={[styles.trendNumber, { fontFamily: type.sansSemi }]}
-                  >
-                    {trend.value}
-                  </Text>
-                  <Text style={[styles.trendUnit, { fontFamily: type.sans }]}>
-                    {trend.unit}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.chart}>
-                {trend.bars[range].map((height, index) => (
-                  <View
-                    key={index}
-                    style={[
-                      styles.bar,
-                      {
-                        height: 12 + height * 46,
-                        backgroundColor:
-                          index === trend.bars[range].length - 1
-                            ? trend.color
-                            : trend.tint,
-                      },
-                    ]}
-                  />
-                ))}
-              </View>
-
-              <View style={styles.trendFooter}>
-                <StatusPill label={trend.trend} tone="success" />
+                  {trend.label}
+                </Text>
                 <Ionicons name="chevron-forward" size={15} color={c.faint} />
               </View>
             </GlassCard>
@@ -351,62 +198,6 @@ function createStyles(c: ExecutivePalette, isDark: boolean) {
       marginTop: -38,
       gap: 14,
     },
-    scoreRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 18,
-    },
-    scoreCopy: {
-      flex: 1,
-      gap: 8,
-    },
-    scoreLabel: {
-      fontSize: 16,
-      fontWeight: "700",
-      color: c.text,
-    },
-    trendRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 5,
-    },
-    trendValue: {
-      fontSize: 13,
-      fontWeight: "700",
-      color: c.success,
-    },
-    trendCaption: {
-      fontSize: 12,
-      color: c.muted,
-    },
-    rangeRow: {
-      flexDirection: "row",
-      gap: 8,
-      backgroundColor: isDark
-        ? "rgba(255,255,255,0.07)"
-        : "rgba(255, 252, 247, 0.4)",
-      borderRadius: 18,
-      borderWidth: 1,
-      borderColor: isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.86)",
-      padding: 4,
-    },
-    rangeOption: {
-      flex: 1,
-      alignItems: "center",
-      paddingVertical: 9,
-      borderRadius: 14,
-    },
-    rangeOptionActive: {
-      backgroundColor: c.accent,
-    },
-    rangeLabel: {
-      fontSize: 12,
-      fontWeight: "700",
-      color: c.muted,
-    },
-    rangeLabelActive: {
-      color: c.onAccent,
-    },
     sectionKicker: {
       fontSize: 10,
       fontWeight: "700",
@@ -420,58 +211,24 @@ function createStyles(c: ExecutivePalette, isDark: boolean) {
       flex: 1,
       minWidth: 0,
     },
-    trendHeader: {
+    trendRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: 12,
     },
     trendIcon: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      borderWidth: 1.5,
       alignItems: "center",
       justifyContent: "center",
     },
     trendLabel: {
+      flex: 1,
       fontSize: 14,
       fontWeight: "700",
       color: c.text,
-    },
-    trendMeta: {
-      fontSize: 11,
-      color: c.faint,
-      marginTop: 2,
-    },
-    trendValueBlock: {
-      alignItems: "flex-end",
-    },
-    trendNumber: {
-      fontSize: 18,
-      fontWeight: "700",
-      color: c.text,
-      letterSpacing: -0.4,
-    },
-    trendUnit: {
-      fontSize: 10,
-      color: c.faint,
-    },
-    chart: {
-      flexDirection: "row",
-      alignItems: "flex-end",
-      justifyContent: "space-between",
-      gap: 8,
-      height: 62,
-      marginTop: 16,
-    },
-    bar: {
-      flex: 1,
-      borderRadius: 6,
-    },
-    trendFooter: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginTop: 12,
     },
     readingRow: {
       flexDirection: "row",

@@ -99,6 +99,7 @@ export default function FamilyProposalComposeScreen() {
         value={value}
         onChangeText={onChange}
         multiline
+        textAlignVertical="top"
         style={[styles.input, type.body, fieldStyle, { color: colors.text }]}
         placeholderTextColor={colors.muted}
         {...extra}

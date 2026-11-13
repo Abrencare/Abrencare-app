@@ -44,6 +44,9 @@ export default function ExecutiveReports() {
   const periodOptions: { id: ReportPeriod; label: string }[] = [
     { id: "week", label: t.executiveReports.days7 },
     { id: "month", label: t.executiveReports.days30 },
+    { id: "days60", label: t.executiveReports.days60 },
+    { id: "days90", label: t.executiveReports.days90 },
+    { id: "months6", label: t.executiveReports.months6 },
   ];
 
   const periodLabel =

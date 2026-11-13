@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
@@ -46,6 +47,8 @@ export default function ServiceFlowShell({
   const type = useLandingType(service);
   const { t, language, setLanguage } = useLanguage();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+  const isPhone = windowWidth < 430;
   const ink = FLOW_INK[service];
   const muted = FLOW_MUTED[service];
 
@@ -60,6 +63,7 @@ export default function ServiceFlowShell({
           contentContainerStyle={[styles.content, { paddingBottom: 36 + insets.bottom }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          nestedScrollEnabled
         >
           <FlowGlassHero
             service={service}
@@ -67,17 +71,25 @@ export default function ServiceFlowShell({
             title={title}
             subtitle={subtitle}
             top={
-              <View style={styles.topBar}>
+              <View style={[styles.topBar, isPhone && styles.topBarPhone]}>
                 <BrandHomeLink style={styles.brandMark}>
-                  <BrandLogo size={36} link={false} />
-                  <Text style={[styles.brandName, { fontFamily: type.sansSemi, color: ink }]}>
+                  <BrandLogo size={isPhone ? 30 : 36} link={false} />
+                  <Text
+                    style={[
+                      styles.brandName,
+                      isPhone && styles.brandNamePhone,
+                      { fontFamily: type.sansSemi, color: ink },
+                    ]}
+                  >
                     {language === 'en' ? t.header.brand.toUpperCase() : t.header.brand}
                   </Text>
                 </BrandHomeLink>
-                <View style={styles.topRight}>
-                  <View style={styles.badge}>
-                    <Ionicons name="shield-checkmark-outline" size={14} color={ink} />
-                    <Text style={[styles.badgeText, type.caption, { color: muted }]}>{badge}</Text>
+                <View style={[styles.topRight, isPhone && styles.topRightPhone]}>
+                  <View style={[styles.badge, isPhone && styles.badgePhone]}>
+                    <Ionicons name="shield-checkmark-outline" size={isPhone ? 12 : 14} color={ink} />
+                    <Text style={[styles.badgeText, type.caption, isPhone && styles.badgeTextPhone, { color: muted }]}>
+                      {badge}
+                    </Text>
                   </View>
                   <View style={styles.langRow}>
                     <Pressable onPress={() => setLanguage('en')} hitSlop={8}>
@@ -112,7 +124,7 @@ export default function ServiceFlowShell({
               </View>
             }
           />
-          <View style={styles.body}>{children}</View>
+          <View style={[styles.body, isPhone && styles.bodyPhone]}>{children}</View>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -181,5 +193,29 @@ const styles = StyleSheet.create({
     maxWidth: 520,
     width: '100%',
     alignSelf: 'center',
+  },
+  bodyPhone: {
+    marginTop: -24,
+    paddingHorizontal: 16,
+  },
+  topBarPhone: {
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  brandNamePhone: {
+    fontSize: 12,
+    letterSpacing: 1.6,
+  },
+  topRightPhone: {
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  badgePhone: {
+    paddingVertical: 5,
+    paddingHorizontal: 9,
+    gap: 4,
+  },
+  badgeTextPhone: {
+    fontSize: 10,
   },
 });

@@ -94,21 +94,33 @@ export default function ExecutiveWizardChrome({
                     <Ionicons name="chevron-back" size={22} color={ink} />
                   </Pressable>
                 ) : (
-                  <View style={styles.back} />
-                )}
-                <BrandHomeLink style={styles.brand}>
-                  <View style={styles.brandRow}>
-                    <BrandLogo size={22} link={false} />
+                  <BrandHomeLink style={styles.brandMark}>
+                    <BrandLogo size={32} link={false} />
                     <Text style={[styles.brandName, { fontFamily: type.display, color: ink }]}>
                       {t.header.brand}
                     </Text>
+                  </BrandHomeLink>
+                )}
+
+                {showBack ? (
+                  <View style={styles.brandCenter} pointerEvents="box-none">
+                    <BrandHomeLink style={styles.brandMark}>
+                      <BrandLogo size={32} link={false} />
+                      <Text style={[styles.brandName, { fontFamily: type.display, color: ink }]}>
+                        {t.header.brand}
+                      </Text>
+                    </BrandHomeLink>
                   </View>
-                </BrandHomeLink>
+                ) : (
+                  <View style={styles.spacer} />
+                )}
+
                 <Pressable
                   onPress={() => setLanguage(language === 'en' ? 'am' : 'en')}
                   hitSlop={8}
+                  style={styles.lang}
                 >
-                  <Text style={[styles.lang, { fontFamily: type.sansMedium, color: ink }]}>
+                  <Text style={[styles.langText, { fontFamily: type.sansMedium, color: ink }]}>
                     {language === 'en' ? 'EN' : t.common.amharic}
                   </Text>
                 </Pressable>
@@ -185,6 +197,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
   },
+  spacer: {
+    flex: 1,
+  },
   back: {
     width: 36,
     height: 36,
@@ -194,22 +209,29 @@ const styles = StyleSheet.create({
     backgroundColor: FLOW_CHIP,
     borderWidth: 1,
     borderColor: FLOW_CHIP_BORDER,
+    zIndex: 1,
   },
-  brand: {
-    alignItems: 'center',
-  },
-  brandRow: {
+  brandMark: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+  },
+  brandCenter: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   brandName: {
-    fontSize: 20,
+    fontSize: 22,
     letterSpacing: -0.3,
   },
   lang: {
-    fontSize: 12,
     minWidth: 36,
+    alignItems: 'flex-end',
+    zIndex: 1,
+  },
+  langText: {
+    fontSize: 12,
     textAlign: 'right',
   },
   progressRow: {

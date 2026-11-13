@@ -11,6 +11,7 @@ import Replace from '@/components/gates/Replace';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { CARE_LINE } from '@/data/contact';
+import { prepareExecutivePlan } from '@/data/demoCareAccess';
 import {
   acceptExecutiveProposal,
   activateExecutiveCare,
@@ -51,12 +52,23 @@ export default function ExecutiveCarePlanScreen() {
   const home = t.executiveHome;
   const type = useLandingType('executive');
   const theme = useServiceTheme('executive');
-  const { user, hasService, needsOnboarding, enterDemoCare } = useAuth();
+  const { user, hasService, needsOnboarding } = useAuth();
   const [inquiry, setInquiry] = useState<ExecutiveInquiry | null | undefined>(undefined);
   const [accepting, setAccepting] = useState(false);
+  const [priceOpen, setPriceOpen] = useState(false);
 
   const refresh = useCallback(() => {
-    loadExecutiveInquiry().then(setInquiry);
+    (async () => {
+      let data = await loadExecutiveInquiry();
+      if (
+        data?.status === 'proposed' &&
+        data.proposal &&
+        !data.proposal.quoteAmount.trim()
+      ) {
+        data = (await prepareExecutivePlan(data.id)) ?? data;
+      }
+      setInquiry(data);
+    })();
   }, []);
 
   useEffect(() => {
@@ -108,15 +120,18 @@ export default function ExecutiveCarePlanScreen() {
     }
     setAccepting(true);
     acceptExecutiveProposal(inquiry.id)
-      .then(() => {
-        enterDemoCare('executive', {
-          name: inquiry.name,
-          email: inquiry.email,
-          phone: inquiry.phone,
-        });
-        return activateExecutiveCare(inquiry.id);
+      .then(async () => {
+        if (!user || !hasService('executive')) {
+          router.replace({ pathname: '/signup', params: { service: 'executive' } });
+          return;
+        }
+        await activateExecutiveCare(inquiry.id);
+        router.replace(
+          needsOnboarding('executive')
+            ? onboardingPath('executive')
+            : dashboardFor('executive'),
+        );
       })
-      .then(() => router.replace('/executive'))
       .finally(() => setAccepting(false));
   };
 
@@ -224,6 +239,120 @@ export default function ExecutiveCarePlanScreen() {
               </View>
               <Text style={[type.bodySmall, { color: theme.muted, flex: 1 }]}>{flow.quote}</Text>
             </View>
+          </View>
+
+          <View
+            style={[
+              styles.priceCard,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded: priceOpen }}
+              onPress={() => setPriceOpen((open) => !open)}
+              style={({ pressed }) => [
+                styles.priceHead,
+                { backgroundColor: theme.accentSoft },
+                pressed && styles.pressed,
+              ]}
+            >
+              <Ionicons name="pricetag-outline" size={16} color={theme.accent} />
+              <View style={styles.priceHeadCopy}>
+                <Text style={[styles.priceHeadText, type.label, { color: theme.text }]}>
+                  {copy.priceTitle}
+                </Text>
+                {!priceOpen && proposal.quoteAmount ? (
+                  <Text style={[styles.pricePreview, type.bodySmall, { color: theme.accent }]}>
+                    {proposal.quoteAmount}
+                    {proposal.quoteCurrency ? ` ${proposal.quoteCurrency}` : ''}
+                  </Text>
+                ) : null}
+              </View>
+              <Ionicons
+                name={priceOpen ? 'chevron-up' : 'chevron-down'}
+                size={18}
+                color={theme.accent}
+              />
+            </Pressable>
+
+            {priceOpen ? (
+              <View style={styles.priceBody}>
+                {proposal.quoteAmount ? (
+                  <>
+                    <Text style={[styles.feeLabel, type.caption, { color: theme.muted }]}>
+                      {copy.amount}
+                    </Text>
+                    <View style={styles.amountRow}>
+                      <Text style={[styles.quoteAmount, { color: theme.text }]}>
+                        {proposal.quoteAmount}
+                      </Text>
+                      {proposal.quoteCurrency ? (
+                        <View
+                          style={[styles.currencyChip, { backgroundColor: theme.accent }]}
+                        >
+                          <Text style={styles.currencyText}>{proposal.quoteCurrency}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </>
+                ) : null}
+
+                {proposal.billingPeriod ? (
+                  <View style={styles.priceRow}>
+                    <Text style={[styles.feeLabel, type.caption, { color: theme.muted }]}>
+                      {copy.billing}
+                    </Text>
+                    <Text style={[styles.sectionBody, type.bodySmall, { color: theme.text }]}>
+                      {proposal.billingPeriod}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {proposal.exclusions ? (
+                  <View style={styles.priceRow}>
+                    <Text style={[styles.feeLabel, type.caption, { color: theme.muted }]}>
+                      {copy.exclusionsTitle}
+                    </Text>
+                    <Text style={[styles.sectionBody, type.bodySmall, { color: theme.text }]}>
+                      {proposal.exclusions}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {proposal.paymentTerms ? (
+                  <View style={styles.priceRow}>
+                    <Text style={[styles.feeLabel, type.caption, { color: theme.muted }]}>
+                      {copy.paymentTitle}
+                    </Text>
+                    <Text style={[styles.sectionBody, type.bodySmall, { color: theme.text }]}>
+                      {proposal.paymentTerms}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {proposal.cancellationTerms ? (
+                  <View style={styles.priceRow}>
+                    <Text style={[styles.feeLabel, type.caption, { color: theme.muted }]}>
+                      {copy.cancelTitle}
+                    </Text>
+                    <Text style={[styles.sectionBody, type.bodySmall, { color: theme.text }]}>
+                      {proposal.cancellationTerms}
+                    </Text>
+                  </View>
+                ) : null}
+
+                <Pressable
+                  style={styles.termsRow}
+                  onPress={() => router.push('/legal?doc=terms')}
+                >
+                  <Text style={[styles.termsLink, type.bodySmall, { color: theme.accent }]}>
+                    {copy.termsLink}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={14} color={theme.accent} />
+                </Pressable>
+              </View>
+            ) : null}
           </View>
         </View>
       ) : waiting ? (
@@ -360,9 +489,78 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   detailsKicker: { marginBottom: 10 },
-  detailsCard: { borderWidth: 1, borderRadius: 22, overflow: 'hidden', marginBottom: 18 },
+  detailsCard: { borderWidth: 1, borderRadius: 22, overflow: 'hidden', marginBottom: 14 },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
   avatar: { width: 40, height: 40, borderRadius: 20 },
+  priceCard: {
+    borderWidth: 1,
+    borderRadius: 22,
+    marginBottom: 18,
+    overflow: 'hidden',
+  },
+  priceHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  priceHeadCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  priceHeadText: {
+    flexShrink: 1,
+  },
+  pricePreview: {
+    fontWeight: '600',
+  },
+  priceBody: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 16,
+  },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 10,
+  },
+  quoteAmount: {
+    fontSize: 32,
+    lineHeight: 38,
+    fontWeight: '700',
+  },
+  currencyChip: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  currencyText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  feeLabel: {
+    letterSpacing: 0.2,
+    marginBottom: 4,
+  },
+  priceRow: {
+    marginTop: 12,
+  },
+  sectionBody: {
+    lineHeight: 20,
+  },
+  termsRow: {
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  termsLink: {
+    fontWeight: '600',
+  },
   primary: {
     minHeight: 54,
     borderRadius: 27,

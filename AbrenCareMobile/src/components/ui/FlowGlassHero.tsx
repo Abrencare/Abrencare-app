@@ -1,5 +1,5 @@
 import React, { memo, type ReactNode, useMemo } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -61,15 +61,23 @@ function FlowGlassHero({
 }: Props) {
   const type = useLandingType(service);
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+  const isPhone = windowWidth < 430;
 
   // Keep the gradient definition stable between renders.
   const gradientColors = useMemo(
-    () => [FILL[service], withAlpha(FILL[service], 0.94), withAlpha(FILL[service], 0.42)],
+    () => [FILL[service], withAlpha(FILL[service], 0.94), withAlpha(FILL[service], 0.42)] as const,
     [service],
   );
 
   return (
-    <View style={[styles.hero, { paddingTop: insets.top + 12, backgroundColor: FILL[service] }]}>
+    <View
+      style={[
+        styles.hero,
+        isPhone && styles.heroPhone,
+        { paddingTop: insets.top + (isPhone ? 8 : 12), backgroundColor: FILL[service] },
+      ]}
+    >
       <Image source={HERO[service]} style={styles.photo} resizeMode="cover" fadeDuration={0} />
       <LinearGradient
         colors={gradientColors}
@@ -86,12 +94,24 @@ function FlowGlassHero({
         </Text>
       ) : null}
       {title ? (
-        <Text style={[styles.title, { fontFamily: type.display, color: INK[service] }]}>
+        <Text
+          style={[
+            styles.title,
+            isPhone && styles.titlePhone,
+            { fontFamily: type.display, color: INK[service] },
+          ]}
+        >
           {title}
         </Text>
       ) : null}
       {subtitle ? (
-        <Text style={[styles.subtitle, { fontFamily: type.sans, color: MUTED[service] }]}>
+        <Text
+          style={[
+            styles.subtitle,
+            isPhone && styles.subtitlePhone,
+            { fontFamily: type.sans, color: MUTED[service] },
+          ]}
+        >
           {subtitle}
         </Text>
       ) : null}
@@ -110,11 +130,17 @@ const styles = StyleSheet.create({
     paddingBottom: 52,
     overflow: 'hidden',
   },
+  heroPhone: {
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+  },
   photo: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   fade: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   kicker: {
     fontSize: 10,
@@ -127,10 +153,21 @@ const styles = StyleSheet.create({
     lineHeight: 38,
     letterSpacing: -0.6,
   },
+  titlePhone: {
+    fontSize: 25,
+    lineHeight: 32,
+    letterSpacing: -0.4,
+  },
   subtitle: {
     fontSize: 14,
     lineHeight: 20,
     marginTop: 8,
     maxWidth: 320,
+  },
+  subtitlePhone: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 6,
+    maxWidth: '100%',
   },
 });

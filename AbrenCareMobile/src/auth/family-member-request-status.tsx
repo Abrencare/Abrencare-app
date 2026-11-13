@@ -12,7 +12,7 @@ import { useLandingType } from '@/theme/landingType';
 
 export default function FamilyMemberRequestStatusScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ name?: string; id?: string }>();
+  const params = useLocalSearchParams() as { name?: string; id?: string };
   const { t } = useLanguage();
   const copy = t.familyAdd;
   const type = useLandingType('family');

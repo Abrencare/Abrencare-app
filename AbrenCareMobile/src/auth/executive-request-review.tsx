@@ -6,7 +6,6 @@ import { useRouter } from 'expo-router';
 
 import ExecutiveWizardChrome from '@/auth/ExecutiveWizardChrome';
 import Replace from '@/components/gates/Replace';
-import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { detectCountry } from '@/data/countries';
 import { prepareExecutivePlan } from '@/data/demoCareAccess';
@@ -67,7 +66,6 @@ const CONCERN_LABEL: Record<
 export default function ExecutiveRequestReviewScreen() {
   const router = useRouter();
   const { t } = useLanguage();
-  const { user } = useAuth();
   const flow = t.executiveFlow;
   const type = useLandingType('executive');
   const c = useExecutiveTheme();
@@ -170,12 +168,8 @@ export default function ExecutiveRequestReviewScreen() {
             })
               .then((inquiry) => {
                 clearExecutiveRequestDraft();
-                if (!user) {
-                  router.replace('/signup?service=executive');
-                  return;
-                }
                 return prepareExecutivePlan(inquiry.id).then(() => {
-                  router.replace('/(tabs)');
+                  router.replace('/executive-request-status');
                 });
               });
           }}

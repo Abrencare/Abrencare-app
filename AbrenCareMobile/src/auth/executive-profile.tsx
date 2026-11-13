@@ -8,6 +8,9 @@ import { useServiceTheme } from '@/service/serviceTheme';
 import type { Gender } from '@/types/auth';
 import AuthField from '@/auth/AuthField';
 import AuthScaffold from '@/auth/AuthScaffold';
+import DateOfBirthField, {
+  isValidIsoDateOfBirth,
+} from '@/components/ui/DateOfBirthField';
 import Replace from '@/components/gates/Replace';
 import { useLanguage } from '@/context/LanguageContext';
 import { markExecutiveSetupStarted } from '@/data/executiveInquiry';
@@ -42,7 +45,7 @@ export default function ExecutiveProfileScreen() {
   ];
 
   const canContinue =
-    dateOfBirth.trim().length >= 8 &&
+    isValidIsoDateOfBirth(dateOfBirth) &&
     gender !== null &&
     heightCm.trim().length > 0 &&
     weightKg.trim().length > 0;
@@ -54,13 +57,13 @@ export default function ExecutiveProfileScreen() {
       title={t.executiveSignup.profileTitle}
       subtitle={t.executiveSignup.profileSubtitle}
     >
-      <AuthField
+      <DateOfBirthField
         theme={theme}
-        label={t.executiveSignup.dateOfBirth.toUpperCase()}
+        label={t.executiveSignup.dateOfBirth}
+        labelStyle="plain"
+        radius={22}
         value={dateOfBirth}
-        onChangeText={setDateOfBirth}
-        placeholder={t.executiveSignup.dobPlaceholder}
-        icon="calendar-outline"
+        onChange={setDateOfBirth}
       />
 
       <Text style={[styles.label, { color: theme.muted }]}>

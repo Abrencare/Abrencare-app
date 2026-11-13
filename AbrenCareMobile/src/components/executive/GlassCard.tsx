@@ -142,7 +142,7 @@ function shell(
 
 const styles = StyleSheet.create({
   sheenClip: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     overflow: 'hidden',
     borderRadius: 26,
   },

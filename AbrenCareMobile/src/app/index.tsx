@@ -140,8 +140,11 @@ export default function WelcomeScreen() {
       <SafeAreaView style={styles.uiLayer} pointerEvents="box-none">
         <View style={styles.topSection} pointerEvents="box-none">
           <View style={styles.brandRow}>
-            <BrandLogo size={48} style={styles.welcomeLogo} />
-            <Text style={[styles.brandWordmark, type.label]}>
+            <BrandLogo size={40} style={styles.welcomeLogo} link={false} />
+            <Text
+              style={[styles.brandWordmark, type.label]}
+              numberOfLines={2}
+            >
               {t.welcome.brand}
             </Text>
           </View>
@@ -249,8 +252,10 @@ const styles = StyleSheet.create({
   brandRow: {
     flexDirection: "row",
     alignItems: "center",
-    flexShrink: 1,
+    flex: 1,
+    minWidth: 0,
     gap: 10,
+    marginRight: 8,
   },
 
   welcomeLogo: {
@@ -259,12 +264,17 @@ const styles = StyleSheet.create({
 
   brandWordmark: {
     color: "#FFFFFF",
-    flexShrink: 1,
+    flex: 1,
+    minWidth: 0,
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: "700",
   },
 
   languageContainer: {
     flexDirection: "row",
     alignItems: "center",
+    flexShrink: 0,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 20,

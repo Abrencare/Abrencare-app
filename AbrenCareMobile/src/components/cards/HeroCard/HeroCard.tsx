@@ -36,14 +36,6 @@ export default function HeroCard() {
             <Ionicons name="shield-checkmark-outline" size={13} color={colors.navActive} />
             <Text style={[styles.badgeText, { color: colors.text }]}>{t.home.rated}</Text>
           </View>
-          <View style={[styles.badge, { backgroundColor: colors.chip }]}>
-            <Ionicons name="heart-outline" size={13} color={colors.navActive} />
-            <Text style={[styles.badgeText, { color: colors.text }]}>{t.home.care247}</Text>
-          </View>
-          <View style={[styles.badge, { backgroundColor: colors.chip }]}>
-            <Ionicons name="time-outline" size={13} color={colors.navActive} />
-            <Text style={[styles.badgeText, { color: colors.text }]}>{t.home.sameDay}</Text>
-          </View>
         </View>
       </View>
     </GlassCard>

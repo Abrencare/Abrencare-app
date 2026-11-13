@@ -260,16 +260,18 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   segment: {
-    width: 36,
+    width: 40,
+    minHeight: 36,
     fontSize: 15,
     textAlign: 'center',
-    paddingVertical: 0,
+    paddingVertical: 2,
   },
   year: {
-    width: 56,
+    width: 60,
+    minHeight: 36,
     fontSize: 15,
     textAlign: 'center',
-    paddingVertical: 0,
+    paddingVertical: 2,
   },
   sep: {
     fontSize: 15,
