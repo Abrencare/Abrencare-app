@@ -4,8 +4,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-import AuthField from '@/auth/AuthField';
 import AuthScaffold from '@/auth/AuthScaffold';
+import DateOfBirthField, {
+  isValidIsoDateOfBirth,
+} from '@/components/ui/DateOfBirthField';
 import Replace from '@/components/gates/Replace';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -33,22 +35,22 @@ export default function ConsultationProfileScreen() {
     { id: 'preferNot', label: t.executiveSignup.preferNot },
   ];
 
-  const canContinue = dateOfBirth.trim().length >= 8 && gender !== null;
+  const canContinue = isValidIsoDateOfBirth(dateOfBirth) && gender !== null;
 
   return (
     <AuthScaffold
       theme={theme}
       serviceLabel={t.consultationFlow.digital}
-      title={t.consultationSignup.welcomeTitle}
-      subtitle={t.consultationSignup.setupTitle}
+      title={t.consultationSignup.setupTitle}
+      subtitle={t.executiveSignup.profileSubtitle}
     >
-      <AuthField
+      <DateOfBirthField
         theme={theme}
-        label={t.executiveSignup.dateOfBirth.toUpperCase()}
+        label={t.executiveSignup.dateOfBirth}
+        labelStyle="plain"
+        radius={22}
         value={dateOfBirth}
-        onChangeText={setDateOfBirth}
-        placeholder={t.executiveSignup.dobPlaceholder}
-        icon="calendar-outline"
+        onChange={setDateOfBirth}
       />
 
       <Text style={[styles.label, { color: theme.muted }]}>

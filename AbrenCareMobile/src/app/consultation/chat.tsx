@@ -50,6 +50,7 @@ export default function ConsultationChat() {
   const { t } = useLanguage();
   const router = useRouter();
   const params = useLocalSearchParams();
+  const id = typeof params.id === "string" ? params.id : "";
   const doctorId =
     typeof params.doctor === "string" ? params.doctor : undefined;
   const { draft } = useConsultations();
@@ -115,8 +116,8 @@ export default function ConsultationChat() {
   return (
     <ConsultationPaymentGate
       doctorId={doctor?.id ?? ""}
-      kind="message"
-      next="chat"
+      kind="audio"
+      next="call"
       alreadyPaid={paid}
     >
     <KeyboardAvoidingView
@@ -166,7 +167,7 @@ export default function ConsultationChat() {
             router.push({
               pathname: "/consultation/call",
               params: doctor
-                ? { doctor: doctor.id, paid: paid ? "1" : "0" }
+                ? { id: id || undefined, doctor: doctor.id, paid: paid ? "1" : "0" }
                 : undefined,
             })
           }

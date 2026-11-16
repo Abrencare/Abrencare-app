@@ -380,7 +380,7 @@ export default function ServiceLanding({
 
                   <View style={[styles.offerCard, { borderColor: line }]}>
                     <View style={[styles.iconCircle, { backgroundColor: palette.accentSoft }]}>
-                      <Ionicons name="chatbubbles-outline" size={18} color={accent} />
+                      <Ionicons name="call-outline" size={18} color={accent} />
                     </View>
                     <Text style={[styles.offerTitle, type.label]}>{offer.messageTitle}</Text>
                     <Text style={[styles.offerMeta, type.bodySmall]}>{offer.messageMeta}</Text>

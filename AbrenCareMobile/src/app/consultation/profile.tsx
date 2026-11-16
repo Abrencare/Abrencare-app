@@ -13,6 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
+import ServiceBackButton from "@/components/navigation/ServiceBackButton";
 import { initialsFor, useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAppTheme } from "@/context/ThemeContext";
@@ -51,6 +52,14 @@ export default function ConsultationProfile() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <ServiceBackButton
+            color="#172B42"
+            background="#EEF2F6"
+            borderColor="#DDE3EA"
+            size={34}
+          />
+        </View>
         <Text style={styles.headerLabel}>{t.profile.account}</Text>
         <Text style={styles.headerTitle}>{t.profile.title}</Text>
       </View>
@@ -303,6 +312,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 12,
+  },
+
+  headerTop: {
+    marginBottom: 10,
   },
 
   headerLabel: {

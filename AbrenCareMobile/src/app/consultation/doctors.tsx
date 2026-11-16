@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
+import ServiceBackButton from '@/components/navigation/ServiceBackButton';
 import BrandLogo, { BrandHomeLink } from '@/components/ui/BrandLogo';
 import { useConsultations } from '@/context/ConsultationContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -53,9 +54,17 @@ export default function ConsultationDoctors() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <BrandHomeLink style={styles.brandRow}>
-          <BrandLogo size={34} link={false} />
-        </BrandHomeLink>
+        <View style={styles.brandRow}>
+          <ServiceBackButton
+            color="#172B42"
+            background="#EEF2F6"
+            borderColor="#DDE3EA"
+            size={34}
+          />
+          <BrandHomeLink>
+            <BrandLogo size={34} link={false} />
+          </BrandHomeLink>
+        </View>
         <Text style={styles.headerLabel}>{t.consultation.headerLabel}</Text>
         <Text style={styles.headerTitle}>{copy.title}</Text>
       </View>
@@ -226,7 +235,9 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   brandRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
     marginBottom: 10,
   },
   headerLabel: {

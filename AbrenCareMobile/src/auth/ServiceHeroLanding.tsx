@@ -12,6 +12,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 
+import ServiceBackButton from '@/components/navigation/ServiceBackButton';
 import BrandLogo from '@/components/ui/BrandLogo';
 import { useLanguage } from '@/context/LanguageContext';
 import { useLandingType } from '@/theme/landingType';
@@ -73,6 +74,12 @@ export default function ServiceHeroLanding({
       <SafeAreaView style={styles.ui} pointerEvents="box-none">
         <View style={styles.top} pointerEvents="box-none">
           <View style={styles.brandRow}>
+            <ServiceBackButton
+              color="#FFFFFF"
+              background="rgba(255, 255, 255, 0.18)"
+              borderColor="rgba(255, 255, 255, 0.28)"
+              size={34}
+            />
             <BrandLogo size={40} style={styles.brandLogo} link={false} />
             <Text
               style={[styles.brandWordmark, type.label]}

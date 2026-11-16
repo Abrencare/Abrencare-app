@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
+import ServiceBackButton from '@/components/navigation/ServiceBackButton';
 import { useAuth } from '@/context/AuthContext';
 import {
   isJoinable,
@@ -57,6 +58,14 @@ export default function ConsultationMyCare() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
       <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <ServiceBackButton
+            color={theme.text}
+            background={theme.accentSoft}
+            borderColor={theme.border}
+            size={34}
+          />
+        </View>
         <Text style={[styles.kicker, { color: theme.muted }]}>{copy.digital}</Text>
         <Text style={[styles.title, { color: theme.text }]}>{t.myCare.title}</Text>
         {user?.name ? (
@@ -255,6 +264,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { flex: 1 },
   header: { paddingHorizontal: 20, paddingTop: 10 },
+  headerTop: { marginBottom: 10 },
   kicker: { fontSize: 11, fontWeight: '700', letterSpacing: 1.2 },
   title: { fontSize: 28, fontWeight: '800', marginTop: 4 },
   patient: { fontSize: 13, marginTop: 4 },

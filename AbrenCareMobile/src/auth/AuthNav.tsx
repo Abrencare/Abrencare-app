@@ -35,11 +35,17 @@ export default function AuthNav({ service, active, accent, muted, card }: Props)
   }
 
   function go(mode: 'signup' | 'signin') {
-    const pathname = mode === 'signup' ? '/signup' : '/login';
-
     if (active === mode) {
       return;
     }
+
+    // Consultation "Sign up" follows the same path as "See a doctor".
+    if (mode === 'signup' && service === 'consultation') {
+      router.push('/consultation-how-it-works');
+      return;
+    }
+
+    const pathname = mode === 'signup' ? '/signup' : '/login';
 
     if (active === 'intro') {
       router.push({ pathname, params: { service } });

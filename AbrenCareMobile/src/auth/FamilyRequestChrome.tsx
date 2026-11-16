@@ -53,7 +53,7 @@ export function FamilyFlowHeader({ showBack = true, tone = 'page' }: HeaderProps
     <BrandHomeLink style={styles.brandMark}>
       <BrandLogo size={32} link={false} />
       <Text style={[styles.brandName, { fontFamily: type.display, color: ink }]}>
-        AbrenCare
+        {t.header.brand}
       </Text>
     </BrandHomeLink>
   );

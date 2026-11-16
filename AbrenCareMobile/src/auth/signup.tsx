@@ -317,11 +317,7 @@ export default function SignupScreen() {
                     await markExecutiveSetupStarted(inquiry.id);
                     await activateExecutiveCare(inquiry.id);
                   }
-                  router.replace(
-                    needsOnboarding('executive')
-                      ? onboardingPath('executive')
-                      : dashboardFor('executive'),
-                  );
+                  router.replace('/executive-ready');
                   return;
                 }
                 router.replace('/executive-request-status');

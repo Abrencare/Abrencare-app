@@ -422,7 +422,7 @@ export function weeklyReportHtml(report: WeeklyReport, t: Copy) {
     </style>
   </head>
   <body>
-    <p class="brand">ABRENCARE · ${escapeHtml(copy.month)}</p>
+    <p class="brand">NORDIC ABRENCARE · ${escapeHtml(copy.month)}</p>
     <p class="doc-title">${escapeHtml(report.label)}</p>
     <p class="doc-meta">${escapeHtml(report.range)} · ${escapeHtml(report.physician)}</p>
 
@@ -471,7 +471,7 @@ export function weeklyReportHtml(report: WeeklyReport, t: Copy) {
       <span>${escapeHtml(report.lastReviewed)}</span>
     </div>
 
-    <p class="footer">AbrenCare · ${escapeHtml(copy.title)}</p>
+    <p class="footer">Nordic AbrenCare · ${escapeHtml(copy.title)}</p>
   </body>
 </html>`;
 }

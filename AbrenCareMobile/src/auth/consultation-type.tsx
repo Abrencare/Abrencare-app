@@ -49,14 +49,30 @@ export default function ConsultationTypeScreen() {
           onPress={() => pick('video')}
         />
         <TypeCard
-          selected={kind === 'message'}
-          icon="chatbubble-outline"
-          title={t.consultationLanding.messageTitle}
-          meta={t.consultationLanding.messageMeta}
-          onPress={() => pick('message')}
+          selected={kind === 'audio'}
+          icon="call-outline"
+          title={copy.audioTitle}
+          meta={copy.audioMeta}
+          onPress={() => pick('audio')}
         />
 
         <Text style={[styles.note, { color: theme.muted }]}>{copy.typeNote}</Text>
+
+        <View style={styles.loginContainer}>
+          <Text style={[styles.loginText, { color: theme.muted }]}>
+            {t.auth.alreadyAccount}
+          </Text>
+          <Pressable
+            onPress={() =>
+              router.push({ pathname: '/login', params: { service: 'consultation' } })
+            }
+            hitSlop={8}
+          >
+            <Text style={[styles.loginLink, { color: theme.accent }]}>
+              {t.auth.signIn}
+            </Text>
+          </Pressable>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -130,4 +146,18 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 17, fontWeight: '700' },
   cardMeta: { fontSize: 13, marginTop: 4 },
   note: { fontSize: 13, lineHeight: 20, marginTop: 16 },
+  loginContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 24,
+  },
+  loginText: {
+    fontSize: 14,
+  },
+  loginLink: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
 });

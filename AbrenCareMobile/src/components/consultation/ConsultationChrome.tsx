@@ -36,7 +36,7 @@ export default function ConsultationChrome({
       router.back();
       return;
     }
-    router.replace('/consultation');
+    router.replace('/(tabs)');
   }
 
   return (

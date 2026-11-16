@@ -17,6 +17,7 @@ export type Doctor = {
   specialty: SpecialtyId;
   years: number;
   online: boolean;
+  availableNow?: boolean;
   /** Bookable start times as HH:mm. */
   slots: string[];
 };

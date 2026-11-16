@@ -120,6 +120,17 @@ export default function ExecutiveRequestReviewScreen() {
       value: draft.concerns.map((id) => flow[CONCERN_LABEL[id]]).join(', ') || '—',
       href: '/executive-request-needs',
     },
+    {
+      icon: 'pulse-outline' as const,
+      label: t.executiveSignup.frequencyTitle,
+      value:
+        draft.monitorFrequency === 'weekly'
+          ? t.executiveSignup.weekly
+          : draft.monitorFrequency === 'twice'
+            ? t.executiveSignup.twice
+            : t.executiveSignup.managed,
+      href: '/executive-request-needs',
+    },
     ...(draft.note.trim()
       ? [
           {
@@ -162,6 +173,7 @@ export default function ExecutiveRequestReviewScreen() {
               contact: draft.contact,
               note: draft.note,
               concerns: draft.concerns,
+              monitorFrequency: draft.monitorFrequency,
               reachDay: draft.reachDay,
               reachSlot: draft.reachSlot,
               locationPref: draft.locationPref,

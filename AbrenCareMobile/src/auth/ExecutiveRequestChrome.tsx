@@ -55,7 +55,7 @@ export function ExecutiveFlowHeader({ showBack = true, tone = 'page' }: HeaderPr
     <BrandHomeLink style={styles.brandMark}>
       <BrandLogo size={32} link={false} />
       <Text style={[styles.brandName, { fontFamily: type.display, color: ink }]}>
-        AbrenCare
+        {t.header.brand}
       </Text>
     </BrandHomeLink>
   );

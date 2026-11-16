@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
+import ServiceBackButton from '@/components/navigation/ServiceBackButton';
 import BrandLogo, { BrandHomeLink } from '@/components/ui/BrandLogo';
 import { fromDateKey, toDateKey } from '@/context/AppointmentsContext';
 import { useConsultations } from '@/context/ConsultationContext';
@@ -102,9 +103,17 @@ export default function ConsultationBooking() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <BrandHomeLink style={styles.brandRow}>
-          <BrandLogo size={34} link={false} />
-        </BrandHomeLink>
+        <View style={styles.brandRow}>
+          <ServiceBackButton
+            color="#172B42"
+            background="#EEF2F6"
+            borderColor="#DDE3EA"
+            size={34}
+          />
+          <BrandHomeLink>
+            <BrandLogo size={34} link={false} />
+          </BrandHomeLink>
+        </View>
         <Text style={styles.headerLabel}>{t.consultation.headerLabel}</Text>
         <Text style={styles.headerTitle}>{t.consultation.title}</Text>
       </View>
@@ -253,8 +262,8 @@ export default function ConsultationBooking() {
         )}
 
         <Text style={styles.infoText}>
-          {(kind === 'message'
-            ? t.consultationPay.messageVisit
+          {(kind === 'audio'
+            ? t.consultationPay.audioVisit
             : t.consultation.videoInfo
           ).replace('30', String(CONSULTATION_MINUTES))}
         </Text>
@@ -265,7 +274,7 @@ export default function ConsultationBooking() {
           disabled={!canBook}
         >
           <Ionicons
-            name={kind === 'message' ? 'chatbubble' : 'videocam'}
+            name={kind === 'audio' ? 'call' : 'videocam'}
             size={17}
             color="#FFFFFF"
           />
@@ -294,7 +303,9 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   brandRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
     marginBottom: 10,
   },
   headerLabel: {

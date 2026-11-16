@@ -52,11 +52,11 @@ export const en = {
     executiveTitle: 'Executive health',
     executiveBody: 'Most heart problems in executives get caught too late. We catch them early.',
     consultationTitle: 'See a doctor now',
-    consultationBody: 'See a doctor in minutes, not days. Video or message, 450 ETB.',
+    consultationBody: 'See a doctor in minutes, not days. Video or audio, 450 ETB.',
   },
   auth: {
     loginTitle: 'Welcome back',
-    loginSubtitle: 'Sign in to your AbrenCare account',
+    loginSubtitle: 'Sign in to your Nordic AbrenCare account',
     trustFooter: 'Confidential healthcare · Ethiopia',
     email: 'Email',
     emailPlaceholder: 'name@email.com',
@@ -66,7 +66,7 @@ export const en = {
     noAccount: "Don't have an account?",
     createOne: 'Create one',
     signupTitle: 'Create account',
-    signupSubtitle: 'Join AbrenCare to manage your care.',
+    signupSubtitle: 'Join Nordic AbrenCare to manage your care.',
     fullName: 'Full name',
     fullNamePlaceholder: 'Enter your full name',
     createPasswordPlaceholder: 'Create a password',
@@ -75,7 +75,7 @@ export const en = {
     continueToFamily: 'Continue to Family care',
     continueToExecutive: 'Continue to Executive health',
     continueToConsultation: 'Continue to Consultation',
-    brand: 'ABRENCARE',
+    brand: 'NORDIC ABRENCARE',
     tagline: 'Better Health. Closer Together.',
     phone: 'Phone number',
     phonePlaceholder: 'Enter your phone number',
@@ -129,7 +129,7 @@ export const en = {
     cta: 'Request care',
   },
   familyAdd: {
-    kicker: 'ABRENCARE FAMILY CARE',
+    kicker: 'NORDIC ABRENCARE FAMILY CARE',
     title: 'Your family',
     subtitle: 'Add the loved one you want to care for.',
     newBadge: 'New',
@@ -214,7 +214,7 @@ export const en = {
     confirm:
       'I confirm that I have permission to submit this information and that the patient will be informed about the care service.',
     verify:
-      'AbrenCare can verify details and obtain any additional consent before care begins.',
+      'Nordic AbrenCare can verify details and obtain any additional consent before care begins.',
     back: 'Back',
     continueStep: 'Continue',
     save: 'Save family member',
@@ -254,7 +254,7 @@ export const en = {
       'This is Dr. Haile Bekele. You do not need to join to ask a question — what would you like to know?',
     previewMsg2:
       'A care advisor will still call you on the number you left. I can answer the medical side here.',
-    socialProof: "Join 40+ executives already under AbrenCare's care.",
+    socialProof: "Join 40+ executives already under Nordic AbrenCare's care.",
     profileTitle: "Let's personalize your care",
     profileSubtitle:
       "Just a few details so your physician knows who they're meeting.",
@@ -293,7 +293,7 @@ export const en = {
     kicker: 'FAMILY CARE',
     headline: 'Your loved ones are in Ethiopia. We help you care for them, wherever you live.',
     description:
-      'AbrenCare helps families arrange home visits, health checks and medical follow-ups, with clear updates from the care team.',
+      'Nordic AbrenCare helps families arrange home visits, health checks and medical follow-ups, with clear updates from the care team.',
     stayHealthy: 'Stay close.',
     stayAhead: 'From anywhere.',
     preventive: 'Trusted care',
@@ -328,7 +328,7 @@ export const en = {
     step3Title: 'Stay informed',
     step3Body:
       'Once care starts, see visit updates, reports and follow-ups in your app.',
-    whyKicker: 'WHY CHOOSE ABRENCARE',
+    whyKicker: 'WHY CHOOSE NORDIC ABRENCARE',
     whyTitle: 'Your family’s health is our priority.',
     whyBody:
       'Create your family account and start with home care in Ethiopia.',
@@ -362,7 +362,7 @@ export const en = {
     patientTitle: '2. Patient, the person receiving care',
     patientSubtitle: 'Full name of the person receiving care',
     patientCaption:
-      "This is the person who will receive AbrenCare's healthcare services.",
+      "This is the person who will receive Nordic AbrenCare's healthcare services.",
     supportTitle: '3. Support needed',
     supportSubtitle: 'Tell us what kind of help you are looking for',
     supportCaption: 'A care advisor will use this to prepare a private plan.',
@@ -406,7 +406,7 @@ export const en = {
       "Our team will contact you to learn more about your loved one's needs and explain the available care options.",
     backHome: 'Back to Home',
     viewPlan: 'View request status',
-    recorded: 'Recorded for the AbrenCare care team',
+    recorded: 'Recorded for the Nordic AbrenCare care team',
     inboxTitle: 'Care requests',
     inboxEmpty: 'No care requests yet.',
     cities: {
@@ -540,7 +540,7 @@ export const en = {
     privacyTitle: 'Privacy policy',
     updated: 'Last updated October 2026',
     termsIntro:
-      'These terms apply when you request care, review a private plan, approve it, or create an AbrenCare account. Once you approve a plan, the fee and the terms written on that plan are part of this agreement.',
+      'These terms apply when you request care, review a private plan, approve it, or create a Nordic AbrenCare account. Once you approve a plan, the fee and the terms written on that plan are part of this agreement.',
     yourProposal: 'Terms on your proposal',
     proposalNote:
       'These details come from the proposal prepared for your family. They are not published as public prices.',
@@ -548,7 +548,7 @@ export const en = {
     termsSections: [
       {
         title: 'What these terms cover',
-        body: 'AbrenCare arranges home visits, health checks, and follow-up in Ethiopia. These terms cover Family Care, Executive Health, and Digital Consultation. A private Family Care plan you approve is read together with these terms.',
+        body: 'Nordic AbrenCare arranges home visits, health checks, and follow-up in Ethiopia. These terms cover Family Care, Executive Health, and Digital Consultation. A private Family Care plan you approve is read together with these terms.',
       },
       {
         title: 'A request is not a contract',
@@ -576,7 +576,7 @@ export const en = {
       },
       {
         title: 'Not emergency care',
-        body: 'AbrenCare does not replace emergency services. If someone needs urgent help, contact local emergency services. A scheduled visit, a report, or a message in the app is not an emergency response.',
+        body: 'Nordic AbrenCare does not replace emergency services. If someone needs urgent help, contact local emergency services. A scheduled visit, a report, or a message in the app is not an emergency response.',
       },
       {
         title: 'Privacy and accounts',
@@ -623,8 +623,8 @@ export const en = {
     step2Body: 'Monitoring and frequency are medical decisions, made with you.',
     step3Title: 'We watch',
     step3Body: 'Alerts, follow-up and emergency response sit with us so you can work.',
-    whyKicker: 'WHY CHOOSE ABRENCARE',
-    whyTitle: 'Why choose AbrenCare?',
+    whyKicker: 'WHY CHOOSE NORDIC ABRENCARE',
+    whyTitle: 'Why choose Nordic AbrenCare?',
     whyBody: 'Personalized care, advanced monitoring and trusted doctors in Ethiopia.',
     experienced: 'Personalized care',
     facilities: 'Advanced monitoring',
@@ -656,7 +656,7 @@ export const en = {
     receivedBody: 'Our team will contact you to learn more about your needs and explain the available care options.',
     backHome: 'Back to Home',
     viewPlan: 'View request status',
-    recorded: 'Recorded for the AbrenCare care team',
+    recorded: 'Recorded for the Nordic AbrenCare care team',
     inboxTitle: 'Care requests',
     inboxEmpty: 'No care requests yet.',
     cities: {
@@ -744,7 +744,7 @@ export const en = {
     kicker: 'EXECUTIVE HEALTH',
     headline: 'Your business gets your attention every day.',
     headlineAccent: 'Does your health?',
-    body: 'High blood pressure and other health problems can build quietly when check-ups and follow-ups are delayed. AbrenCare helps executives stay on top of their health with coordinated care at home or at the office.',
+    body: 'High blood pressure and other health problems can build quietly when check-ups and follow-ups are delayed. Nordic AbrenCare helps executives stay on top of their health with coordinated care at home or at the office.',
     rowHome: 'Home or office visits',
     rowPlan: 'Doctor-led private care plan',
     rowFollow: 'Follow-up reports and health coordination',
@@ -870,14 +870,14 @@ export const en = {
     kicker: 'DIGITAL CONSULTATION',
     headline: 'See a doctor\nin minutes, not days.',
     description:
-      'Licensed video or message visits in Amharic. 450 ETB — the same whether you book ahead or tap Consult Now.',
+      'Licensed video or audio visits in Amharic. 450 ETB — the same whether you book ahead or tap Consult Now.',
     priceKicker: 'CLEAR PRICING',
     priceTitle: 'One price. Two ways to see a doctor.',
     priceSubtitle: 'Choose the visit type first. The fee does not change.',
     videoTitle: 'Video visit',
     videoMeta: '30 minutes · 450 ETB',
-    messageTitle: 'Message visit',
-    messageMeta: 'Write now · 450 ETB',
+    messageTitle: 'Audio visit',
+    messageMeta: '30 minutes · 450 ETB',
     priceNote:
       'Consult Now uses the same 450 ETB as a scheduled consultation. Payment is taken before the visit starts.',
     stayHealthy: 'See a doctor.',
@@ -911,7 +911,7 @@ export const en = {
     facilities: 'Qualified doctors',
     confidential: 'Easy scheduling',
     localCare: 'Local care in Ethiopia',
-    ctaTitle: '450 ETB. Video or message.',
+    ctaTitle: '450 ETB. Video or audio.',
     ctaBody: 'Payment comes first. Then you see the doctor.',
     createAccount: 'See a doctor',
     alreadyAccount: 'Already have an account?',
@@ -924,7 +924,7 @@ export const en = {
     headline: 'Healthcare, when you need it.',
     caption: 'A licensed doctor, from your phone.',
     submit: 'Create Account',
-    welcomeTitle: 'Welcome to AbrenCare',
+    welcomeTitle: 'Welcome to Nordic AbrenCare',
     setupTitle: "Let's set up your consultation.",
   },
   consultationFlow: {
@@ -944,7 +944,7 @@ export const en = {
     howTitle: 'How it works',
     howSubtitle: 'Get the care you need in a few simple steps.',
     how1Title: 'Choose your consultation',
-    how1Body: 'Select video or message based on your needs.',
+    how1Body: 'Select video or audio based on your needs.',
     how2Title: 'Tell us what you need',
     how2Body: 'Briefly describe your symptoms or health concern.',
     how3Title: 'Find a doctor and time',
@@ -996,7 +996,7 @@ export const en = {
     bookInstead: 'Book a consultation',
     checking: 'Checking availability…',
     included: 'WHAT IS INCLUDED',
-    included1: '30-minute video or message visit with a licensed doctor',
+    included1: '30-minute video or audio visit with a licensed doctor',
     included2: 'Consultation summary after clinician approval',
     included3: 'Prescription and follow-up advice when issued',
     refund: 'CANCELLATION AND REFUND',
@@ -1128,7 +1128,7 @@ export const en = {
     tomorrow: 'Tomorrow',
   },
   header: {
-    brand: 'AbrenCare',
+    brand: 'Nordic AbrenCare',
     location: 'Healthcare · Ethiopia',
     notifications: 'Notifications',
     caughtUp: 'You are all caught up',
@@ -1196,7 +1196,7 @@ export const en = {
     executiveTags: ['Confidential', 'Dedicated MD'],
     consultationTitle: 'See a doctor now',
     consultationCategory: 'FOR ETHIOPIANS IN ETHIOPIA',
-    consultationDescription: 'See a doctor in minutes, not days. Video or message in Amharic. 450 ETB.',
+    consultationDescription: 'See a doctor in minutes, not days. Video or audio in Amharic. 450 ETB.',
     consultationHowItWorks: [
       'Choose a specialty and an available doctor',
       'Book a 30-minute video consultation',
@@ -1379,7 +1379,7 @@ export const en = {
       homeVisit: 'Nurse Meron Girma',
       nurseCheck: 'Nurse Meron Girma',
       doctorVisit: 'Dr. Haile Bekele',
-      labSample: 'AbrenCare Lab',
+      labSample: 'Nordic AbrenCare Lab',
     },
   },
   familyReports: {
@@ -2093,14 +2093,14 @@ export const en = {
   consultationChat: {
     sectionLabel: 'CONSULT NOW',
     sectionHint:
-      'Same 450 ETB as a booked visit. Payment is taken before the chat or call starts.',
-    startChat: 'Message',
+      'Same 450 ETB as a booked visit. Payment is taken before the call starts.',
+    startChat: 'Audio call',
     startCall: 'Video call',
     online: 'Online',
     offline: 'Offline',
-    replyTime: 'Usually replies in a few minutes',
-    awayNotice: 'Away right now · your message will be waiting',
-    placeholder: 'Write a message',
+    replyTime: 'Usually available in a few minutes',
+    awayNotice: 'Away right now · try a video visit instead',
+    placeholder: 'Notes for your doctor',
     videoCall: 'Video call',
     message1:
       'Hello, I have your file open. What symptoms have you been noticing?',
@@ -2247,11 +2247,11 @@ export const am: typeof en = {
     executiveTitle: 'የአመራር ጤና',
     executiveBody: 'በአመራሮች ላይ የልብ ችግር ብዙ ጊዜ ዘግይቶ ነው የሚታየው። እኛ ቀድመን እንይዘዋለን።',
     consultationTitle: 'ሐኪም አሁን ይመልከቱ',
-    consultationBody: 'ሐኪም በደቂቃዎች ውስጥ ይመልከቱ፣ በቀናት አይደለም። ቪዲዮ ወይም መልእክት፣ 450 ብር።',
+    consultationBody: 'ሐኪም በደቂቃዎች ውስጥ ይመልከቱ፣ በቀናት አይደለም። ቪዲዮ ወይም ድምጽ፣ 450 ብር።',
   },
   auth: {
     loginTitle: 'እንኳን ደህና መጡ',
-    loginSubtitle: 'ወደ አብረንኬር መለያዎ ይግቡ',
+    loginSubtitle: 'ወደ ኖርዲክ አብረንኬር መለያዎ ይግቡ',
     trustFooter: 'ሚስጥራዊ ጤና እንክብካቤ · ኢትዮጵያ',
     email: 'ኢሜይል',
     emailPlaceholder: 'ኢሜይልዎን ያስገቡ',
@@ -2261,7 +2261,7 @@ export const am: typeof en = {
     noAccount: 'መለያ የለዎትም?',
     createOne: 'ይፍጠሩ',
     signupTitle: 'መለያ ይፍጠሩ',
-    signupSubtitle: 'እንክብካቤዎን ለማስተዳደር አብረንኬርን ይቀላቀሉ።',
+    signupSubtitle: 'እንክብካቤዎን ለማስተዳደር ኖርዲክ አብረንኬርን ይቀላቀሉ።',
     fullName: 'ሙሉ ስም',
     fullNamePlaceholder: 'ሙሉ ስምዎን ያስገቡ',
     createPasswordPlaceholder: 'የይለፍ ቃል ይፍጠሩ',
@@ -2270,7 +2270,7 @@ export const am: typeof en = {
     continueToFamily: 'ወደ የቤተሰብ እንክብካቤ ይቀጥሉ',
     continueToExecutive: 'ወደ የአመራር ጤና ይቀጥሉ',
     continueToConsultation: 'ወደ ምክክር ይቀጥሉ',
-    brand: 'አብረንኬር',
+    brand: 'ኖርዲክ አብረንኬር',
     tagline: 'የተሻለ ጤና። በቅርበት።',
     phone: 'ስልክ ቁጥር',
     phonePlaceholder: 'ስልክ ቁጥርዎን ያስገቡ',
@@ -2324,7 +2324,7 @@ export const am: typeof en = {
     cta: 'እንክብካቤ ይጠይቁ',
   },
   familyAdd: {
-    kicker: 'አብረንኬር የቤተሰብ እንክብካቤ',
+    kicker: 'ኖርዲክ አብረንኬር የቤተሰብ እንክብካቤ',
     title: 'ቤተሰብዎ',
     subtitle: 'መንከባከብ የሚፈልጉትን የወዳጅዎን ያክሉ።',
     newBadge: 'አዲስ',
@@ -2409,7 +2409,7 @@ export const am: typeof en = {
     confirm:
       'ይህን መረጃ ለማስገባት ፈቃድ እንዳለኝ እና ታካሚው ስለ እንክብካቤ አገልግሎቱ እንደሚነገራቸው አረጋግጣለሁ።',
     verify:
-      'እንክብካቤ ከመጀመሩ በፊት አብረንኬር ዝርዝሮችን ማረጋገጥ እና ተጨማሪ ስምምነት ማግኘት ይችላል።',
+      'እንክብካቤ ከመጀመሩ በፊት ኖርዲክ አብረንኬር ዝርዝሮችን ማረጋገጥ እና ተጨማሪ ስምምነት ማግኘት ይችላል።',
     back: 'ተመለስ',
     continueStep: 'ቀጥል',
     save: 'የቤተሰብ አባል አስቀምጥ',
@@ -2449,7 +2449,7 @@ export const am: typeof en = {
       'እኔ ዶክተር ኃይሌ በቀለ ነኝ። ለመጠየቅ መቀላቀል አያስፈልግም — ምን ማወቅ ይፈልጋሉ?',
     previewMsg2:
       'እንክብካቤ አማካሪ በተዉት ስልክ አሁንም ይደውላል። የሕክምናውን ጎን እዚህ መመለስ እችላለሁ።',
-    socialProof: 'ከአብረንኬር እንክብካቤ ሥር ያሉ ከ40 በላይ አመራሮች ጋር ይቀላቀሉ።',
+    socialProof: 'ከኖርዲክ አብረንኬር እንክብካቤ ሥር ያሉ ከ40 በላይ አመራሮች ጋር ይቀላቀሉ።',
     profileTitle: 'እንክብካቤዎን እናብጅ',
     profileSubtitle: 'ሐኪምዎ የሚገናኙትን እንዲያውቅ ጥቂት ዝርዝሮች ብቻ።',
     dateOfBirth: 'የትውልድ ቀን',
@@ -2485,7 +2485,7 @@ export const am: typeof en = {
   familyLanding: {
     kicker: 'የቤተሰብ እንክብካቤ',
     headline: 'የወዳጆችዎ በኢትዮጵያ ናቸው። የትም ቢኖሩ እንዲንከባከቡዎቸው እንረዳዎታለን።',
-    description: 'አብረንኬር ቤተሰቦች የቤት ጉብኝት፣ የጤና ምርመራ እና የሕክምና ክትትል እንዲያዘጋጁ ይረዳል፣ ከእንክብካቤ ቡድንም ግልጽ ዝመና ያገኝላሉ።',
+    description: 'ኖርዲክ አብረንኬር ቤተሰቦች የቤት ጉብኝት፣ የጤና ምርመራ እና የሕክምና ክትትል እንዲያዘጋጁ ይረዳል፣ ከእንክብካቤ ቡድንም ግልጽ ዝመና ያገኝላሉ።',
     stayHealthy: 'ወላጅዎን ከየትኛውም ቦታ ይንከባከቡ።',
     stayAhead: 'የቤተሰብዎ ጤና ሁልጊዜ አስፈላጊ ነው።',
     preventive: 'የቤት ጉብኝት',
@@ -2516,7 +2516,7 @@ export const am: typeof en = {
     step2Body: 'ቡድናችን ከእርሶ ጋር ይነጋገራል እና በወዳጅዎ ፍላጎት መሰረት እንክብካቤ ይመክራል።',
     step3Title: 'መረጃ ያግኙ',
     step3Body: 'እንክብካቤ ሲጀመር የጉብኝት ዝመናዎችን፣ ሪፖርቶችን እና ክትትል በመተግበሪያዎ ይመልከቱ።',
-    whyKicker: 'አብረንኬርን ለምን ይመርጣሉ',
+    whyKicker: 'ኖርዲክ አብረንኬርን ለምን ይመርጣሉ',
     whyTitle: 'የታመነ። ሙያዊ። የአካባቢ።',
     whyBody: 'የቤተሰብዎ መረጃ ሚስጥራዊ ሆኖ ይቆያል።',
     experienced: 'የቤት ጉብኝት',
@@ -2547,7 +2547,7 @@ export const am: typeof en = {
     familyMemberCaption: 'እርስዎ ለሚወዱት ሰው እንክብካቤ የሚያዘጋጁት ሰው ነዎት።',
     patientTitle: '2. ታካሚ፣ እንክብካቤ የሚቀበለው ሰው',
     patientSubtitle: 'እንክብካቤ የሚቀበለው ሰው ሙሉ ስም',
-    patientCaption: 'AbrenCare የጤና አገልግሎት የሚያገኘው ሰው ይህ ነው።',
+    patientCaption: 'Nordic AbrenCare የጤና አገልግሎት የሚያገኘው ሰው ይህ ነው።',
     supportTitle: '3. የሚፈለግ እርዳታ',
     supportSubtitle: 'ምን ዓይነት እርዳታ እንደሚፈልጉ ይንገሩን',
     supportCaption: 'የእንክብካቤ አማካሪ ይህን ተጠቅሞ የግል እቅድ ያዘጋጃል።',
@@ -2591,7 +2591,7 @@ export const am: typeof en = {
       'ቡድናችን ስለ ወዳጅዎ ፍላጎት የበለጠ ለመረዳት እና የሚገኙ የእንክብካቤ አማራጮችን ለማስረዳት ያገኝዎታል።',
     backHome: 'ወደ መነሻ ተመለስ',
     viewPlan: 'የጥያቄ ሁኔታ ይመልከቱ',
-    recorded: 'ለአብረንኬር የእንክብካቤ ቡድን የተመዝገበ',
+    recorded: 'ለኖርዲክ አብረንኬር የእንክብካቤ ቡድን የተመዝገበ',
     inboxTitle: 'የእንክብካቤ ጥያቄዎች',
     inboxEmpty: 'የእንክብካቤ ጥያቄ የለም።',
     cities: {
@@ -2723,7 +2723,7 @@ export const am: typeof en = {
     privacyTitle: 'የግላዊነት ፖሊሲ',
     updated: 'ለመጨረሻ ጊዜ እስከቶበር 2026 ተዘምኖዋል',
     termsIntro:
-      'እነዚህ ውሎች እንክብካቤ ሲጠይቁ፣ የግል እቅድ ሲመለከቱ፣ ሲያጽድቁት ወይም የአብረንኬር መለያ ሲከፍቱ ይሠራሉ። እቅድ ካጽደቁ በኋላ በዚያ እቅድ ላይ የተጻፈው ክፍያ እና ውሎች የዚህ ስምምነት ክፍል ይሆናሉ።',
+      'እነዚህ ውሎች እንክብካቤ ሲጠይቁ፣ የግል እቅድ ሲመለከቱ፣ ሲያጽድቁት ወይም የኖርዲክ አብረንኬር መለያ ሲከፍቱ ይሠራሉ። እቅድ ካጽደቁ በኋላ በዚያ እቅድ ላይ የተጻፈው ክፍያ እና ውሎች የዚህ ስምምነት ክፍል ይሆናሉ።',
     yourProposal: 'በእቅድዎ ላይ ያሉ ውሎች',
     proposalNote:
       'እነዚህ ዝርዝሮች ለቤተሰብዎ ከተዘጋጀው እቅድ የተወሰዱ ናቸው። እንደ ይፋ ዋጋ አይታተሙም።',
@@ -2732,7 +2732,7 @@ export const am: typeof en = {
       {
         title: 'እነዚህ ውሎች ምን ይሸፍናሉ',
         body:
-          'አብረንኬር በኢትዮጵያ የቤት ጉብኝት፣ የጤና ምርመራ እና ክትትል ያዘጋጃል። እነዚህ ውሎች የቤተሰብ እንክብካቤን፣ የአመራር ጤናን እና ዲጂታል ምክክርን ይሸፍናሉ። የሚያጽድቁት የግል የቤተሰብ እንክብካቤ እቅድ ከእነዚህ ውሎች ጋር አብሮ ይነበባል።',
+          'ኖርዲክ አብረንኬር በኢትዮጵያ የቤት ጉብኝት፣ የጤና ምርመራ እና ክትትል ያዘጋጃል። እነዚህ ውሎች የቤተሰብ እንክብካቤን፣ የአመራር ጤናን እና ዲጂታል ምክክርን ይሸፍናሉ። የሚያጽድቁት የግል የቤተሰብ እንክብካቤ እቅድ ከእነዚህ ውሎች ጋር አብሮ ይነበባል።',
       },
       {
         title: 'ጥያቄ ውል አይደለም',
@@ -2767,7 +2767,7 @@ export const am: typeof en = {
       {
         title: 'የድንገተኛ እንክብካቤ አይደለም',
         body:
-          'አብረንኬር የድንገተኛ አገልግሎትን አይተካም። አንድ ሰው አስቸካይ እርዳታ ከፈለገ የአካባቢውን የድንገተኛ አገልግሎት ያግኙ። የተያዘ ጉብኝት፣ ሪፖርት ወይም በመተግበሪያው ውስጥ መልዕክት የድንገተኛ ምላሽ አይደለም።',
+          'ኖርዲክ አብረንኬር የድንገተኛ አገልግሎትን አይተካም። አንድ ሰው አስቸካይ እርዳታ ከፈለገ የአካባቢውን የድንገተኛ አገልግሎት ያግኙ። የተያዘ ጉብኝት፣ ሪፖርት ወይም በመተግበሪያው ውስጥ መልዕክት የድንገተኛ ምላሽ አይደለም።',
       },
       {
         title: 'ግላዊነት እና መለያ',
@@ -2815,7 +2815,7 @@ export const am: typeof en = {
     step2Body: 'ክትትል እና ድግግሞሽ ከእርስዎ ጋር የሚወሰኑ የሕክምና ውሳኔዎች ናቸው።',
     step3Title: 'እኛ እንከታተላለን',
     step3Body: 'ማሳወቂያ፣ ክትትል እና የአደጋ ምላሽ እኛ ላይ ነው፣ እርስዎ ይሥሩ።',
-    whyKicker: 'አብረንኬርን ለምን ይመርጣሉ',
+    whyKicker: 'ኖርዲክ አብረንኬርን ለምን ይመርጣሉ',
     whyTitle: 'የታመነ። ሙያዊ። የአካባቢ።',
     whyBody: 'ጤናዎ በልምድ ባላቸው ባለሙያዎች እና በኢትዮጵያ በተመደበ የእንክብካቤ ቡድን እጅ ነው።',
     experienced: 'ልምድ ያላቸው ባለሙያዎች',
@@ -2850,7 +2850,7 @@ export const am: typeof en = {
       'ቡድናችን ስለ ወዳጅዎ ፍላጎት የበለጠ ለመረዳት እና የሚገኙ የእንክብካቤ አማራጮችን ለማስረዳት ያገኝዎታል።',
     backHome: 'ወደ መነሻ ተመለስ',
     viewPlan: 'የጥያቄ ሁኔታ ይመልከቱ',
-    recorded: 'ለአብረንኬር የእንክብካቤ ቡድን የተመዝገበ',
+    recorded: 'ለኖርዲክ አብረንኬር የእንክብካቤ ቡድን የተመዝገበ',
     inboxTitle: 'የእንክብካቤ ጥያቄዎች',
     inboxEmpty: 'የእንክብካቤ ጥያቄ የለም።',
     cities: {
@@ -2943,7 +2943,7 @@ export const am: typeof en = {
     kicker: 'የአመራር ጤና',
     headline: 'ንግድዎ በየቀኑ ትኩረትዎን ይወስዳል።',
     headlineAccent: 'ጤናዎስ?',
-    body: 'አብረንኬር አመራሮች ጤናቸውን በቤት ወይም በቢሮ በተቅናጠ እንክብካቤ እንዲከታተሉ ይረዳል።',
+    body: 'ኖርዲክ አብረንኬር አመራሮች ጤናቸውን በቤት ወይም በቢሮ በተቅናጠ እንክብካቤ እንዲከታተሉ ይረዳል።',
     rowHome: 'በቤት ወይም በቢሮ ግብኝት',
     rowPlan: 'በሐኪም የሚመራ የግል እንክብካቤ እቅድ',
     rowFollow: 'የክትትል ሪፖርቶችና የጤና ትስስር',
@@ -3068,14 +3068,14 @@ export const am: typeof en = {
     kicker: 'ዲጂታል ምክክር',
     headline: 'ሐኪም በደቂቃዎች ውስጥ ይመልከቱ፣\nበቀናት አይደለም።',
     description:
-      'ፈቃድ ያለው ቪዲዮ ወይም መልእክት በአማርኛ። 450 ብር — ቀድመው ቢይዙ ወይም አሁን ቢጀምሩ ተመሳሳይ ነው።',
+      'ፈቃድ ያለው ቪዲዮ ወይም ድምጽ ጉብኝት በአማርኛ። 450 ብር — ቀድመው ቢይዙ ወይም አሁን ቢጀምሩ ተመሳሳይ ነው።',
     priceKicker: 'ግልጽ ዋጋ',
     priceTitle: 'አንድ ዋጋ። ሁለት መንገድ ሐኪም ለማየት።',
     priceSubtitle: 'የጉብኝት ዓይነት መጀመሪያ ይምረጡ። ክፍያ አይቀየርም።',
     videoTitle: 'የቪዲዮ ጉብኝት',
     videoMeta: '30 ደቂቃ · 450 ብር',
-    messageTitle: 'የመልእክት ጉብኝት',
-    messageMeta: 'አሁን ይጻፉ · 450 ብር',
+    messageTitle: 'የድምጽ ጉብኝት',
+    messageMeta: '30 ደቂቃ · 450 ብር',
     priceNote:
       'አሁን ያማክሩ ከቀጠሮ ጋር ተመሳሳይ 450 ብር ነው። ክፍያ ከጉብኝቱ በፊት ይከፈላል።',
     stayHealthy: 'ጤናዎን ይጠብቁ።',
@@ -3101,14 +3101,14 @@ export const am: typeof en = {
     step2Body: 'ቡድናችን ምርመራዎችን፣ ስክሪኒንግ እና የሐኪም ምክክር ያዘጋጃል።',
     step3Title: 'መረጃ ያግኙ',
     step3Body: 'ውጤቶችዎን፣ ሪፖርቶችን እና የእንክብካቤ ዝመናዎችን በደህና ይቀበሉ።',
-    whyKicker: 'አብረንኬርን ለምን ይመርጣሉ',
+    whyKicker: 'ኖርዲክ አብረንኬርን ለምን ይመርጣሉ',
     whyTitle: 'የታመነ። ሙያዊ። የአካባቢ።',
     whyBody: 'ጤናዎ በልምድ ባላቸው ባለሙያዎች እና በኢትዮጵያ በተመደበ የእንክብካቤ ቡድን እጅ ነው።',
     experienced: 'ልምድ ያላቸው ባለሙያዎች',
     facilities: 'ዘመናዊ ተቋማት',
     confidential: 'ደህንነቱ የተጠበቀ እና ሚስጥራዊ',
     localCare: 'በኢትዮጵያ የአካባቢ እንክብካቤ',
-    ctaTitle: '450 ብር። ቪዲዮ ወይም መልእክት።',
+    ctaTitle: '450 ብር። ቪዲዮ ወይም ድምጽ።',
     ctaBody: 'መጀመሪያ ይክፈሉ። ከዚያ ሐኪሙን ያያሉ።',
     createAccount: 'ሐኪም ይመልከቱ',
     alreadyAccount: 'መለያ አለዎት?',
@@ -3121,7 +3121,7 @@ export const am: typeof en = {
     headline: 'ጤና እንክብካቤ፣ በሚፈልጉበት ጊዜ።',
     caption: 'ፈቃድ ያለው ሐኪም፣ ከስልክዎ።',
     submit: 'መለያ ይፍጠሩ',
-    welcomeTitle: 'እንኳን ወደ አብረንኬር በደህና መጡ',
+    welcomeTitle: 'እንኳን ወደ ኖርዲክ አብረንኬር በደህና መጡ',
     setupTitle: 'ምክክርዎን እናዘጋጅ።',
   },
   consultationFlow: {
@@ -3139,7 +3139,7 @@ export const am: typeof en = {
     howTitle: '\u12a5\u1295\u12f4\u1275 \u12a5\u1295\u12f0\u121a\u1230\u122b',
     howSubtitle: '\u12e8\u121a\u1348\u120d\u1309\u1275\u1295 \u12a5\u1295\u12ad\u1265\u12ab\u1264 \u1260\u1325\u1242\u1275 \u12a5\u122d\u121d\u1303\u12ce\u127d \u12ed\u1240\u1260\u1209\u1362',
     how1Title: '\u12e8\u121d\u12ad\u12ad\u122d \u12d3\u12ed\u1290\u1275 \u12ed\u121d\u1228\u1321',
-    how1Body: '\u1260\u134a\u120b\u130e\u1275\u12ce \u1218\u1230\u1228\u1275 \u1262\u12f2\u12ee \u12c8\u12ed\u121d \u1218\u120d\u12a5\u12ad\u1275 \u12ed\u121d\u1228\u1321\u1362',
+    how1Body: 'በፍላጎትዎ መሰረት ቪዲዮ ወይም ድምጽ ይምረጡ።',
     how2Title: '\u121d\u1295 \u12a5\u1295\u12f0\u121a\u1348\u120d\u1309 \u12ed\u1295\u1308\u1229\u1295',
     how2Body: '\u121d\u120d\u12ad\u1276\u127e\u1295 \u12c8\u12ed\u121d \u12e8\u1325\u1293 \u1325\u12eb\u1244 \u1260\u12a0\u132d\u122d \u12ed\u130d\u1208\u1339\u1362',
     how3Title: '\u1201\u12aa\u121d \u12a5\u1293 \u1230\u12d3\u1275 \u12ed\u121d\u1228\u1321',
@@ -3313,7 +3313,7 @@ export const am: typeof en = {
     tomorrow: 'ነገ',
   },
   header: {
-    brand: 'አብረንኬር',
+    brand: 'ኖርዲክ አብረንኬር',
     location: 'ጤና እንክብካቤ · ኢትዮጵያ',
     notifications: 'ማሳወቂያዎች',
     caughtUp: 'አዲስ ማሳወቂያ የለም',
@@ -3379,7 +3379,7 @@ export const am: typeof en = {
     executiveTags: ['ሚስጥራዊ', 'የግል ሐኪም'],
     consultationTitle: 'ሐኪም አሁን ይመልከቱ',
     consultationCategory: 'በኢትዮጵያ ለሚኖሩ ኢትዮጵያውያን',
-    consultationDescription: 'ሐኪም በደቂቃዎች ውስጥ ይመልከቱ፣ በቀናት አይደለም። በአማርኛ ቪዲዮ ወይም መልእክት። 450 ብር።',
+    consultationDescription: 'ሐኪም በደቂቃዎች ውስጥ ይመልከቱ፣ በቀናት አይደለም። በአማርኛ ቪዲዮ ወይም ድምጽ። 450 ብር።',
     consultationHowItWorks: [
       'ልዩ ሙያ እና የሚገኝ ሐኪም ይምረጡ',
       'የ30 ደቂቃ የቪዲዮ ምክክር ይያዙ',
@@ -3561,7 +3561,7 @@ export const am: typeof en = {
       homeVisit: 'ነርስ መሮን ግርማ',
       nurseCheck: 'ነርስ መሮን ግርማ',
       doctorVisit: 'ዶ/ር ኃይሌ በቀለ',
-      labSample: 'የአብረንኬር ላብራቶሪ',
+      labSample: 'የኖርዲክ አብረንኬር ላብራቶሪ',
     },
   },
   familyReports: {

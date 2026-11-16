@@ -1,7 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { CountryId } from '@/data/countries';
+import type { MonitorFrequency } from '@/types/auth';
 import { loadJson } from '@/utilities/storage';
+
+const MONITOR_FREQUENCIES: MonitorFrequency[] = ['weekly', 'twice', 'managed'];
+
+function isMonitorFrequency(value: unknown): value is MonitorFrequency {
+  return typeof value === 'string' && MONITOR_FREQUENCIES.includes(value as MonitorFrequency);
+}
 
 const STORAGE_KEY = 'abrencare-executive-inquiries';
 
@@ -72,6 +79,7 @@ export type ExecutiveRequestDraft = {
   reachSlot: ExecutiveReachSlot;
   locationPref: ExecutiveLocationPref;
   concerns: ExecutiveConcernId[];
+  monitorFrequency: MonitorFrequency;
   note: string;
 };
 
@@ -108,6 +116,7 @@ export type ExecutiveInquiry = {
   contact: ExecutiveContactId;
   note?: string;
   concerns?: ExecutiveConcernId[];
+  monitorFrequency?: MonitorFrequency;
   reachDay?: ExecutiveReachDay;
   reachSlot?: ExecutiveReachSlot;
   locationPref?: ExecutiveLocationPref;
@@ -176,6 +185,9 @@ function normalizeInquiry(item: ExecutiveInquiry): ExecutiveInquiry {
     concerns: Array.isArray(item.concerns)
       ? item.concerns.filter((id): id is ExecutiveConcernId => EXECUTIVE_CONCERNS.includes(id as ExecutiveConcernId))
       : [],
+    monitorFrequency: isMonitorFrequency(item.monitorFrequency)
+      ? item.monitorFrequency
+      : 'managed',
     reachDay: item.reachDay ?? 'weekdays',
     reachSlot: item.reachSlot ?? 'morning',
     locationPref: item.locationPref ?? 'home',
@@ -220,6 +232,7 @@ export async function saveExecutiveInquiry(
     contact: input.contact,
     note: input.note?.trim() ?? '',
     concerns: input.concerns ?? [],
+    monitorFrequency: input.monitorFrequency ?? 'managed',
     reachDay: input.reachDay ?? 'weekdays',
     reachSlot: input.reachSlot ?? 'morning',
     locationPref: input.locationPref ?? 'home',
@@ -341,6 +354,7 @@ export function emptyExecutiveDraft(country: CountryId): ExecutiveRequestDraft {
     reachSlot: 'morning',
     locationPref: 'home',
     concerns: [],
+    monitorFrequency: 'managed',
     note: '',
   };
 }
@@ -368,6 +382,9 @@ function normalizeDraft(item: ExecutiveRequestDraft): ExecutiveRequestDraft {
     concerns: Array.isArray(item.concerns)
       ? item.concerns.filter((id): id is ExecutiveConcernId => EXECUTIVE_CONCERNS.includes(id as ExecutiveConcernId))
       : [],
+    monitorFrequency: isMonitorFrequency(item.monitorFrequency)
+      ? item.monitorFrequency
+      : 'managed',
     note: typeof item.note === 'string' ? item.note : '',
   };
 }

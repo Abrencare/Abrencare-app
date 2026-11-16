@@ -14,7 +14,6 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useThemedStyles } from "@/theme/useThemedStyles";
 
 type MedicationTone = "taken" | "due" | "upcoming";
-type AlertTone = "high" | "reminder";
 type ProgrammeTone = "active" | "soon" | "booked" | "track" | "scheduled";
 
 const medicationMeta: {
@@ -33,19 +32,6 @@ const medicationTones: Record<MedicationTone, { color: string; bg: string }> = {
   upcoming: { color: "#9AA3AF", bg: "#F1F1F1" },
 };
 
-const alertMeta: { tone: AlertTone; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { tone: "high", icon: "alert-circle" },
-  { tone: "reminder", icon: "notifications-outline" },
-];
-
-const alertTones: Record<
-  AlertTone,
-  { color: string; bg: string; border: string }
-> = {
-  high: { color: "#D9534F", bg: "#FDECEC", border: "#F3C4C2" },
-  reminder: { color: "#C4A05A", bg: "#F3E8D0", border: "#E0C078" },
-};
-
 const programmeTones: Record<ProgrammeTone, { color: string; bg: string }> = {
   active: { color: "#57A35A", bg: "#EAF6EA" },
   soon: { color: "#C4A05A", bg: "#F3E8D0" },
@@ -60,7 +46,6 @@ export default function ExecutiveProgramme() {
   const { t } = useLanguage();
 
   const medications = t.executiveProgramme.medications;
-  const alerts = t.executiveProgramme.alerts;
 
   const takenCount = medicationMeta.filter(
     (item) => item.tone === "taken",
@@ -120,14 +105,6 @@ export default function ExecutiveProgramme() {
     },
   ];
 
-  const dueSoonCount = programmeItems.filter(
-    (item) => item.tone === "soon",
-  ).length;
-  const onTrackCount = programmeItems.length - dueSoonCount;
-  const programmePercent = Math.round(
-    (onTrackCount / programmeItems.length) * 100,
-  );
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -142,42 +119,6 @@ export default function ExecutiveProgramme() {
           <SummaryCard number="6" label={t.executiveProgramme.activeItems} />
           <SummaryCard number="2" label={t.executiveProgramme.dueSoon} />
           <SummaryCard number="1" label={t.executiveProgramme.booked} />
-        </View>
-
-        {/* Programme progress */}
-        <Text style={styles.sectionTitle}>
-          {t.executiveProgramme.programmeProgress}
-        </Text>
-
-        <View style={styles.card}>
-          <View style={styles.progressHeader}>
-            <Text style={styles.progressFraction}>
-              {onTrackCount} / {programmeItems.length}
-            </Text>
-            <Text style={styles.progressCaption}>
-              {t.executiveProgramme.onTrackLabel}
-            </Text>
-          </View>
-
-          <View style={styles.progressRow}>
-            <View style={styles.progressTrack}>
-              <View
-                style={[
-                  styles.progressFill,
-                  styles.progressFillGreen,
-                  { width: `${programmePercent}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.progressLabelGreen}>{programmePercent}%</Text>
-          </View>
-
-          <View style={styles.legendRow}>
-            <View style={[styles.dot, { backgroundColor: "#C4A05A" }]} />
-            <Text style={styles.legendText}>
-              {dueSoonCount} · {t.executiveProgramme.dueSoon}
-            </Text>
-          </View>
         </View>
 
         {/* Medication schedule */}
@@ -246,59 +187,6 @@ export default function ExecutiveProgramme() {
             <Ionicons name="arrow-forward" size={13} color="#C4A05A" />
           </TouchableOpacity>
         </View>
-
-        {/* Medication alerts */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            {t.executiveProgramme.medicationAlerts}
-          </Text>
-
-          <View style={styles.warnBadge}>
-            <Ionicons name="notifications" size={11} color="#C4A05A" />
-            <Text style={styles.countBadgeText}>{alerts.length}</Text>
-          </View>
-        </View>
-
-        {alertMeta.map((meta, index) => {
-          const copy = alerts[index];
-          if (!copy) {
-            return null;
-          }
-
-          const tone = alertTones[meta.tone];
-
-          return (
-            <TouchableOpacity
-              key={copy.medication}
-              style={[
-                styles.alertCard,
-                { backgroundColor: tone.bg, borderColor: tone.border },
-              ]}
-            >
-              <View style={styles.alertHeader}>
-                <Ionicons name={meta.icon} size={13} color={tone.color} />
-                <Text style={[styles.alertPriority, { color: tone.color }]}>
-                  {copy.priority}
-                </Text>
-                <Text style={styles.alertTime}>{copy.time}</Text>
-              </View>
-
-              <Text style={styles.alertMessage}>{copy.message}</Text>
-
-              <View style={styles.alertFooter}>
-                <Text style={styles.alertMedication}>{copy.medication}</Text>
-                <Ionicons name="arrow-forward" size={13} color={tone.color} />
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-
-        <TouchableOpacity style={styles.outlineButton}>
-          <Text style={styles.outlineButtonText}>
-            {t.executiveProgramme.viewAllAlerts}
-          </Text>
-          <Ionicons name="arrow-forward" size={14} color="#C4A05A" />
-        </TouchableOpacity>
 
         {/* Health programme */}
         <Text style={styles.sectionTitle}>
@@ -475,17 +363,6 @@ const baseStyles = StyleSheet.create({
     marginBottom: 10,
   },
 
-  warnBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#F3E8D0",
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginBottom: 10,
-  },
-
   countBadgeText: {
     fontSize: 11,
     fontWeight: "700",
@@ -524,38 +401,6 @@ const baseStyles = StyleSheet.create({
     color: "#57A35A",
   },
 
-  /* Programme progress */
-
-  progressHeader: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 10,
-  },
-
-  progressFraction: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#1F2937",
-  },
-
-  progressCaption: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#57A35A",
-  },
-
-  legendRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 10,
-  },
-
-  legendText: {
-    fontSize: 12,
-    color: "#8A8A8A",
-  },
-
   progressRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -578,20 +423,10 @@ const baseStyles = StyleSheet.create({
     backgroundColor: "#C4A05A",
   },
 
-  progressFillGreen: {
-    backgroundColor: "#57A35A",
-  },
-
   progressLabel: {
     fontSize: 12,
     fontWeight: "700",
     color: "#C4A05A",
-  },
-
-  progressLabelGreen: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#57A35A",
   },
 
   /* Medication */
@@ -654,73 +489,6 @@ const baseStyles = StyleSheet.create({
 
   cardLinkText: {
     fontSize: 13,
-    fontWeight: "700",
-    color: "#C4A05A",
-  },
-
-  /* Alerts */
-
-  alertCard: {
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-  },
-
-  alertHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 8,
-  },
-
-  alertPriority: {
-    flex: 1,
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-  },
-
-  alertTime: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#8A7254",
-  },
-
-  alertMessage: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#4A3A23",
-  },
-
-  alertFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 8,
-  },
-
-  alertMedication: {
-    fontSize: 12,
-    color: "#8A7254",
-  },
-
-  outlineButton: {
-    height: 48,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#C4A05A",
-    backgroundColor: "#FFF",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    marginTop: 4,
-    marginBottom: 22,
-  },
-
-  outlineButtonText: {
-    fontSize: 14,
     fontWeight: "700",
     color: "#C4A05A",
   },

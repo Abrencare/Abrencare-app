@@ -8,11 +8,39 @@ import {
   type ReactNode,
 } from 'react';
 
-import type { VisitKind } from '@/data/consultationPricing';
+import { parseVisitKind, type VisitKind } from '@/data/consultationPricing';
 import { addDays, fromDateKey, toDateKey } from '@/context/AppointmentsContext';
 import { loadJson, saveJson } from '@/utilities/storage';
 
 const STORAGE_KEY = 'abrencare-consultations';
+
+export type PrescriptionItem = {
+  id: string;
+  name: string;
+  dosage: string;
+  instructions: string;
+  duration: string;
+  refills?: number;
+  pharmacyNote?: string;
+};
+
+export type ClinicalSummary = {
+  reason: string;
+  doctorPlan: string;
+  assessment?: string;
+  durationMinutes?: number;
+  signedAt?: string;
+  followUpRecommended?: boolean;
+};
+
+export type BookOptions = {
+  doctorId: string;
+  date: string;
+  time: string;
+  kind?: VisitKind;
+  concern?: string;
+  immediate?: boolean;
+};
 
 export type Consultation = {
   id: string;
@@ -26,7 +54,10 @@ export type Consultation = {
   completed: boolean;
   reportApproved?: boolean;
   prescriptionIssued?: boolean;
+  prescriptions?: PrescriptionItem[];
+  clinicalSummary?: ClinicalSummary;
   concern?: string;
+  immediate?: boolean;
 };
 
 /** What the booking screen is currently building up. */
@@ -47,14 +78,22 @@ type ConsultationContextValue = {
   draft: BookingDraft;
   setDraft: (patch: Partial<BookingDraft>) => void;
   book: (
-    doctorId: string,
-    date: string,
-    time: string,
+    doctorIdOrOptions: string | BookOptions,
+    date?: string,
+    time?: string,
     kind?: VisitKind,
     concern?: string,
   ) => Consultation;
   consultationById: (id: string | null | undefined) => Consultation | null;
-  completeVisit: (id: string) => void;
+  completeVisit: (
+    id: string,
+    options?: {
+      reportApproved?: boolean;
+      prescriptionIssued?: boolean;
+      prescriptions?: PrescriptionItem[];
+      clinicalSummary?: Partial<ClinicalSummary>;
+    },
+  ) => void;
   hasPaidVisit: (doctorId: string) => boolean;
   cancel: (id: string) => void;
   isSlotTaken: (doctorId: string, date: string, time: string) => boolean;
@@ -69,11 +108,12 @@ export function consultationStart(consultation: Consultation) {
   return date;
 }
 
-/** A consultation can be joined from 10 minutes before until 30 after. */
+/**
+ * Demo join rule: any paid visit that is not finished can be joined.
+ * (Production would keep a start-time window.)
+ */
 export function isJoinable(consultation: Consultation) {
-  const start = consultationStart(consultation).getTime();
-  const now = Date.now();
-  return now >= start - 10 * 60_000 && now <= start + 30 * 60_000;
+  return Boolean(consultation.paid && !consultation.completed);
 }
 
 function seedConsultations(): Consultation[] {
@@ -116,9 +156,9 @@ export function ConsultationProvider({ children }: { children: ReactNode }) {
             .map((item) => ({
               ...item,
               kind:
-                (item.kind as string) === 'message' ||
-                (item.kind as string) === 'audio'
-                  ? 'message'
+                (item.kind as string) === 'audio' ||
+                (item.kind as string) === 'message'
+                  ? 'audio'
                   : 'video',
               paid: item.paid !== false,
             })),
@@ -174,7 +214,29 @@ export function ConsultationProvider({ children }: { children: ReactNode }) {
       setDraft: (patch) => {
         setDraftState((current) => ({ ...current, ...patch }));
       },
-      book: (doctorId, date, time, kind = 'video', concern = '') => {
+      book: (doctorIdOrOptions, maybeDate, maybeTime, maybeKind = 'video', maybeConcern = '') => {
+        let doctorId = '';
+        let date = '';
+        let time = '';
+        let kind: VisitKind = 'video';
+        let concern = '';
+        let immediate = false;
+
+        if (typeof doctorIdOrOptions === 'object' && doctorIdOrOptions !== null) {
+          doctorId = doctorIdOrOptions.doctorId;
+          date = doctorIdOrOptions.date;
+          time = doctorIdOrOptions.time;
+          kind = parseVisitKind(doctorIdOrOptions.kind || 'video');
+          concern = doctorIdOrOptions.concern || '';
+          immediate = Boolean(doctorIdOrOptions.immediate);
+        } else {
+          doctorId = doctorIdOrOptions;
+          date = maybeDate || toDateKey(new Date());
+          time = maybeTime || '10:00';
+          kind = parseVisitKind(maybeKind);
+          concern = maybeConcern;
+        }
+
         const created: Consultation = {
           id: `consultation-${Date.now()}`,
           doctorId,
@@ -183,6 +245,7 @@ export function ConsultationProvider({ children }: { children: ReactNode }) {
           kind,
           paid: true,
           completed: false,
+          immediate,
           concern: concern.trim() || undefined,
         };
         commit([...consultations, created]);
@@ -190,13 +253,65 @@ export function ConsultationProvider({ children }: { children: ReactNode }) {
       },
       consultationById: (id) =>
         consultations.find((consultation) => consultation.id === id) ?? null,
-      completeVisit: (id) => {
+      completeVisit: (id, options) => {
         commit(
-          consultations.map((consultation) =>
-            consultation.id === id
-              ? { ...consultation, completed: true }
-              : consultation,
-          ),
+          consultations.map((consultation) => {
+            if (consultation.id !== id) {
+              return consultation;
+            }
+            const defaultPrescriptions: PrescriptionItem[] = [
+              {
+                id: 'rx-1',
+                name: 'Amoxicillin 500mg',
+                dosage: '1 capsule three times daily',
+                instructions: 'Take with food and full glass of water. Complete full course.',
+                duration: '7 days',
+                refills: 0,
+                pharmacyNote: 'Quality certified generic or brand equivalent',
+              },
+              {
+                id: 'rx-2',
+                name: 'Paracetamol 500mg',
+                dosage: '1-2 tablets every 6 hours',
+                instructions: 'As needed for fever or mild pain. Maximum 4g daily.',
+                duration: '5 days',
+                refills: 1,
+                pharmacyNote: 'Over-the-counter or pharmacy fulfillment',
+              },
+            ];
+
+            const signedDateStr = new Date().toLocaleDateString('en-GB', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            });
+
+            return {
+              ...consultation,
+              completed: true,
+              reportApproved: options?.reportApproved ?? true,
+              prescriptionIssued: options?.prescriptionIssued ?? true,
+              prescriptions:
+                options?.prescriptions ??
+                (options?.prescriptionIssued === false ? [] : defaultPrescriptions),
+              clinicalSummary: {
+                reason:
+                  options?.clinicalSummary?.reason ||
+                  consultation.concern ||
+                  'Follow-up discussion and clinical review',
+                doctorPlan:
+                  options?.clinicalSummary?.doctorPlan ||
+                  'Review the signed clinical note for assessment, advice and any recommended follow-up.',
+                assessment:
+                  options?.clinicalSummary?.assessment ||
+                  'Patient evaluated. Clinical recommendations provided. Medication prescribed as indicated.',
+                durationMinutes:
+                  options?.clinicalSummary?.durationMinutes || 30,
+                signedAt: options?.clinicalSummary?.signedAt || signedDateStr,
+                followUpRecommended: options?.clinicalSummary?.followUpRecommended ?? true,
+              },
+            };
+          }),
         );
       },
       hasPaidVisit: (doctorId) =>

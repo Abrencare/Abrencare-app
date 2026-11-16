@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   brandCenter: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },

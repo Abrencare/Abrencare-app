@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import ServiceBackButton from '@/components/navigation/ServiceBackButton';
 import BrandLogo, { BrandHomeLink } from '@/components/ui/BrandLogo';
 import FlowGlassHero, {
   FLOW_CHIP,
@@ -72,18 +73,26 @@ export default function ServiceFlowShell({
             subtitle={subtitle}
             top={
               <View style={[styles.topBar, isPhone && styles.topBarPhone]}>
-                <BrandHomeLink style={styles.brandMark}>
-                  <BrandLogo size={isPhone ? 30 : 36} link={false} />
-                  <Text
-                    style={[
-                      styles.brandName,
-                      isPhone && styles.brandNamePhone,
-                      { fontFamily: type.sansSemi, color: ink },
-                    ]}
-                  >
-                    {language === 'en' ? t.header.brand.toUpperCase() : t.header.brand}
-                  </Text>
-                </BrandHomeLink>
+                <View style={styles.brandRow}>
+                  <ServiceBackButton
+                    color={ink}
+                    background={FLOW_CHIP}
+                    borderColor={FLOW_CHIP_BORDER}
+                    size={isPhone ? 30 : 34}
+                  />
+                  <BrandHomeLink style={styles.brandMark}>
+                    <BrandLogo size={isPhone ? 30 : 36} link={false} />
+                    <Text
+                      style={[
+                        styles.brandName,
+                        isPhone && styles.brandNamePhone,
+                        { fontFamily: type.sansSemi, color: ink },
+                      ]}
+                    >
+                      {language === 'en' ? t.header.brand.toUpperCase() : t.header.brand}
+                    </Text>
+                  </BrandHomeLink>
+                </View>
                 <View style={[styles.topRight, isPhone && styles.topRightPhone]}>
                   <View style={[styles.badge, isPhone && styles.badgePhone]}>
                     <Ionicons name="shield-checkmark-outline" size={isPhone ? 12 : 14} color={ink} />
@@ -147,6 +156,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 18,
     gap: 12,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    minWidth: 0,
   },
   brandMark: {
     flexDirection: 'row',

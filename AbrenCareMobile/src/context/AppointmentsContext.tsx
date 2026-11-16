@@ -120,7 +120,7 @@ function seedAppointments(): Appointment[] {
       date: toDateKey(addDays(today, 9)),
       time: '09:00',
       type: 'labSample',
-      withName: 'AbrenCare Lab',
+      withName: 'Nordic AbrenCare Lab',
       reminderMinutes: null,
       status: 'pending',
     },

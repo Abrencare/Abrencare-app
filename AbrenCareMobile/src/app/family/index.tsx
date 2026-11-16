@@ -340,7 +340,10 @@ export default function FamilyOverview() {
                     <Text style={styles.statusPillText}>{t.family.onVisit}</Text>
                   </View>
                 ) : null}
-                <TouchableOpacity onPress={dial} hitSlop={8}>
+                <TouchableOpacity
+                  onPress={() => router.push('/family/call')}
+                  hitSlop={8}
+                >
                   <FamilyIconWell name="call-outline" size={16} box={36} />
                 </TouchableOpacity>
               </View>
@@ -353,7 +356,10 @@ export default function FamilyOverview() {
                   <Text style={styles.teamName}>Marta Tesfaye</Text>
                   <Text style={styles.teamRole}>{t.family.careCoordinator}</Text>
                 </View>
-                <TouchableOpacity onPress={dial} hitSlop={8}>
+                <TouchableOpacity
+                  onPress={() => router.push('/family/call')}
+                  hitSlop={8}
+                >
                   <FamilyIconWell name="call-outline" size={16} box={36} />
                 </TouchableOpacity>
               </View>

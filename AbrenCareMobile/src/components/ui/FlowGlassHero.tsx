@@ -1,17 +1,9 @@
-import React, { memo, type ReactNode, useMemo } from 'react';
-import { Image, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { memo, type ReactNode } from 'react';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { withAlpha } from '@/components/executive/GlassCard';
 import { useLandingType } from '@/theme/landingType';
 import type { CareService } from '@/types/auth';
-
-const HERO = {
-  family: require('@/assets/images/stock-family-hero.jpg'),
-  executive: require('@/assets/images/executive-hero-bg.jpg'),
-  consultation: require('@/assets/images/stock-consultation-hero.jpg'),
-};
 
 const FILL: Record<CareService, string> = {
   family: '#1A3A32',
@@ -64,12 +56,6 @@ function FlowGlassHero({
   const { width: windowWidth } = useWindowDimensions();
   const isPhone = windowWidth < 430;
 
-  // Keep the gradient definition stable between renders.
-  const gradientColors = useMemo(
-    () => [FILL[service], withAlpha(FILL[service], 0.94), withAlpha(FILL[service], 0.42)] as const,
-    [service],
-  );
-
   return (
     <View
       style={[
@@ -78,15 +64,6 @@ function FlowGlassHero({
         { paddingTop: insets.top + (isPhone ? 8 : 12), backgroundColor: FILL[service] },
       ]}
     >
-      <Image source={HERO[service]} style={styles.photo} resizeMode="cover" fadeDuration={0} />
-      <LinearGradient
-        colors={gradientColors}
-        locations={[0, 0.52, 1]}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={styles.fade}
-        pointerEvents="none"
-      />
       {top}
       {kicker ? (
         <Text style={[styles.kicker, { fontFamily: type.sansSemi, color: KICKER[service] }]}>
@@ -124,23 +101,14 @@ export default memo(FlowGlassHero);
 
 const styles = StyleSheet.create({
   hero: {
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    width: '100%',
     paddingHorizontal: 20,
     paddingBottom: 52,
     overflow: 'hidden',
   },
   heroPhone: {
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
     paddingHorizontal: 16,
     paddingBottom: 40,
-  },
-  photo: {
-    ...StyleSheet.absoluteFill,
-  },
-  fade: {
-    ...StyleSheet.absoluteFill,
   },
   kicker: {
     fontSize: 10,

@@ -18,6 +18,7 @@ import {
   type ExecutiveConcernId,
   type ExecutiveRequestDraft,
 } from '@/data/executiveInquiry';
+import type { MonitorFrequency } from '@/types/auth';
 import { useLandingType } from '@/theme/landingType';
 import { useExecutiveTheme } from '@/theme/executiveTheme';
 
@@ -79,6 +80,12 @@ export default function ExecutiveRequestNeedsScreen() {
   }
 
   const canNext = draft.concerns.length > 0;
+  const signup = t.executiveSignup;
+  const frequencies: { id: MonitorFrequency; label: string; featured?: boolean }[] = [
+    { id: 'weekly', label: signup.weekly },
+    { id: 'twice', label: signup.twice },
+    { id: 'managed', label: signup.managed, featured: true },
+  ];
 
   function toggle(id: ExecutiveConcernId) {
     setDraft((current) => {
@@ -155,6 +162,40 @@ export default function ExecutiveRequestNeedsScreen() {
         })}
       </View>
 
+      <View style={styles.questionRow}>
+        <Text style={[styles.label, type.label, { color: c.text }]}>
+          {signup.frequencyTitle}
+        </Text>
+      </View>
+      <View style={styles.frequencyList}>
+        {frequencies.map((option) => {
+          const selected = draft.monitorFrequency === option.id;
+          return (
+            <Pressable
+              key={option.id}
+              onPress={() => setDraft({ ...draft, monitorFrequency: option.id })}
+              style={[
+                styles.frequencyRow,
+                field,
+                { borderColor: selected ? c.accent : c.cardBorder },
+                option.featured ? { backgroundColor: c.accentSoft } : null,
+              ]}
+            >
+              <View
+                style={[
+                  styles.frequencyRadio,
+                  { borderColor: c.accent },
+                  selected && { backgroundColor: c.accent },
+                ]}
+              />
+              <Text style={[styles.rowLabel, type.body, { color: c.text }]}>
+                {option.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       <Text style={[styles.label, type.label, { color: c.text }]}>{flow.additionalNote}</Text>
       <TextInput
         value={draft.note}
@@ -214,6 +255,25 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
     borderWidth: 1.5,
+  },
+  frequencyList: {
+    gap: 10,
+    marginBottom: 20,
+  },
+  frequencyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1.5,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    minHeight: 52,
+  },
+  frequencyRadio: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
   },
   note: {
     minHeight: 96,

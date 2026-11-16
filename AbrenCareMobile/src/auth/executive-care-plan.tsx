@@ -21,7 +21,7 @@ import {
 import { dashboardFor, executiveCareEntry, onboardingPath, useServiceTheme } from '@/service/serviceTheme';
 import { useLandingType } from '@/theme/landingType';
 
-const CARE_SCENE = require('@/assets/images/stock-executive-why.jpg');
+const CARE_SCENE = require('@/assets/images/executive-landing-full.jpg');
 const DOCTOR_PHOTO = require('@/assets/images/executive-doctor-portrait.jpg');
 const COORDINATOR_PHOTO = require('@/assets/images/executive-sarah-portrait.jpg');
 

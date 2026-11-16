@@ -159,7 +159,7 @@ function nameFromEmail(email: string) {
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
 
-  return readable || 'AbrenCare member';
+  return readable || 'Nordic AbrenCare member';
 }
 
 function normalizeUser(parsed: unknown): AuthUser | null {

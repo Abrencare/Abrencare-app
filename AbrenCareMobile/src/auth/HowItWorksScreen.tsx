@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
+import ServiceBackButton from '@/components/navigation/ServiceBackButton';
 import BrandLogo, { BrandHomeLink } from '@/components/ui/BrandLogo';
 import { useLanguage } from '@/context/LanguageContext';
 import { useServiceTheme } from '@/service/serviceTheme';
@@ -91,20 +92,28 @@ export default function HowItWorksScreen({
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.topBar}>
-          <BrandHomeLink style={styles.brandMark}>
-            <BrandLogo size={36} link={false} />
-            <Text
-              style={[
-                styles.brandName,
-                {
-                  fontFamily: type.sansSemi,
-                  color: theme.text,
-                },
-              ]}
-            >
-              {language === 'en' ? t.header.brand.toUpperCase() : t.header.brand}
-            </Text>
-          </BrandHomeLink>
+          <View style={styles.brandRow}>
+            <ServiceBackButton
+              color={theme.text}
+              background={theme.field}
+              borderColor={theme.border}
+              size={34}
+            />
+            <BrandHomeLink style={styles.brandMark}>
+              <BrandLogo size={36} link={false} />
+              <Text
+                style={[
+                  styles.brandName,
+                  {
+                    fontFamily: type.sansSemi,
+                    color: theme.text,
+                  },
+                ]}
+              >
+                {language === 'en' ? t.header.brand.toUpperCase() : t.header.brand}
+              </Text>
+            </BrandHomeLink>
+          </View>
 
           <View style={styles.topRight}>
             <View style={[styles.badge, { backgroundColor: theme.field, borderColor: theme.border }]}>
@@ -219,6 +228,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 14,
     gap: 12,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    minWidth: 0,
   },
   brandMark: {
     flexDirection: 'row',

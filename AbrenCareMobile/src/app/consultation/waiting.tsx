@@ -34,7 +34,7 @@ export default function ConsultationWaiting() {
     return <Replace href="/consultation/mycare" />;
   }
 
-  const audio = consultation.kind === 'message';
+  const audio = consultation.kind === 'audio';
   const visit = consultation;
 
   function join() {
@@ -43,7 +43,7 @@ export default function ConsultationWaiting() {
       return;
     }
     router.replace({
-      pathname: visit.kind === 'message' ? '/consultation/chat' : '/consultation/call',
+      pathname: '/consultation/call',
       params: { id: visit.id, doctor: visit.doctorId, paid: '1' },
     });
   }

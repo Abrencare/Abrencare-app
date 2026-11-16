@@ -49,15 +49,11 @@ export default function AuthScaffold({
           showsVerticalScrollIndicator={false}
         >
           <Pressable
-            onPress={() => {
-              if (router.canGoBack()) {
-                router.back();
-                return;
-              }
-              router.replace('/(tabs)');
-            }}
+            onPress={() => router.replace('/(tabs)')}
             hitSlop={12}
             style={[styles.backButton, { backgroundColor: theme.card }]}
+            accessibilityRole="button"
+            accessibilityLabel={t.common.back}
           >
             <Ionicons name="chevron-back" size={20} color={theme.muted} />
           </Pressable>

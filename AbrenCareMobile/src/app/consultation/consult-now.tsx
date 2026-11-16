@@ -43,7 +43,8 @@ export default function ConsultNowScreen() {
         params: {
           doctor: doctor.id,
           kind,
-          next: kind === 'message' ? 'chat' : 'call',
+          immediate: '1',
+          next: 'call',
         },
       });
     }, 700);
@@ -70,7 +71,7 @@ export default function ConsultNowScreen() {
 
         <Text style={[styles.section, { color: theme.muted }]}>{copy.chooseType}</Text>
         <View style={styles.row}>
-          {(['video', 'message'] as VisitKind[]).map((item) => (
+          {(['video', 'audio'] as VisitKind[]).map((item) => (
             <Pressable
               key={item}
               onPress={() => {
@@ -86,15 +87,15 @@ export default function ConsultNowScreen() {
               ]}
             >
               <Ionicons
-                name={item === 'video' ? 'videocam-outline' : 'chatbubble-outline'}
+                name={item === 'video' ? 'videocam-outline' : 'call-outline'}
                 size={18}
                 color={theme.accent}
               />
               <Text style={[styles.kindTitle, { color: theme.text }]}>
-                {item === 'video' ? copy.videoConsult : t.consultationLanding.messageTitle}
+                {item === 'video' ? copy.videoConsult : copy.audioConsult}
               </Text>
               <Text style={[styles.kindMeta, { color: theme.muted }]}>
-                {item === 'video' ? copy.videoConsultMeta : t.consultationLanding.messageMeta}
+                {item === 'video' ? copy.videoConsultMeta : copy.audioConsultMeta}
               </Text>
             </Pressable>
           ))}

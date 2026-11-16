@@ -21,12 +21,22 @@ export default function ConsultationCall() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const params = useLocalSearchParams();
-  const { ready, consultationById, completeVisit } = useConsultations();
+  const { ready, consultationById, completeVisit, upcoming, recent } = useConsultations();
   const copy = t.consultationFlow;
   const id = typeof params.id === 'string' ? params.id : '';
-  const consultation = consultationById(id);
-  const doctor = consultation ? doctorById(consultation.doctorId) : null;
+  const doctorParam = typeof params.doctor === 'string' ? params.doctor : '';
+  const paidParam = params.paid === '1';
+  const consultation =
+    consultationById(id) ||
+    upcoming.find((c) => (doctorParam ? c.doctorId === doctorParam : true)) ||
+    recent.find((c) => (doctorParam ? c.doctorId === doctorParam : true));
+  const doctor = consultation
+    ? doctorById(consultation.doctorId)
+    : doctorById(doctorParam);
   const audio = consultation?.kind === 'audio';
+  const allowed =
+    !!doctor &&
+    (!consultation || consultation.paid || paidParam);
 
   const [connected, setConnected] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -52,13 +62,19 @@ export default function ConsultationCall() {
     return null;
   }
 
-  if (!consultation || !consultation.paid || !doctor) {
+  if (!allowed) {
     return <Replace href="/consultation/mycare" />;
   }
 
   function endCall() {
-    completeVisit(id);
-    router.replace('/consultation/mycare');
+    const targetId = consultation?.id || id;
+    if (targetId) {
+      completeVisit(targetId);
+    }
+    router.replace({
+      pathname: '/consultation/prescriptions',
+      params: targetId ? { id: targetId } : undefined,
+    });
   }
 
   return (

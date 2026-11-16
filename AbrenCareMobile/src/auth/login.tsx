@@ -46,7 +46,16 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const canSubmit = email.includes('@') && password.length > 0;
 
-  if (user && hasService(service) && !needsOnboarding(service)) {
+  function goCreateAccount() {
+    // Consultation signup mirrors "See a doctor": how-it-works → type → account.
+    if (service === 'consultation') {
+      router.push('/consultation-how-it-works');
+      return;
+    }
+    router.push({ pathname: '/signup', params: { service } });
+  }
+
+  if (service !== 'consultation' && user && hasService(service) && !needsOnboarding(service)) {
     return <Replace href={dashboardFor(service)} />;
   }
 
@@ -84,80 +93,79 @@ export default function LoginScreen() {
               sheen={glass.sheen}
               shadowColor={glassShadow(service)}
             >
-            <BrandLogo size={64} style={styles.cardLogo} />
+              <BrandLogo size={64} style={styles.cardLogo} />
 
-            <AuthField
-              theme={theme}
-              label={t.auth.email.toUpperCase()}
-              value={email}
-              onChangeText={setEmail}
-              placeholder={t.auth.emailPlaceholder}
-              icon="mail-outline"
-              keyboardType="email-address"
-            />
-            <AuthField
-              theme={theme}
-              label={t.auth.password.toUpperCase()}
-              value={password}
-              onChangeText={setPassword}
-              placeholder={t.auth.passwordPlaceholder}
-              icon="lock-closed-outline"
-              secure
-            />
+              <AuthField
+                theme={theme}
+                label={t.auth.email.toUpperCase()}
+                value={email}
+                onChangeText={setEmail}
+                placeholder={t.auth.emailPlaceholder}
+                icon="mail-outline"
+                keyboardType="email-address"
+              />
+              <AuthField
+                theme={theme}
+                label={t.auth.password.toUpperCase()}
+                value={password}
+                onChangeText={setPassword}
+                placeholder={t.auth.passwordPlaceholder}
+                icon="lock-closed-outline"
+                secure
+              />
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.button,
-                { backgroundColor: theme.accent },
-                pressed && styles.pressed,
-                !canSubmit && styles.disabled,
-              ]}
-              onPress={() => {
-                if (!canSubmit) {
-                  return;
-                }
-                const next = signIn(email, service);
-                if (service === 'family' || service === 'executive') {
-                  const granted = next.services.includes(service);
-                  if (!granted) {
-                    router.replace('/(tabs)');
+              <Pressable
+                style={({ pressed }) => [
+                  styles.button,
+                  { backgroundColor: theme.accent },
+                  pressed && styles.pressed,
+                  !canSubmit && styles.disabled,
+                ]}
+                onPress={() => {
+                  if (!canSubmit) {
                     return;
                   }
-                  const onboarded =
-                    service === 'family'
-                      ? next.familyOnboarded || next.familyMembers.length > 0
-                      : next.executiveOnboarded;
+                  const next = signIn(email, service);
+                  if (service === 'family' || service === 'executive') {
+                    const granted = next.services.includes(service);
+                    if (!granted) {
+                      router.replace('/(tabs)');
+                      return;
+                    }
+                    const onboarded =
+                      service === 'family'
+                        ? next.familyOnboarded || next.familyMembers.length > 0
+                        : next.executiveOnboarded;
+                    router.replace(
+                      onboarded ? dashboardFor(service) : onboardingPath(service),
+                    );
+                    return;
+                  }
                   router.replace(
-                    onboarded ? dashboardFor(service) : onboardingPath(service),
+                    next.consultationOnboarded
+                      ? dashboardFor(service)
+                      : onboardingPath(service),
                   );
-                  return;
-                }
-                router.replace(
-                  next.consultationOnboarded
-                    ? dashboardFor(service)
-                    : onboardingPath(service),
-                );
-              }}
-              disabled={!canSubmit}
-            >
-              <Text style={styles.buttonText}>{t.auth.signIn}</Text>
-            </Pressable>
-
-            <View style={styles.footer}>
-              <Text style={[styles.footerText, { color: theme.muted }]}>
-                {t.auth.noAccount}
-              </Text>
-              <Pressable
-                onPress={() =>
-                  router.replace({ pathname: '/signup', params: { service } })
-                }
-                hitSlop={8}
+                }}
+                disabled={!canSubmit}
               >
+                <Text style={styles.buttonText}>{t.auth.signIn}</Text>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel={t.auth.createOne}
+                onPress={goCreateAccount}
+                hitSlop={12}
+                style={styles.footer}
+              >
+                <Text style={[styles.footerText, { color: theme.muted }]}>
+                  {t.auth.noAccount}
+                </Text>
                 <Text style={[styles.link, { color: theme.accent }]}>
                   {t.auth.createOne}
                 </Text>
               </Pressable>
-            </View>
             </GlassCard>
           </View>
         </ScrollView>
