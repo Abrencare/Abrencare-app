@@ -3,6 +3,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 
 import { AuthProvider } from '@/context/AuthContext';
+import { FamilyProvider } from '@/context/FamilyContext';
 import { AnimatedSplashOverlay } from '@/components/ui/animated-icon';
 import { AppointmentsProvider } from '@/context/AppointmentsContext';
 import { ConsultationProvider } from '@/context/ConsultationContext';
@@ -35,13 +36,15 @@ export default function RootLayout() {
     <LanguageProvider>
       <AppThemeProvider>
         <AuthProvider>
-          <AppointmentsProvider>
-            <VisitProvider>
-              <ConsultationProvider>
-                <ThemedNavigation />
-              </ConsultationProvider>
-            </VisitProvider>
-          </AppointmentsProvider>
+          <FamilyProvider>
+            <AppointmentsProvider>
+              <VisitProvider>
+                <ConsultationProvider>
+                  <ThemedNavigation />
+                </ConsultationProvider>
+              </VisitProvider>
+            </AppointmentsProvider>
+          </FamilyProvider>
         </AuthProvider>
       </AppThemeProvider>
     </LanguageProvider>

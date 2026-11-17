@@ -13,6 +13,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { registerWithPassword } from '@/api/auth';
+import { isApiConfigured } from '@/api/config';
+import { ApiError } from '@/api/errors';
 import { useAuth } from '@/context/AuthContext';
 import { useAppTheme } from '@/context/ThemeContext';
 import { parseService } from '@/service/parseService';
@@ -112,8 +115,14 @@ function memberFromInquiry(inquiry: FamilyInquiry | null, fallbackName: string):
 export default function SignupScreen() {
   const router = useRouter();
   const { t } = useLanguage();
-  const { user, signUp, hasService, needsOnboarding, completeFamilyOnboarding } =
-    useAuth();
+  const {
+    user,
+    signUp,
+    hasService,
+    needsOnboarding,
+    completeFamilyOnboarding,
+    applyServerUser,
+  } = useAuth();
   const params = useLocalSearchParams();
   const service = parseService(params.service);
   const theme = useServiceTheme(service);
@@ -135,6 +144,8 @@ export default function SignupScreen() {
   const [confirm, setConfirm] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   const passwordsMatch = password.length > 0 && password === confirm;
   const emailOk = isValidEmail(email);
@@ -142,9 +153,10 @@ export default function SignupScreen() {
     name.trim().length > 1 &&
     emailOk &&
     isPhoneValueComplete(phone) &&
-    password.length >= 6 &&
+    password.length >= 8 &&
     passwordsMatch &&
-    agreed;
+    agreed &&
+    !submitting;
 
   if (user && hasService(service) && !needsOnboarding(service)) {
     return <Replace href={dashboardFor(service)} />;
@@ -252,6 +264,8 @@ export default function SignupScreen() {
         </Text>
       </View>
 
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
       <Pressable
         style={({ pressed }) => [
           styles.button,
@@ -264,17 +278,34 @@ export default function SignupScreen() {
             setEmailTouched(true);
             return;
           }
-          const account = signUp(
-            {
-              name,
-              email,
-              phone,
-            },
-            service,
-          );
-          if (service === 'family') {
-            void loadFamilyInquiry()
-              .then(async (inquiry) => {
+          void (async () => {
+            setError('');
+            setSubmitting(true);
+            try {
+              if (isApiConfigured()) {
+                const remote = await registerWithPassword({
+                  name,
+                  email,
+                  phone,
+                  password,
+                  service,
+                });
+                if (remote) {
+                  applyServerUser(remote);
+                }
+              }
+              const account = signUp(
+                {
+                  name,
+                  email,
+                  phone,
+                },
+                service,
+              );
+              setPassword('');
+              setConfirm('');
+              if (service === 'family') {
+                const inquiry = await loadFamilyInquiry();
                 completeFamilyOnboarding([
                   memberFromInquiry(inquiry, account.name || name),
                 ]);
@@ -282,7 +313,6 @@ export default function SignupScreen() {
                   router.replace('/family-request-status');
                   return;
                 }
-                // Accepted → activate care and open family dashboard.
                 if (
                   inquiry.status === 'accepted' ||
                   inquiry.status === 'setup' ||
@@ -293,17 +323,11 @@ export default function SignupScreen() {
                   router.replace(dashboardFor('family'));
                   return;
                 }
-                // Otherwise stay on the pending request page.
                 router.replace('/family-request-status');
-              })
-              .catch(() => {
-                router.replace('/family-request-status');
-              });
-            return;
-          }
-          if (service === 'executive') {
-            void loadExecutiveInquiry()
-              .then(async (inquiry) => {
+                return;
+              }
+              if (service === 'executive') {
+                const inquiry = await loadExecutiveInquiry();
                 if (!inquiry) {
                   router.replace('/executive-request-status');
                   return;
@@ -321,13 +345,20 @@ export default function SignupScreen() {
                   return;
                 }
                 router.replace('/executive-request-status');
-              })
-              .catch(() => {
-                router.replace('/executive-request-status');
-              });
-            return;
-          }
-          router.replace(onboardingPath(service));
+                return;
+              }
+              router.replace(onboardingPath(service));
+            } catch (caught) {
+              const message = caught instanceof ApiError ? caught.message : '';
+              setError(
+                message && !message.toLowerCase().includes(password.toLowerCase())
+                  ? message
+                  : t.auth.signInFailed,
+              );
+            } finally {
+              setSubmitting(false);
+            }
+          })();
         }}
         disabled={!canSubmit}
       >

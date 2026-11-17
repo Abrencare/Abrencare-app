@@ -12,6 +12,9 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { fetchAuthProfile, loginWithPassword } from '@/api/auth';
+import { isApiConfigured } from '@/api/config';
+import { ApiError } from '@/api/errors';
 import { useAuth } from '@/context/AuthContext';
 import { useAppTheme } from '@/context/ThemeContext';
 import { parseService } from '@/service/parseService';
@@ -27,7 +30,7 @@ import { useLanguage } from '@/context/LanguageContext';
 export default function LoginScreen() {
   const router = useRouter();
   const { t } = useLanguage();
-  const { signIn, hasService, needsOnboarding, user } = useAuth();
+  const { signIn, hasService, needsOnboarding, user, applyServerUser } = useAuth();
   const params = useLocalSearchParams();
   const service = parseService(params.service);
   const theme = useServiceTheme(service);
@@ -44,7 +47,59 @@ export default function LoginScreen() {
 
   const [email, setEmail] = useState(user?.email ?? '');
   const [password, setPassword] = useState('');
-  const canSubmit = email.includes('@') && password.length > 0;
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const canSubmit = email.includes('@') && password.length > 0 && !submitting;
+
+  function continueAfterSignIn() {
+    const next = signIn(email, service);
+    setPassword('');
+    if (service === 'family' || service === 'executive') {
+      const granted = next.services.includes(service);
+      if (!granted) {
+        router.replace('/(tabs)');
+        return;
+      }
+      const onboarded =
+        service === 'family'
+          ? next.familyOnboarded || next.familyMembers.length > 0
+          : next.executiveOnboarded;
+      router.replace(onboarded ? dashboardFor(service) : onboardingPath(service));
+      return;
+    }
+    router.replace(
+      next.consultationOnboarded ? dashboardFor(service) : onboardingPath(service),
+    );
+  }
+
+  async function submit() {
+    if (!email.includes('@') || password.length === 0 || submitting) {
+      return;
+    }
+    setError('');
+    if (!isApiConfigured()) {
+      continueAfterSignIn();
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await loginWithPassword(email, password);
+      const remote = await fetchAuthProfile();
+      if (remote) {
+        applyServerUser(remote);
+      }
+      continueAfterSignIn();
+    } catch (caught) {
+      const message = caught instanceof ApiError ? caught.message : '';
+      setError(
+        message && !message.toLowerCase().includes(password.toLowerCase())
+          ? message
+          : t.auth.signInFailed,
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   function goCreateAccount() {
     // Consultation signup mirrors "See a doctor": how-it-works → type → account.
@@ -114,6 +169,8 @@ export default function LoginScreen() {
                 secure
               />
 
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+
               <Pressable
                 style={({ pressed }) => [
                   styles.button,
@@ -122,30 +179,7 @@ export default function LoginScreen() {
                   !canSubmit && styles.disabled,
                 ]}
                 onPress={() => {
-                  if (!canSubmit) {
-                    return;
-                  }
-                  const next = signIn(email, service);
-                  if (service === 'family' || service === 'executive') {
-                    const granted = next.services.includes(service);
-                    if (!granted) {
-                      router.replace('/(tabs)');
-                      return;
-                    }
-                    const onboarded =
-                      service === 'family'
-                        ? next.familyOnboarded || next.familyMembers.length > 0
-                        : next.executiveOnboarded;
-                    router.replace(
-                      onboarded ? dashboardFor(service) : onboardingPath(service),
-                    );
-                    return;
-                  }
-                  router.replace(
-                    next.consultationOnboarded
-                      ? dashboardFor(service)
-                      : onboardingPath(service),
-                  );
+                  void submit();
                 }}
                 disabled={!canSubmit}
               >
@@ -207,6 +241,12 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.88 },
   disabled: { opacity: 0.45 },
+  error: {
+    color: '#9B3A3A',
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 8,
+  },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',

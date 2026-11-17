@@ -1,12 +1,23 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
 } from 'react';
 
+import { fetchAuthProfile, logoutRemote } from '@/api/auth';
+import { completeConsultationOnboardingRemote } from '@/api/consultation';
+import {
+  completeExecutiveOnboardingRemote,
+  saveExecutiveCareRemote,
+  saveExecutiveProfileRemote,
+} from '@/api/executive';
+import { publishFamilyMemberUpdate, publishFamilyRoster } from '@/api/family';
+import { isApiConfigured } from '@/api/config';
+import { hasSession } from '@/api/session';
 import { dashboardFor, onboardingPath } from '@/service/serviceTheme';
 import {
   DEFAULT_MONITORING,
@@ -59,6 +70,8 @@ type AuthContextValue = {
   setFamilyMembers: (members: FamilyMember[]) => void;
   selectFamilyMember: (id: string) => void;
   completeFamilyOnboarding: (members: FamilyMember[]) => void;
+  applyServerFamilyMembers: (members: FamilyMember[], onboarded: boolean) => void;
+  applyServerUser: (remote: AuthUser) => AuthUser;
   updateAccountProfile: (input: {
     name: string;
     email: string;
@@ -251,12 +264,62 @@ function onboarded(user: AuthUser, service: CareService) {
   return user.consultationOnboarded;
 }
 
+function mergeRemoteUser(current: AuthUser | null, remote: AuthUser): AuthUser {
+  if (!current) {
+    return remote;
+  }
+  const services = Array.from(new Set([...current.services, ...remote.services]));
+  return {
+    ...current,
+    name: remote.name || current.name,
+    email: remote.email || current.email,
+    phone: remote.phone || current.phone,
+    services,
+    familyOnboarded: current.familyOnboarded || remote.familyOnboarded,
+    executiveOnboarded: current.executiveOnboarded || remote.executiveOnboarded,
+    consultationOnboarded:
+      current.consultationOnboarded || remote.consultationOnboarded,
+    dateOfBirth: remote.dateOfBirth || current.dateOfBirth,
+    gender: remote.gender ?? current.gender,
+    heightCm: remote.heightCm || current.heightCm,
+    weightKg: remote.weightKg || current.weightKg,
+    monitoring: remote.monitoring.length ? remote.monitoring : current.monitoring,
+    frequency: remote.frequency || current.frequency,
+    emailVerified: true,
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(readStoredUser);
   // Keep a sync mirror so patch/signUp chains work inside async callbacks
   // (React state alone is not updated until the next render).
   const userRef = useRef<AuthUser | null>(user);
   userRef.current = user;
+
+  useEffect(() => {
+    let cancelled = false;
+    async function hydrate() {
+      if (!isApiConfigured() || !(await hasSession())) {
+        return;
+      }
+      try {
+        const remote = await fetchAuthProfile();
+        if (cancelled || !remote) {
+          return;
+        }
+        const next = mergeRemoteUser(userRef.current, remote);
+        userRef.current = next;
+        setUser(next);
+        persistUser(next);
+      } catch {
+        // Keep the local session if the network is down.
+      }
+    }
+    void hydrate();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const value = useMemo<AuthContextValue>(() => {
     function commit(next: AuthUser) {
@@ -272,6 +335,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Not signed in');
       }
       return commit(updater(current));
+    }
+
+    function sameRoster(left: FamilyMember[], right: FamilyMember[]) {
+      if (left.length !== right.length) {
+        return false;
+      }
+      return left.every((member, index) => {
+        const other = right[index];
+        return (
+          member.id === other?.id &&
+          member.name === other?.name &&
+          member.phone === other?.phone &&
+          member.city === other?.city &&
+          member.dateOfBirth === other?.dateOfBirth
+        );
+      });
+    }
+
+    function withServerRoster(
+      current: AuthUser,
+      members: FamilyMember[],
+      onboarded: boolean,
+    ): AuthUser {
+      return {
+        ...current,
+        familyMembers: members,
+        familyOnboarded: current.familyOnboarded || onboarded || members.length > 0,
+        activeFamilyMemberId: members.some(
+          (member) => member.id === current.activeFamilyMemberId,
+        )
+          ? current.activeFamilyMemberId
+          : (members[0]?.id ?? null),
+      };
+    }
+
+    function adoptServerRoster(members: FamilyMember[] | null, onboarded: boolean) {
+      const current = userRef.current;
+      if (!current || !members?.length || sameRoster(current.familyMembers, members)) {
+        return;
+      }
+      commit(withServerRoster(current, members, onboarded));
     }
 
     return {
@@ -338,6 +442,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             ? current.activeFamilyMemberId
             : null,
         }));
+        void publishFamilyRoster(members)
+          .then((serverMembers) => adoptServerRoster(serverMembers, true))
+          .catch(() => undefined);
       },
       selectFamilyMember: (id) => {
         patch((current) => ({
@@ -357,6 +464,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               ? current.activeFamilyMemberId
               : members[0]?.id ?? null,
         }));
+        void publishFamilyRoster(members)
+          .then((serverMembers) => adoptServerRoster(serverMembers, true))
+          .catch(() => undefined);
+      },
+      applyServerFamilyMembers: (members, onboarded) => {
+        adoptServerRoster(members, onboarded);
+      },
+      applyServerUser: (remote) => {
+        const next = mergeRemoteUser(userRef.current, remote);
+        return commit(next);
       },
       updateAccountProfile: (input) => {
         patch((current) => ({
@@ -367,7 +484,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }));
       },
       updateActiveFamilyMember: (input) => {
-        patch((current) => {
+        const next = patch((current) => {
           const activeId = current.activeFamilyMemberId;
           if (!activeId) {
             return current;
@@ -387,6 +504,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }),
           };
         });
+        const activeId = next.activeFamilyMemberId;
+        if (!activeId) {
+          return;
+        }
+        void publishFamilyMemberUpdate(next.familyMembers, activeId)
+          .then((serverMembers) => adoptServerRoster(serverMembers, true))
+          .catch(() => undefined);
       },
       approveFamilyMember: (id) => {
         patch((current) => ({
@@ -397,35 +521,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }));
       },
       saveExecutiveProfile: (input) => {
-        patch((current) => ({
+        const next = patch((current) => ({
           ...current,
           dateOfBirth: input.dateOfBirth,
           gender: input.gender,
           heightCm: input.heightCm,
           weightKg: input.weightKg,
         }));
+        void saveExecutiveProfileRemote(input).catch(() => undefined);
+        return next;
       },
       saveExecutiveCare: (input) => {
-        patch((current) => ({
+        const next = patch((current) => ({
           ...current,
           monitoring: input.monitoring,
           frequency: input.frequency,
         }));
+        void saveExecutiveCareRemote(input).catch(() => undefined);
+        return next;
       },
       completeExecutiveOnboarding: () => {
-        patch((current) => ({
-          ...current,
+        const current = userRef.current;
+        const next = patch((item) => ({
+          ...item,
           executiveOnboarded: true,
         }));
+        if (current) {
+          void completeExecutiveOnboardingRemote({
+            dateOfBirth: current.dateOfBirth,
+            gender: current.gender ?? undefined,
+            heightCm: current.heightCm,
+            weightKg: current.weightKg,
+            monitoring: current.monitoring,
+            frequency: current.frequency,
+          }).catch(() => undefined);
+        }
+        return next;
       },
       completeConsultationOnboarding: (input) => {
-        patch((current) => ({
+        const next = patch((current) => ({
           ...current,
           dateOfBirth: input.dateOfBirth,
           gender: input.gender,
           healthConcern: input.healthConcern?.trim() ?? current.healthConcern,
           consultationOnboarded: true,
         }));
+        void completeConsultationOnboardingRemote({
+          dateOfBirth: input.dateOfBirth,
+          gender: input.gender,
+        }).catch(() => undefined);
+        return next;
       },
       enterDemoCare: (service, profile) => {
         const current =
@@ -464,6 +609,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userRef.current = null;
         setUser(null);
         persistUser(null);
+        void logoutRemote();
       },
     };
   }, [user]);

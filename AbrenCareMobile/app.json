@@ -44,7 +44,8 @@
         {
           "color": "#8B9A7C"
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -52,6 +53,7 @@
     },
     "extra": {
       "router": {},
+      "apiUrl": "http://127.0.0.1:8000",
       "eas": {
         "projectId": "5632f276-e978-40ac-94e1-26f135b1f324"
       }

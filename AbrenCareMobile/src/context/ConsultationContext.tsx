@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import { bookConsultation } from '@/api/consultation';
 import { parseVisitKind, type VisitKind } from '@/data/consultationPricing';
 import { addDays, fromDateKey, toDateKey } from '@/context/AppointmentsContext';
 import { loadJson, saveJson } from '@/utilities/storage';
@@ -249,6 +250,18 @@ export function ConsultationProvider({ children }: { children: ReactNode }) {
           concern: concern.trim() || undefined,
         };
         commit([...consultations, created]);
+        // Backend doctor ids are integers. Local demo doctors keep string ids
+        // and stay offline until the catalog is loaded from the API.
+        if (/^[1-9]\d*$/.test(doctorId)) {
+          void bookConsultation({
+            doctor: Number(doctorId),
+            appointment_date: date,
+            appointment_time: time,
+            consultation_type: kind === 'audio' ? 'audio' : 'video',
+            language: 'en',
+            reason_for_visit: concern.trim() || undefined,
+          }).catch(() => undefined);
+        }
         return created;
       },
       consultationById: (id) =>
