@@ -1,0 +1,319 @@
+# consultations/admin.py
+from django.contrib import admin
+
+from .models import Consultation, ConsultationProfile, Prescription
+
+
+# ============================================================
+# INLINES
+# ============================================================
+
+class PrescriptionInline(admin.TabularInline):
+    model = Prescription
+    extra = 0
+    fields = (
+        "medication",
+        "dosage",
+        "frequency",
+        "duration",
+        "instructions",
+        "created_at",
+        "updated_at",
+    )
+    readonly_fields = ("created_at", "updated_at")
+    show_change_link = True
+
+
+# ============================================================
+# CONSULTATION PROFILE
+# ============================================================
+
+@admin.register(ConsultationProfile)
+class ConsultationProfileAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "user_display",
+        "date_of_birth",
+        "gender",
+        "is_onboarded",
+        "onboarded_at",
+        "created_at",
+    )
+
+    list_filter = (
+        "gender",
+        "created_at",
+        # `onboarded_at` is effectively always set; filter on `gender` +
+        # `created_at` instead. If you need "recently onboarded", use a
+        # custom `SimpleListFilter` against a date range.
+    )
+
+    search_fields = (
+        "user_service__user__full_name",
+        "user_service__user__email",
+        "user_service__user__username",
+    )
+
+    date_hierarchy = "created_at"
+    ordering = ("-created_at",)
+
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "onboarded_at",
+    )
+
+    list_select_related = (
+        "user_service",
+        "user_service__user",
+        "user_service__service",
+        "created_by",
+    )
+
+    fieldsets = (
+        (
+            "Account",
+            {
+                "fields": (
+                    "user_service",
+                    "created_by",
+                ),
+            },
+        ),
+        (
+            "Onboarding",
+            {
+                "fields": (
+                    "date_of_birth",
+                    "gender",
+                    "onboarded_at",
+                ),
+            },
+        ),
+        (
+            "System Information",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                ),
+            },
+        ),
+    )
+
+    @admin.display(
+        description="User",
+        ordering="user_service__user__full_name",
+    )
+    def user_display(self, obj):
+        return obj.user_service.user.full_name
+
+    @admin.display(description="Onboarded", boolean=True)
+    def is_onboarded(self, obj):
+        return obj.onboarded_at is not None
+
+
+# ============================================================
+# CONSULTATION
+# ============================================================
+
+@admin.register(Consultation)
+class ConsultationAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "patient_name",
+        "doctor_name",
+        "consultation_type",
+        "language",
+        "status",
+        "price_display",
+        "appointment_date",
+        "appointment_time",
+        "started_at",
+        "ended_at",
+        "created_at",
+    )
+
+    list_filter = (
+        "status",
+        "consultation_type",
+        "language",
+        "currency",
+        "created_at",
+    )
+
+    search_fields = (
+        "appointment__patient__get__full_name",
+        "appointment__doctor__full_name",
+        "appointment__patient__email",
+        "appointment__doctor__email",
+        "meeting_url",
+    )
+
+    date_hierarchy = "created_at"
+    ordering = ("-created_at",)
+
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+    )
+
+    list_select_related = (
+        "appointment",
+        "appointment__patient",
+        "appointment__patient",
+        "appointment__doctor",
+        "appointment__doctor",
+        "appointment__doctor__specialty",
+    )
+
+    fieldsets = (
+        (
+            "Appointment",
+            {
+                "fields": ("appointment",),
+            },
+        ),
+        (
+            "Consultation Details",
+            {
+                "fields": (
+                    "consultation_type",
+                    "language",
+                    "status",
+                ),
+            },
+        ),
+        (
+            "Payment",
+            {
+                "fields": (
+                    "price",
+                    "currency",
+                ),
+            },
+        ),
+        (
+            "Meeting",
+            {
+                "fields": (
+                    "meeting_url",
+                    "started_at",
+                    "ended_at",
+                ),
+            },
+        ),
+        (
+            "System Information",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                ),
+            },
+        ),
+    )
+
+    inlines = (PrescriptionInline,)
+
+    @admin.display(
+        description="Patient",
+        ordering="appointment__patient__user__full_name",
+    )
+    def patient_name(self, obj):
+        return obj.appointment.patient.get_full_name()
+
+    @admin.display(
+        description="Doctor",
+        ordering="appointment__doctor__user__full_name",
+    )
+    def doctor_name(self, obj):
+        return obj.appointment.doctor.user.full_name
+
+    @admin.display(
+        description="Appointment Date",
+        ordering="appointment__appointment_date",
+    )
+    def appointment_date(self, obj):
+        return obj.appointment.appointment_date
+
+    @admin.display(
+        description="Appointment Time",
+        ordering="appointment__appointment_time",
+    )
+    def appointment_time(self, obj):
+        return obj.appointment.appointment_time
+
+    @admin.display(description="Price", ordering="price")
+    def price_display(self, obj):
+        return f"{obj.price} {obj.currency}"
+
+
+# ============================================================
+# PRESCRIPTION
+# ============================================================
+
+@admin.register(Prescription)
+class PrescriptionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "consultation",
+        "medication",
+        "dosage",
+        "frequency",
+        "duration",
+        "created_at",
+    )
+
+    list_filter = ("created_at",)
+
+    search_fields = (
+        "medication",
+        "dosage",
+        "frequency",
+        "instructions",
+        "consultation__appointment__patient__user__full_name",
+        "consultation__appointment__doctor__user__full_name",
+    )
+
+    date_hierarchy = "created_at"
+    ordering = ("-created_at",)
+
+    readonly_fields = ("created_at", "updated_at")
+
+    list_select_related = (
+        "consultation",
+        "consultation__appointment",
+        "consultation__appointment__patient",
+        "consultation__appointment__patient__user",
+        "consultation__appointment__doctor",
+        "consultation__appointment__doctor__user",
+    )
+
+    fieldsets = (
+        (
+            "Consultation",
+            {"fields": ("consultation",)},
+        ),
+        (
+            "Medication",
+            {
+                "fields": (
+                    "medication",
+                    "dosage",
+                    "frequency",
+                    "duration",
+                    "instructions",
+                ),
+            },
+        ),
+        (
+            "System Information",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                ),
+            },
+        ),
+    )

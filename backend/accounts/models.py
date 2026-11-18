@@ -1,0 +1,189 @@
+from django.db import models
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
+from django.contrib.auth.hashers import check_password, make_password
+
+class UserManager(BaseUserManager):
+    def create_user(
+        self,
+        username=None,
+        email=None,
+        password=None,
+        **extra_fields
+    ):
+        if email:
+            email = self.normalize_email(email)
+
+        user = self.model(
+            username=username,
+            email=email,
+            **extra_fields
+        )
+
+        if password:
+            user.set_password(password)
+        else:
+            user.set_unusable_password()
+
+        user.save(
+            using=self._db
+        )
+
+        return user
+
+    def create_superuser(self, username, email, password=None, **extra_fields):
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+
+        if not extra_fields.get("is_staff"):
+            raise ValueError("Superuser must have is_staff=True.")
+        if not extra_fields.get("is_superuser"):
+            raise ValueError("Superuser must have is_superuser=True.")
+
+        return self.create_user(username=username, email=email, password=password, **extra_fields)
+
+
+class User(AbstractBaseUser, PermissionsMixin):
+    class AccountStatus(models.TextChoices):
+        ACTIVE = "active", "Active"
+        PENDING = "pending", "Pending"
+        INVITED = "invited", "Invited"
+        SUSPENDED = "suspended", "Suspended"
+
+    class GenderChoices(models.TextChoices):
+        MALE = "male", "Male"
+        FEMALE = "female", "Female"
+        OTHER = "other", "Other"
+        PREFER_NOT_TO_SAY = "prefer_not", "Prefer not to say"
+
+    username = models.CharField(max_length=150, unique=True,null=True,blank=True,)
+    email = models.EmailField(unique=True,null=True,blank=True,)
+
+    first_name = models.CharField(max_length=30, blank=True, null=True)
+    last_name = models.CharField(max_length=30, blank=True, null=True)
+
+    phone_number = models.CharField(max_length=15, blank=True, null=True)
+    account_status = models.CharField(
+        max_length=20,
+        choices=AccountStatus.choices,
+        default=AccountStatus.ACTIVE,
+        db_index=True,
+        blank=True,
+        null=True
+    )
+    gender = models.CharField(
+        max_length=20,
+        choices=GenderChoices.choices,
+        default=GenderChoices.OTHER,
+        db_index=True,
+        blank=True,
+        null=True,
+    )
+    height = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    weight = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    address = models.CharField(max_length=255, blank=True, null=True)
+    postal_code = models.CharField(max_length=255, blank=True, null=True)
+    city = models.CharField(max_length=255, blank=True, null=True)
+
+    role = models.ForeignKey(
+        "roles.Role",
+        verbose_name="user_role",
+        on_delete=models.PROTECT,
+        blank=True,
+        null=True
+    )
+
+    date_of_birth = models.DateField(null=True, blank=True)
+
+    profile_picture = models.ImageField(
+        upload_to="profile_pics/",
+        null=True,
+        blank=True
+    )
+
+    is_active = models.BooleanField(default=True, null=True)
+    is_staff = models.BooleanField(default=False, null=True)
+
+    date_joined = models.DateTimeField(auto_now_add=True, null=True)
+
+    objects = UserManager()
+
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = []
+
+    class Meta:
+        verbose_name = "User"
+        verbose_name_plural = "Users"
+
+    def __str__(self):
+        return self.username or self.email or f"User #{self.pk}"
+
+    # ============================
+    # COMPUTED / UI-FRIENDLY FIELDS
+    # ============================
+
+    @property
+    def full_name(self):
+        return f"{self.first_name} {self.last_name}".strip()
+
+    def get_full_name(self):
+        """
+        Django's standard user API. Notification, admin and serializer code
+        across the project calls this, so it must exist on the custom user.
+        """
+        parts = [self.first_name or "", self.last_name or ""]
+        return " ".join(part.strip() for part in parts if part.strip())
+
+    def get_short_name(self):
+        return (self.first_name or "").strip()
+
+    @property
+    def status(self):
+        return "Active" if self.is_active else "Inactive"
+
+    @property
+    def profile_picture_url(self):
+        return self.profile_picture.url if self.profile_picture else None
+
+    # ----------------------------
+    # HELPERS
+    # ----------------------------
+
+    def _split_to_list(self, value):
+        """
+        Converts comma-separated strings into lists
+        """
+        if not value:
+            return []
+        return [v.strip() for v in value.split(",")]
+
+    # ----------------------------
+    # SAFE ACTIONS
+    # ----------------------------
+
+    def deactivate(self):
+        self.is_active = False
+        self.save(update_fields=["is_active"])
+
+    def activate(self):
+        self.is_active = True
+        self.save(update_fields=["is_active"])
+
+
+class PasswordHistory(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="password_history",
+    )
+    password = models.CharField(max_length=128)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self.password.startswith(("pbkdf2_", "argon2", "bcrypt")):
+            self.password = make_password(self.password)
+
+        super().save(*args, **kwargs)
+
+    def check_password(self, raw_password):
+        return check_password(raw_password, self.password)
+    

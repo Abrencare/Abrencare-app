@@ -1,0 +1,106 @@
+
+name: Django CI/CD
+
+on:
+  push:
+    branches:
+      - Back-end
+  pull_request:
+    branches:
+      - Back-end
+
+permissions:
+  contents: read
+
+concurrency:
+  group: django-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test Django
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: abren
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: z3FxnpYMJBHVXBsuVdL3uV/NBZz9jrXy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d abren"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      SECRET_KEY: ci-test-only-secret-key-not-for-production
+      DEBUG: "False"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/app_test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Check Django configuration
+        run: python manage.py check
+
+      - name: Check for missing migrations
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Run automated tests
+        run: python manage.py test
+
+      - name: Trigger Render deployment
+        if: >-
+          success() &&
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/backend'
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import os
+          import urllib.parse
+          import urllib.request
+
+          hook = os.environ.get("RENDER_DEPLOY_HOOK_URL", "").strip()
+          if not hook:
+              raise SystemExit("Missing RENDER_DEPLOY_HOOK_URL secret")
+
+          parts = urllib.parse.urlsplit(hook)
+          query = urllib.parse.parse_qsl(
+              parts.query, keep_blank_values=True
+          )
+          query.append(("ref", os.environ["COMMIT_SHA"]))
+
+          url = urllib.parse.urlunsplit((
+              parts.scheme,
+              parts.netloc,
+              parts.path,
+              urllib.parse.urlencode(query),
+              parts.fragment,
+          ))
+
+          request = urllib.request.Request(url, data=b"", method="POST")
+          with urllib.request.urlopen(request, timeout=30) as response:
+              print(f"Render accepted deployment request: HTTP {response.status}")
+              print(response.read().decode("utf-8", errors="replace"))
+          PY
