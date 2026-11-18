@@ -185,6 +185,18 @@ class UserCreateSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def validate_phone(self, value):
+        # The mobile app sends "+251 91 123 4567". Store the compact form and
+        # reject anything the phone_number column cannot hold, so a long
+        # number is a clear 400 instead of a database error.
+        compact = re.sub(r"[\s\-().]", "", value or "")
+        limit = User._meta.get_field("phone_number").max_length
+        if len(compact) > limit:
+            raise serializers.ValidationError(
+                f"Phone number must be {limit} characters or fewer."
+            )
+        return compact
+
     @transaction.atomic
     def create(self, validated_data):
         password = validated_data.pop("password")
@@ -194,8 +206,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
         if name and not validated_data.get("first_name"):
             first, _, last = name.partition(" ")
-            validated_data["first_name"] = first
-            validated_data["last_name"] = last
+            name_limit = User._meta.get_field("first_name").max_length
+            validated_data["first_name"] = first[:name_limit]
+            validated_data["last_name"] = last.strip()[:name_limit]
 
         if phone and not validated_data.get("phone_number"):
             validated_data["phone_number"] = phone
@@ -215,10 +228,12 @@ class UserCreateSerializer(serializers.ModelSerializer):
         user.save()
         PasswordHistory.objects.create(user=user, password=user.password)
         service = Service.objects.get(code=service_code)
+        # Keep onboarded=False until the mobile onboarding screens finish,
+        # so AuthContext.needsOnboarding still routes into the existing flow.
         user_service = UserService.objects.create(
-            user=user, 
+            user=user,
             service=service,
-            onboarded=True
+            onboarded=False,
         )
         _bootstrap_profile(user_service, user)
 
@@ -232,14 +247,58 @@ def _bootstrap_profile(user_service: UserService, user):
         bootstrap_family_owner(user, user_service)
     elif code == "executive":
         from executive.models import ExecutiveProfile
-        ExecutiveProfile.objects.get_or_create(user_service=user_service, created_by=user)
+        ExecutiveProfile.objects.get_or_create(
+            user_service=user_service,
+            defaults={"created_by": user},
+        )
     elif code == "consultation":
         from consultations.models import ConsultationProfile
+        from patients.models import Patient
+        # onboarded_at stays null until /onboarding/complete/ so the
+        # consultation setup screen still runs after signup.
         ConsultationProfile.objects.get_or_create(
-            user_service=user_service, 
-            user_service__onboarded=True,
-            created_by=user,
+            user_service=user_service,
+            defaults={"created_by": user, "onboarded_at": None},
+        )
+        # Every consultation endpoint (availability, booking, my visits,
+        # cancel) is gated on the caller having a Patient profile. Without
+        # this row a freshly registered consultation user gets 403 on all
+        # of them.
+        Patient.objects.get_or_create(user=user)
+
+
+@transaction.atomic
+def enroll_user_in_service(user, service_code: str) -> tuple[UserService, bool]:
+    """
+    Enroll an existing account in one more care service.
+
+    Idempotent: a second call returns the existing enrollment. The service
+    profile is bootstrapped the same way registration does it, so the two
+    paths cannot drift apart.
+
+    Returns (user_service, created).
+    """
+    service = Service.objects.get(code=service_code)
+    user_service, created = UserService.objects.get_or_create(
+        user=user,
+        service=service,
+        defaults={"onboarded": False},
+    )
+    _bootstrap_profile(user_service, user)
+    return user_service, created
+
+
+class ServiceEnrollSerializer(serializers.Serializer):
+    """POST /auth/services/enroll/ body: {"service": "<code>"}."""
+
+    service = serializers.SlugField(max_length=50)
+
+    def validate_service(self, value):
+        if not Service.objects.filter(code=value, is_active=True).exists():
+            raise serializers.ValidationError(
+                f"Service '{value}' is not available."
             )
+        return value
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):

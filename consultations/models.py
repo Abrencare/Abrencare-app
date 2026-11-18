@@ -17,11 +17,8 @@ class ConsultationProfile(models.Model):
     One row per UserService(code='consultation'). Created by
     `_bootstrap_profile` at signup. Filled in by onboarding.
 
-    NOTE: `onboarded_at` uses `auto_now_add=True`, so it is populated
-    the moment the row is created. That means `is_onboarded` is True
-    as soon as the profile exists. If you later want "onboarding
-    completed" semantics, add a separate boolean/field rather than
-    changing this one.
+    NOTE: `onboarded_at` is null until POST /onboarding/complete/ so the
+    mobile consultation setup screen still runs after signup.
     """
 
     class Gender(models.TextChoices):
@@ -43,7 +40,7 @@ class ConsultationProfile(models.Model):
         blank=True,
         default="",
     )
-    onboarded_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    onboarded_at = models.DateTimeField(null=True, blank=True)
 
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

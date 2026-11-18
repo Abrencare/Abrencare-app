@@ -18,6 +18,11 @@ urlpatterns = [
         views.FamilyOnboardingCompleteView.as_view(),
         name="onboarding-complete",
     ),
+    path(
+        "me/capabilities/",
+        views.FamilyCapabilitiesView.as_view(),
+        name="capabilities",
+    ),
 
     # ------------------------------------------------------------------
     # Members

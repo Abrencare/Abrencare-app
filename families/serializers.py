@@ -511,17 +511,27 @@ class FamilyInvitationSerializer(serializers.ModelSerializer):
         model = FamilyInvitation
         fields = [
             "id",
-            "family",         # read-only
-            "invited_by",     # read-only
+            "family",
+            "invited_by",
             "invitation_type",
-            "name", "email", "phone_number",
-            # ... can_view_* fields ...
-            "status",         # read-only
-            "expires_at",     # read-only — computed by the service
-            "is_expired",     # read-only
-            "accepted_by",    # read-only
-            "accepted_at",    # read-only
-            "contact_verified_at",  # read-only
+            "name",
+            "email",
+            "phone_number",
+            "can_view_readings",
+            "can_view_care_plan",
+            "can_view_visits",
+            "can_view_reports",
+            "can_view_prescriptions",
+            "can_view_lab_results",
+            "can_view_history",
+            "can_view_attention",
+            "can_view_care_team",
+            "status",
+            "expires_at",
+            "is_expired",
+            "accepted_by",
+            "accepted_at",
+            "contact_verified_at",
             "created_at",
         ]
         read_only_fields = [
@@ -538,21 +548,36 @@ class FamilyInvitationSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, attrs):
-        if not attrs.get("email") and not attrs.get("phone_number"):
-            raise serializers.ValidationError(
-                "Either email or phone_number must be provided."
-            )
+        if self.instance is None:
+            email = attrs.get("email", "")
+            phone = attrs.get("phone_number", "")
+            if not email and not phone:
+                raise serializers.ValidationError(
+                    "Either email or phone_number must be provided."
+                )
         return attrs
 
     def create(self, validated_data):
-        from django.utils import timezone
-        from datetime import timedelta
-        from .services.constants import INVITATION_EXPIRY_DAYS
-        validated_data.setdefault(
-            "expires_at",
-            timezone.now() + timedelta(days=INVITATION_EXPIRY_DAYS),
-        )
-        return super().create(validated_data)
+        # Owner create goes through invite_observer so a token_hash exists
+        # for the public /api/invitations/<token>/ flow. The raw token is
+        # never returned here — delivery is out-of-band.
+        from rest_framework.exceptions import ValidationError
+
+        from .services.invitations import invite_observer
+
+        family = validated_data.pop("family")
+        invited_by = validated_data.pop("invited_by")
+        try:
+            invitation, _raw_token = invite_observer(
+                family=family,
+                invited_by=invited_by,
+                validated_data=validated_data,
+            )
+        except PermissionError as exc:
+            raise ValidationError({"detail": str(exc)}) from exc
+        except ValueError as exc:
+            raise ValidationError({"detail": str(exc)}) from exc
+        return invitation
 
 
 class FamilyMembershipSerializer(serializers.ModelSerializer):

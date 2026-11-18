@@ -158,6 +158,107 @@ class FamilyOnboardingCompleteView(APIView):
 
 
 # ============================================================
+# CAPABILITIES — what the caller may do in their family
+# ============================================================
+
+# Observer read flags on FamilyMembership -> capability names the app reads.
+_OBSERVER_READ_FLAGS = {
+    "can_read_readings": "can_view_readings",
+    "can_read_care_plan": "can_view_care_plan",
+    "can_read_visits": "can_view_visits",
+    "can_read_reports": "can_view_reports",
+    "can_read_prescriptions": "can_view_prescriptions",
+    "can_read_lab_results": "can_view_lab_results",
+    "can_read_history": "can_view_history",
+    "can_read_attention": "can_view_attention",
+    "can_read_care_team": "can_view_care_team",
+}
+
+_OWNER_ONLY_CAPABILITIES = (
+    "can_write_family",
+    "can_write_members",
+    "can_manage_memberships",
+    "can_manage_invitations",
+)
+
+
+def _owner_capabilities() -> dict:
+    caps = {"can_read_family": True, "can_read_members": True}
+    caps.update({name: True for name in _OBSERVER_READ_FLAGS})
+    caps.update({name: True for name in _OWNER_ONLY_CAPABILITIES})
+    return caps
+
+
+def _observer_capabilities(membership: FamilyMembership) -> dict:
+    caps = {"can_read_family": True, "can_read_members": True}
+    caps.update({
+        name: bool(getattr(membership, flag, False))
+        for name, flag in _OBSERVER_READ_FLAGS.items()
+    })
+    # Every write and management endpoint is owner-only, whatever flags the
+    # membership row carries. Never advertise more than the views allow.
+    caps.update({name: False for name in _OWNER_ONLY_CAPABILITIES})
+    return caps
+
+
+class FamilyCapabilitiesView(APIView):
+    """
+    GET /family/me/capabilities/
+
+    Tells the client the caller's role in their family and which sections
+    they may open, so it can hide controls the server would refuse anyway.
+
+    This is a convenience for the UI only. It reveals nothing but the
+    caller's own access, and every other endpoint still enforces its own
+    permission.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        guard = _require_family_service(request.user)
+        if guard:
+            return guard
+
+        # Same family the profile endpoint answers for: the one the caller
+        # owns, otherwise the first one they observe.
+        family = _user_profile(request.user)
+        if family is None:
+            family = families_for_user(request.user).first()
+
+        if family is None:
+            # Has the family service but no profile row yet. The first roster
+            # save creates the profile with this user as its owner.
+            return Response({
+                "family_id": None,
+                "role": FamilyMembership.Role.OWNER,
+                "capabilities": _owner_capabilities(),
+            })
+
+        if family.user_service.user_id == request.user.id or request.user.is_staff:
+            return Response({
+                "family_id": family.pk,
+                "role": FamilyMembership.Role.OWNER,
+                "capabilities": _owner_capabilities(),
+            })
+
+        membership = FamilyMembership.objects.filter(
+            family=family, user=request.user, revoked_at__isnull=True,
+        ).first()
+        if membership is None:
+            return Response(
+                {"detail": "Your access to this family has been revoked."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        return Response({
+            "family_id": family.pk,
+            "role": FamilyMembership.Role.OBSERVER,
+            "capabilities": _observer_capabilities(membership),
+        })
+
+
+# ============================================================
 # FAMILY MEMBERS
 # ============================================================
 
@@ -711,6 +812,8 @@ class FamilyInvitationListView(generics.ListCreateAPIView):
         if profile is None:
             profile = create_family_profile_for_user(self.request.user)
         self.check_object_permissions(self.request, profile)
+        # invite_observer (inside the serializer) hashes the token and
+        # never returns the raw value in the JSON response.
         serializer.save(family=profile, invited_by=self.request.user)
 
 

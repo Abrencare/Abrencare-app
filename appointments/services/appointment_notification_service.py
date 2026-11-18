@@ -1,27 +1,111 @@
+import logging
+
 from notifications.models import NotificationType
 from notifications.services.notification_service import NotificationService
+
+logger = logging.getLogger(__name__)
+
+
+def _display_name(user):
+    """Readable name for a user, without assuming which name API it has."""
+    if user is None:
+        return ""
+    getter = getattr(user, "get_full_name", None)
+    name = getter() if callable(getter) else getattr(user, "full_name", "")
+    return (name or "").strip() or (getattr(user, "username", "") or "")
+
+
+def _provider_label(appointment):
+    """
+    Who the visit is with.
+
+    Doctor visits have a Doctor. Home visits, nurse checks and lab samples
+    booked from the mobile app have no doctor, only a provider name.
+    """
+    doctor = appointment.doctor
+    if doctor is not None:
+        return f"Dr. {_display_name(doctor.user)}".strip()
+    return (appointment.provider_name or "").strip() or "your care team"
+
+
+def _doctor_user(appointment):
+    doctor = appointment.doctor
+    return doctor.user if doctor is not None else None
 
 
 class AppointmentNotificationService:
     """
     Central place for all appointment-related notifications.
     Keep methods small and side-effect free except for the notification itself.
+
+    These run from transaction.on_commit, after the appointment is already
+    saved. Nothing here may raise: an error would turn a successful booking
+    into a 500 for the caller.
     """
 
     @staticmethod
     def _safe_create(**kwargs):
         """Never let notification failures break the main business action."""
+        if kwargs.get("user") is None:
+            return
         try:
             NotificationService.create(**kwargs)
         except Exception:
-            # In production: log the exception (Sentry, structlog, etc.)
-            # logger.exception("Failed to create appointment notification")
-            pass
+            logger.exception("Failed to create appointment notification")
+
+    @classmethod
+    def _run(cls, event, appointment, build):
+        try:
+            build()
+        except Exception:
+            logger.exception(
+                "Appointment notification failed event=%s appointment_id=%s",
+                event,
+                getattr(appointment, "pk", None),
+            )
 
     @classmethod
     def notify_created(cls, appointment):
-        doctor_name = appointment.doctor.user.get_full_name()
-        patient_name = appointment.patient.get_full_name()
+        cls._run("created", appointment, lambda: cls._created(appointment))
+
+    @classmethod
+    def notify_confirmed(cls, appointment):
+        cls._run("confirmed", appointment, lambda: cls._confirmed(appointment))
+
+    @classmethod
+    def notify_cancelled(cls, appointment, cancelled_by=None):
+        cls._run(
+            "cancelled",
+            appointment,
+            lambda: cls._cancelled(appointment, cancelled_by=cancelled_by),
+        )
+
+    @classmethod
+    def notify_rescheduled(cls, appointment, old_date=None, old_time=None):
+        cls._run(
+            "rescheduled",
+            appointment,
+            lambda: cls._rescheduled(
+                appointment, old_date=old_date, old_time=old_time
+            ),
+        )
+
+    @classmethod
+    def notify_completed(cls, appointment):
+        cls._run("completed", appointment, lambda: cls._completed(appointment))
+
+    @classmethod
+    def notify_no_show(cls, appointment):
+        cls._run("no_show", appointment, lambda: cls._no_show(appointment))
+
+    # ------------------------------------------------------------------
+    # Builders
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def _created(cls, appointment):
+        provider = _provider_label(appointment)
+        patient_name = _display_name(appointment.patient)
         when = f"{appointment.appointment_date} at {appointment.appointment_time}"
 
         # Patient
@@ -29,7 +113,7 @@ class AppointmentNotificationService:
             user=appointment.patient,
             title="Appointment Scheduled",
             message=(
-                f"Your appointment with Dr. {doctor_name} "
+                f"Your appointment with {provider} "
                 f"has been scheduled for {when}."
             ),
             notification_type=NotificationType.APPOINTMENT,
@@ -39,9 +123,9 @@ class AppointmentNotificationService:
             },
         )
 
-        # Doctor
+        # Doctor (only when the visit has one)
         cls._safe_create(
-            user=appointment.doctor.user,
+            user=_doctor_user(appointment),
             title="New Appointment Request",
             message=(
                 f"New appointment request from {patient_name} "
@@ -55,15 +139,15 @@ class AppointmentNotificationService:
         )
 
     @classmethod
-    def notify_confirmed(cls, appointment):
-        doctor_name = appointment.doctor.user.get_full_name()
+    def _confirmed(cls, appointment):
+        provider = _provider_label(appointment)
         when = f"{appointment.appointment_date} at {appointment.appointment_time}"
 
         cls._safe_create(
             user=appointment.patient,
             title="Appointment Confirmed",
             message=(
-                f"Your appointment with Dr. {doctor_name} "
+                f"Your appointment with {provider} "
                 f"on {when} has been confirmed."
             ),
             notification_type=NotificationType.APPOINTMENT,
@@ -74,26 +158,25 @@ class AppointmentNotificationService:
         )
 
     @classmethod
-    def notify_cancelled(cls, appointment, cancelled_by=None):
-        doctor_name = appointment.doctor.user.get_full_name()
-        patient_name = appointment.patient.user.get_full_name()
+    def _cancelled(cls, appointment, cancelled_by=None):
+        provider = _provider_label(appointment)
+        patient_name = _display_name(appointment.patient)
+        doctor_user = _doctor_user(appointment)
         when = f"{appointment.appointment_date} at {appointment.appointment_time}"
 
         actor = "the clinic"
-        if cancelled_by:
+        if cancelled_by is not None:
             if cancelled_by == appointment.patient:
                 actor = "you"
-            elif cancelled_by == appointment.doctor.user:
-                actor = f"Dr. {doctor_name}"
-            else:
-                actor = "the clinic"
+            elif doctor_user is not None and cancelled_by == doctor_user:
+                actor = provider
 
         # Patient
         cls._safe_create(
             user=appointment.patient,
             title="Appointment Cancelled",
             message=(
-                f"Your appointment with Dr. {doctor_name} "
+                f"Your appointment with {provider} "
                 f"on {when} has been cancelled by {actor}."
             ),
             notification_type=NotificationType.APPOINTMENT,
@@ -103,9 +186,9 @@ class AppointmentNotificationService:
             },
         )
 
-        # Doctor
+        # Doctor (only when the visit has one)
         cls._safe_create(
-            user=appointment.doctor.user,
+            user=doctor_user,
             title="Appointment Cancelled",
             message=(
                 f"The appointment with {patient_name} "
@@ -119,9 +202,9 @@ class AppointmentNotificationService:
         )
 
     @classmethod
-    def notify_rescheduled(cls, appointment, old_date=None, old_time=None):
-        doctor_name = appointment.doctor.user.get_full_name()
-        patient_name = appointment.patient.get_full_name()
+    def _rescheduled(cls, appointment, old_date=None, old_time=None):
+        provider = _provider_label(appointment)
+        patient_name = _display_name(appointment.patient)
         new_when = f"{appointment.appointment_date} at {appointment.appointment_time}"
 
         old_when = None
@@ -129,12 +212,12 @@ class AppointmentNotificationService:
             old_when = f"{old_date} at {old_time}"
 
         message_patient = (
-            f"Your appointment with Dr. {doctor_name} "
+            f"Your appointment with {provider} "
             f"has been rescheduled to {new_when}."
         )
         if old_when:
             message_patient = (
-                f"Your appointment with Dr. {doctor_name} "
+                f"Your appointment with {provider} "
                 f"has been moved from {old_when} to {new_when}."
             )
 
@@ -149,8 +232,9 @@ class AppointmentNotificationService:
             },
         )
 
+        # Doctor (only when the visit has one)
         cls._safe_create(
-            user=appointment.doctor.user,
+            user=_doctor_user(appointment),
             title="Appointment Rescheduled",
             message=(
                 f"The appointment with {patient_name} "
@@ -164,7 +248,7 @@ class AppointmentNotificationService:
         )
 
     @classmethod
-    def notify_completed(cls, appointment):
+    def _completed(cls, appointment):
         # Usually only the patient cares
         cls._safe_create(
             user=appointment.patient,
@@ -178,7 +262,7 @@ class AppointmentNotificationService:
         )
 
     @classmethod
-    def notify_no_show(cls, appointment):
+    def _no_show(cls, appointment):
         # Optional – some clinics notify the patient
         cls._safe_create(
             user=appointment.patient,
@@ -193,4 +277,3 @@ class AppointmentNotificationService:
                 "event": "no_show",
             },
         )
-        

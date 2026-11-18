@@ -1,8 +1,14 @@
-from rest_framework.throttling import AnonRateThrottle
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
 
 class LoginThrottle(AnonRateThrottle):
     scope = "login"
+
+
+class ServiceEnrollThrottle(UserRateThrottle):
+    """Per-account limit on adding care services to an existing account."""
+
+    scope = "service_enroll"
 
 
 class RegistrationThrottle(AnonRateThrottle):

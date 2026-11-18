@@ -123,13 +123,24 @@ CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
     if origin.strip()
+] or [
+    "http://127.0.0.1:8000",
+    "http://localhost:8081",
+    "http://127.0.0.1:8081",
+    "http://localhost:19006",
+    "http://127.0.0.1:19006",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
     if origin.strip()
-]
+] or list(CORS_ALLOWED_ORIGINS)
+
+# Expo web / native clients use bearer tokens, not cookies. In DEBUG allow
+# any Origin so LAN devices can reach the API without editing env each time.
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
 
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -258,6 +269,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "login": "10/minute",  # 
         "registration": "5/hour",  # 
+        "service_enroll": "20/hour",
         "patient_claim": "5/hour",
 
         "family_invitation_create": "20/hour",
@@ -290,7 +302,8 @@ AUTH_PASSWORD_VALIDATORS = [
             "password_validation.MinimumLengthValidator"
         ),
         "OPTIONS": {
-            "min_length": 12,
+            # Matches the mobile signup field (min 8) and UserCreateSerializer.
+            "min_length": 8,
         },
     },
     {

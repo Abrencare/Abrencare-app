@@ -6,6 +6,7 @@ from .views import (
     CustomTokenObtainPairView,
     RegisterUserView,
     LogoutUserView,
+    ServiceEnrollView,
     LoginView,
     EnhancedChangePasswordView,
     SendResetCodeView,
@@ -37,6 +38,13 @@ urlpatterns = [
         "auth/refresh/",
         TokenRefreshView.as_view(),
         name="token-refresh",
+    ),
+
+    # Add a care service to the signed-in account
+    path(
+        "auth/services/enroll/",
+        ServiceEnrollView.as_view(),
+        name="service-enroll",
     ),
 
 

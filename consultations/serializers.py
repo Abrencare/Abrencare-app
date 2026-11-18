@@ -81,6 +81,9 @@ class SpecialtySerializer(serializers.ModelSerializer):
 class ConsultationDoctorSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source="user.full_name", read_only=True)
     specialty = serializers.CharField(source="specialty.name", read_only=True)
+    # The app's doctor list and "consult now" both depend on who is online.
+    # The column is nullable, so always answer with a real boolean.
+    is_online = serializers.SerializerMethodField()
 
     class Meta:
         model = Doctor
@@ -92,8 +95,12 @@ class ConsultationDoctorSerializer(serializers.ModelSerializer):
             "consultation_fee",
             "consultation_duration",
             "bio",
+            "is_online",
         ]
         read_only_fields = fields
+
+    def get_is_online(self, obj) -> bool:
+        return bool(obj.is_online)
 
 
 class DoctorSummarySerializer(serializers.ModelSerializer):
@@ -240,9 +247,26 @@ class ConsultationOnboardingSerializer(serializers.Serializer):
             profile.created_by = self.context["request"].user
             update_fields.add("created_by")
 
+        if profile.onboarded_at is None:
+            from django.utils import timezone
+
+            profile.onboarded_at = timezone.now()
+            update_fields.add("onboarded_at")
+
         if update_fields:
             update_fields.add("updated_at")
             profile.save(update_fields=sorted(update_fields))
+
+        user_service = profile.user_service
+        if not user_service.onboarded:
+            user_service.mark_onboarded()
+
+        # Booking, availability and "my consultations" all require a Patient
+        # profile. Accounts enrolled before registration created one would
+        # otherwise finish onboarding and then be refused at booking.
+        from patients.models import Patient
+
+        Patient.objects.get_or_create(user=profile.user_service.user)
 
         return profile
 

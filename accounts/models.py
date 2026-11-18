@@ -125,6 +125,17 @@ class User(AbstractBaseUser, PermissionsMixin):
     def full_name(self):
         return f"{self.first_name} {self.last_name}".strip()
 
+    def get_full_name(self):
+        """
+        Django's standard user API. Notification, admin and serializer code
+        across the project calls this, so it must exist on the custom user.
+        """
+        parts = [self.first_name or "", self.last_name or ""]
+        return " ".join(part.strip() for part in parts if part.strip())
+
+    def get_short_name(self):
+        return (self.first_name or "").strip()
+
     @property
     def status(self):
         return "Active" if self.is_active else "Inactive"

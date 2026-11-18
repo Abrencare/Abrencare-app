@@ -8,6 +8,7 @@ from django.contrib.auth import authenticate, login,logout
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from services.models import UserService
@@ -18,6 +19,8 @@ from .serializers import (
     UserUpdateSerializer,
     CustomTokenObtainPairSerializer,
     EnhancedChangePasswordSerializer,
+    ServiceEnrollSerializer,
+    enroll_user_in_service,
 )
 from .services.password import PasswordService
 from .services.password_reset import PasswordResetService
@@ -31,6 +34,7 @@ from .throttles import (
     PasswordResetRequestThrottle,
     PasswordResetVerifyThrottle,
     PasswordResetCompleteThrottle,
+    ServiceEnrollThrottle,
 )
 
 
@@ -258,7 +262,7 @@ class RegisterUserView(APIView):
     throttle_classes = [RegistrationThrottle]
 
     def post(self, request):
-        print(request.data)
+        # Never print or log request.data here: it carries the password.
         serializer = UserCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -277,7 +281,64 @@ class RegisterUserView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
-    
+
+
+# ============================================================
+# SERVICE ENROLLMENT (existing account adds a care service)
+# ============================================================
+
+
+class ServiceEnrollView(SecurityLogMixin, APIView):
+    """
+    POST /auth/services/enroll/   {"service": "consultation"}
+
+    Registration enrolls a new account in exactly one service. The mobile
+    app lets a signed-in user open a second service (for example a Family
+    Care account booking a Digital Consultation), so an authenticated
+    account needs a way to add one.
+
+    - authenticated only; the account is always request.user
+    - only active catalog services can be joined
+    - idempotent: enrolling twice returns the same enrollment
+    - per-user throttled
+    - grants nothing beyond what open registration already grants for
+      the same service code
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ServiceEnrollThrottle]
+
+    def post(self, request):
+        serializer = ServiceEnrollSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        code = serializer.validated_data["service"]
+
+        _, created = enroll_user_in_service(request.user, code)
+
+        if created:
+            self.log_event(
+                "User enrolled in service",
+                user=request.user,
+                request=request,
+                service=code,
+            )
+
+        user = (
+            User.objects
+            .prefetch_related(models.Prefetch(
+                "user_services",
+                queryset=UserService.objects.select_related("service"),
+            ))
+            .get(pk=request.user.pk)
+        )
+        return Response(
+            UserSerializer(user).data,
+            status=(
+                status.HTTP_201_CREATED if created else status.HTTP_200_OK
+            ),
+        )
+
+
 # ============================================================
 # LOGOUT
 # ============================================================
@@ -349,12 +410,24 @@ class LogoutUserView(
                     },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            logout()
+
+            # Revoke the refresh token so it can never mint another access
+            # token. This is what actually ends a JWT session.
             token.blacklist()
+
+            user = request.user
+
+            # Also end the Django session, if this client had one (browser
+            # clients using SessionAuthentication). JWT-only clients such as
+            # the mobile app have no session and this is a no-op for them.
+            django_request = request._request
+            session = getattr(django_request, "session", None)
+            if session is not None and session.session_key:
+                logout(django_request)
 
             self.log_event(
                 "User logged out",
-                user=request.user,
+                user=user,
                 request=request,
             )
 
@@ -367,7 +440,7 @@ class LogoutUserView(
                 status=status.HTTP_200_OK,
             )
 
-        except Exception:
+        except TokenError:
             logger.warning(
                 "Invalid refresh token supplied during logout",
                 extra={
